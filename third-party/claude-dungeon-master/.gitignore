@@ -1,0 +1,14 @@
+# Campaign data (personal/private)
+campaigns/
+
+# Claude Code settings
+.claude/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~

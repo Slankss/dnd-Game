@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kızıl Çöküş — Zombi Kıyamet Oyunu</title>
+<style>
+  :root {
+    --bg: #0d0f10;
+    --panel: #16191a;
+    --panel-2: #1e2222;
+    --border: #2c2f2f;
+    --red: #a3272c;
+    --red-bright: #d9424a;
+    --text: #d8d4cc;
+    --text-dim: #8a8580;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  header {
+    background: linear-gradient(180deg, #1a0f0f, #0d0f10);
+    border-bottom: 2px solid var(--red);
+    padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.15rem; margin: 0; letter-spacing: 1px; color: var(--red-bright); }
+  header .day { font-size: 0.9rem; color: var(--text-dim); }
+  #reset-btn, #settings-btn, #music-btn {
+    background: transparent; color: var(--text-dim); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.75rem;
+  }
+  #reset-btn:hover, #settings-btn:hover, #music-btn:hover { border-color: var(--red); color: var(--red-bright); }
+  #music-btn.on { border-color: var(--red); color: var(--red-bright); }
+  #header-actions { position: relative; display: flex; align-items: center; gap: 8px; }
+  #music-volume { width: 70px; accent-color: var(--red); cursor: pointer; }
+  #settings-menu {
+    position: absolute; top: 110%; right: 0; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px; display: flex; flex-direction: column; min-width: 220px; z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  #settings-menu button {
+    background: transparent; border: none; color: var(--text); text-align: left; padding: 8px 10px;
+    border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 0.82rem;
+  }
+  #settings-menu button:hover { background: var(--panel-2); }
+  #settings-menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+
+  /* ---- setup / start screens ---- */
+  .center-screen {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .setup-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 28px 32px; max-width: 480px; width: 100%;
+  }
+  .setup-card h2 { margin-top: 0; color: var(--red-bright); font-size: 1.1rem; }
+  .setup-card p.hint { color: var(--text-dim); font-size: 0.85rem; margin-top: -6px; }
+  .char-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .char-row input {
+    flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.95rem;
+  }
+  .char-row button {
+    background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 6px; padding: 0 12px; cursor: pointer;
+  }
+  .char-row button:hover { border-color: var(--red); color: var(--red-bright); }
+  #add-char-btn {
+    background: transparent; border: 1px dashed var(--border); color: var(--text-dim);
+    border-radius: 6px; padding: 8px 12px; cursor: pointer; width: 100%; margin: 6px 0 18px;
+    font-family: inherit;
+  }
+  .primary-btn {
+    background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 12px 20px;
+    cursor: pointer; font-family: inherit; font-weight: bold; font-size: 1rem; width: 100%;
+  }
+  .primary-btn:disabled { opacity: 0.5; cursor: default; }
+  .setup-error { color: var(--red-bright); font-size: 0.85rem; margin-top: 10px; min-height: 1em; }
+
+  /* ---- tabs ---- */
+  #feed-col { flex: 1; display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--border); }
+  #tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab-btn {
+    background: transparent; border: none; color: var(--text-dim); padding: 10px 18px;
+    cursor: pointer; font-family: inherit; font-size: 0.85rem; border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active { color: var(--red-bright); border-bottom-color: var(--red); }
+  .tab-panel { flex: 1; overflow-y: auto; padding: 16px; display: none; }
+  .tab-panel.active { display: block; }
+
+  .msg { margin-bottom: 16px; max-width: 85%; }
+  .msg.gm { max-width: 100%; }
+  .msg .who {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .msg.gm .who { color: var(--red-bright); }
+  .roll-badge {
+    font-size: 0.7rem; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor;
+    opacity: 0.85;
+  }
+  .msg .bubble {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; line-height: 1.55; white-space: pre-wrap; font-size: 0.95rem;
+  }
+  .msg.gm .bubble { background: #17100f; border-color: #3a1f1f; }
+  .msg.player .bubble { border-left: 3px solid currentColor; }
+
+  #history-list .hist-entry { margin-bottom: 10px; font-size: 0.88rem; }
+  #history-list .hist-ts { color: var(--text-dim); font-size: 0.72rem; margin-right: 6px; }
+  #history-list .hist-who { font-weight: bold; margin-right: 6px; }
+  #history-list .hist-text { white-space: pre-wrap; }
+
+  #sidebar { width: 320px; flex-shrink: 0; overflow-y: auto; padding: 16px; background: var(--panel); font-size: 0.85rem; }
+  #sidebar h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin: 18px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  #sidebar h2:first-child { margin-top: 0; }
+  .recent-item { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 6px; line-height: 1.4; }
+  .recent-item b { color: var(--text); }
+  .char-card, .faction-row { margin-bottom: 10px; padding: 8px 10px; background: var(--panel-2); border-radius: 6px; }
+  .char-card { cursor: pointer; transition: background 0.15s; }
+  .char-card:hover { background: #262b2b; }
+  .char-card .name { font-weight: bold; font-size: 0.9rem; }
+  .char-card .field { color: var(--text-dim); font-size: 0.78rem; }
+  .faction-row .name { font-weight: bold; }
+  .faction-row .disp { color: var(--text-dim); font-size: 0.78rem; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 2px 9px; font-size: 0.75rem; }
+
+  footer {
+    flex-shrink: 0; border-top: 2px solid var(--red);
+    background: #0f1112; padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .player-toggle { display: flex; gap: 14px; align-items: center; font-size: 0.8rem; flex-wrap: wrap; }
+  .player-toggle label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  #input-row { display: flex; gap: 8px; }
+  #text-input {
+    flex: 1; resize: none; background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.95rem; min-height: 44px;
+  }
+  #send-btn {
+    background: var(--red); color: #fff; border: none; border-radius: 6px; padding: 0 20px;
+    cursor: pointer; font-family: inherit; font-weight: bold; font-size: 0.9rem;
+  }
+  #send-btn:disabled { opacity: 0.5; cursor: default; }
+  #status { font-size: 0.75rem; color: var(--text-dim); min-height: 1em; }
+  .hidden { display: none !important; }
+
+  /* ---- character detail popup ---- */
+  #char-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  #char-modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px 28px; max-width: 460px; width: 90%; max-height: 80vh; overflow-y: auto;
+  }
+  #char-modal h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  #char-modal .modal-loc { color: var(--text-dim); font-size: 0.82rem; margin-bottom: 14px; }
+  #char-modal h3 {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+    margin: 16px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px;
+  }
+  #char-modal h3:first-of-type { margin-top: 0; }
+  #char-modal p { margin: 0; font-size: 0.92rem; line-height: 1.5; }
+  #char-modal .inv-list, #char-modal .rel-list { list-style: none; padding: 0; margin: 0; }
+  #char-modal .inv-list li {
+    display: inline-block; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px 10px; font-size: 0.82rem; margin: 0 6px 6px 0;
+  }
+  #char-modal .rel-list li { margin-bottom: 6px; font-size: 0.88rem; }
+  #char-modal .rel-list b { color: var(--text); }
+  #char-modal .empty-hint { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
+  #char-modal-close {
+    float: right; background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+  }
+  #char-modal-close:hover { border-color: var(--red); color: var(--red-bright); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🧟 KIZIL ÇÖKÜŞ</h1>
+    <div class="day" id="day-label">—</div>
+    <div id="header-actions">
+      <button id="music-btn" title="Arka plan müziği aç/kapat">🔇</button>
+      <input type="range" id="music-volume" min="0" max="100" value="50" title="Müzik seviyesi">
+      <button id="settings-btn" title="Senaryo / Oyun dışa-içe aktar">⚙</button>
+      <button id="reset-btn" title="Oyunu sıfırla">Sıfırla</button>
+      <div class="hidden" id="settings-menu">
+        <button type="button" data-action="export-scenario">📤 Senaryoyu Dışa Aktar</button>
+        <button type="button" data-action="import-scenario">📥 Senaryo İçe Aktar</button>
+        <button type="button" data-action="reset-scenario">↩️ Varsayılan Senaryoya Dön</button>
+        <hr>
+        <button type="button" data-action="export-game">📤 Oyunu Dışa Aktar</button>
+        <button type="button" data-action="import-game">📥 Oyun İçe Aktar</button>
+      </div>
+    </div>
+    <input type="file" id="file-import-scenario" accept="application/json" class="hidden">
+    <input type="file" id="file-import-game" accept="application/json" class="hidden">
+  </header>
+
+  <!-- 1) karakter kurulum ekranı -->
+  <div class="center-screen" id="setup-screen">
+    <div class="setup-card">
+      <h2>Karakterleri Belirle</h2>
+      <p class="hint">Kaç kişi oynayacak ve isimleri ne olsun? İstediğin kadar ekleyip çıkarabilirsin.</p>
+      <div id="char-rows"></div>
+      <button id="add-char-btn" type="button">+ Karakter Ekle</button>
+      <button id="confirm-chars-btn" class="primary-btn" type="button">Karakterleri Onayla</button>
+      <div class="setup-error" id="setup-error"></div>
+    </div>
+  </div>
+
+  <!-- 2) oyunu başlat ekranı -->
+  <div class="center-screen hidden" id="start-screen">
+    <div class="setup-card">
+      <h2>Karakterler Hazır</h2>
+      <p class="hint" id="start-char-list"></p>
+      <button id="start-game-btn" class="primary-btn" type="button">🎲 Oyunu Başlat</button>
+      <div class="setup-error" id="start-error"></div>
+    </div>
+  </div>
+
+  <!-- 3) asıl oyun ekranı -->
+  <main class="hidden" id="game-main">
+    <div id="feed-col">
+      <div id="tabs">
+        <button class="tab-btn active" data-tab="live">Canlı Oyun</button>
+        <button class="tab-btn" data-tab="history">Oyun Geçmişi</button>
+      </div>
+      <div class="tab-panel active" id="tab-live"></div>
+      <div class="tab-panel" id="tab-history">
+        <div id="history-list"></div>
+      </div>
+    </div>
+    <aside id="sidebar">
+      <h2>Son Olaylar</h2>
+      <div id="recent"></div>
+      <h2>Karakterler</h2>
+      <div id="characters"></div>
+      <h2>Fraksiyonlar</h2>
+      <div id="factions"></div>
+      <h2>Görülen Zombi Türleri</h2>
+      <div class="tag-list" id="zombies"></div>
+    </aside>
+  </main>
+
+  <footer class="hidden" id="game-footer">
+    <div class="player-toggle" id="player-toggle"></div>
+    <div id="input-row">
+      <textarea id="text-input" placeholder="Ne yapıyorsun? (Birden fazla karakter için: her satıra &quot;İsim: aksiyon&quot; yazabilirsin)"></textarea>
+      <button id="send-btn">Gönder</button>
+    </div>
+    <div id="multi-hint" style="font-size:0.72rem; color:var(--text-dim); margin-top:-4px;">
+      İpucu: "Celil: kapıyı zorluyor" / "Okan: pencereden bakıyor" gibi ayrı satırlar yazarsan, birden fazla karakter aynı anda hareket eder.
+    </div>
+    <div id="status"></div>
+  </footer>
+</div>
+
+<!-- karakter detay popup'ı -->
+<div class="hidden" id="char-modal-overlay">
+  <div id="char-modal">
+    <button id="char-modal-close" type="button">Kapat ✕</button>
+    <h2 id="modal-name"></h2>
+    <div class="modal-loc" id="modal-location"></div>
+
+    <h3>Geçmiş</h3>
+    <p id="modal-background"></p>
+
+    <h3>Özellikler</h3>
+    <p id="modal-traits"></p>
+
+    <h3>Sağlık Durumu</h3>
+    <p id="modal-status"></p>
+
+    <h3>Envanter</h3>
+    <ul class="inv-list" id="modal-inventory"></ul>
+
+    <h3>İlişkiler</h3>
+    <ul class="rel-list" id="modal-relationships"></ul>
+  </div>
+</div>
+
+<script>
+const PALETTE = ['#4a7c59', '#4a6c9c', '#9c6c4a', '#8a4a9c', '#c9a227', '#4a9c8f', '#c05a4a', '#5a5ac0'];
+
+function colorFor(name, roster) {
+  const idx = roster.indexOf(name);
+  return PALETTE[(idx >= 0 ? idx : 0) % PALETTE.length];
+}
+
+// ---- element refs ----
+const dayLabel = document.getElementById('day-label');
+const setupScreen = document.getElementById('setup-screen');
+const startScreen = document.getElementById('start-screen');
+const gameMain = document.getElementById('game-main');
+const gameFooter = document.getElementById('game-footer');
+const charRowsEl = document.getElementById('char-rows');
+const addCharBtn = document.getElementById('add-char-btn');
+const confirmCharsBtn = document.getElementById('confirm-chars-btn');
+const setupError = document.getElementById('setup-error');
+const startCharList = document.getElementById('start-char-list');
+const startGameBtn = document.getElementById('start-game-btn');
+const startError = document.getElementById('start-error');
+const tabLive = document.getElementById('tab-live');
+const historyList = document.getElementById('history-list');
+const recentEl = document.getElementById('recent');
+const charactersEl = document.getElementById('characters');
+const factionsEl = document.getElementById('factions');
+const zombiesEl = document.getElementById('zombies');
+const playerToggle = document.getElementById('player-toggle');
+const textInput = document.getElementById('text-input');
+const sendBtn = document.getElementById('send-btn');
+const statusEl = document.getElementById('status');
+const resetBtn = document.getElementById('reset-btn');
+const charModalOverlay = document.getElementById('char-modal-overlay');
+const modalName = document.getElementById('modal-name');
+const modalLocation = document.getElementById('modal-location');
+const modalBackground = document.getElementById('modal-background');
+const modalTraits = document.getElementById('modal-traits');
+const modalStatus = document.getElementById('modal-status');
+const modalInventory = document.getElementById('modal-inventory');
+const modalRelationships = document.getElementById('modal-relationships');
+const charModalClose = document.getElementById('char-modal-close');
+
+let renderedIds = new Set();
+let roster = [];
+let appState = 'setup'; // 'setup' | 'ready' | 'playing'
+let latestCharacters = {}; // en güncel world_state.characters — popup için
+
+// ---------------- character detail popup ----------------
+function openCharModal(name) {
+  const info = latestCharacters[name] || {};
+  modalName.textContent = name;
+  modalName.style.color = colorFor(name, roster);
+  modalLocation.textContent = '📍 ' + (info.location || 'konum bilinmiyor');
+  modalBackground.textContent = info.background || 'Karakter henüz oluşturulmadı.';
+  modalTraits.textContent = info.traits || '-';
+  modalStatus.textContent = info.status || '-';
+
+  modalInventory.innerHTML = '';
+  const inv = info.inventory || [];
+  if (inv.length === 0) {
+    modalInventory.innerHTML = '<li class="empty-hint" style="list-style:none;">Envanter boş.</li>';
+  } else {
+    for (const item of inv) {
+      const li = document.createElement('li');
+      li.textContent = item;
+      modalInventory.appendChild(li);
+    }
+  }
+
+  modalRelationships.innerHTML = '';
+  const rels = info.relationships || {};
+  const relEntries = Object.entries(rels);
+  if (relEntries.length === 0) {
+    modalRelationships.innerHTML = '<li class="empty-hint">Henüz belirgin bir ilişki gelişmedi.</li>';
+  } else {
+    for (const [other, desc] of relEntries) {
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${other}:</b> ${desc}`;
+      modalRelationships.appendChild(li);
+    }
+  }
+
+  charModalOverlay.classList.remove('hidden');
+}
+
+function closeCharModal() {
+  charModalOverlay.classList.add('hidden');
+}
+
+charModalClose.addEventListener('click', closeCharModal);
+charModalOverlay.addEventListener('click', (e) => {
+  if (e.target === charModalOverlay) closeCharModal();
+});
+
+// ---------------- character setup screen ----------------
+function addCharRow(value) {
+  const row = document.createElement('div');
+  row.className = 'char-row';
+  row.innerHTML = `<input type="text" value="${value || ''}" placeholder="Karakter ismi">
+    <button type="button" title="Kaldır">✕</button>`;
+  row.querySelector('button').addEventListener('click', () => {
+    if (charRowsEl.children.length > 1) row.remove();
+  });
+  charRowsEl.appendChild(row);
+}
+
+addCharBtn.addEventListener('click', () => addCharRow(''));
+
+confirmCharsBtn.addEventListener('click', async () => {
+  const names = [...charRowsEl.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+  if (names.length === 0) {
+    setupError.textContent = 'En az bir karakter ismi girin.';
+    return;
+  }
+  setupError.textContent = '';
+  confirmCharsBtn.disabled = true;
+  try {
+    const res = await fetch('/api/setup-characters', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ players: names }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      setupError.textContent = data.error;
+    } else {
+      roster = names;
+      showStartScreen(names);
+    }
+  } catch (e) {
+    setupError.textContent = 'Sunucuya bağlanılamadı.';
+  } finally {
+    confirmCharsBtn.disabled = false;
+  }
+});
+
+function showStartScreen(names) {
+  appState = 'ready';
+  setupScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+  startCharList.textContent = 'Karakterler: ' + names.join(', ');
+}
+
+startGameBtn.addEventListener('click', async () => {
+  startGameBtn.disabled = true;
+  startError.textContent = '';
+  statusEl.textContent = '';
+  startGameBtn.textContent = 'Sahne hazırlanıyor... (biraz sürebilir)';
+  try {
+    const res = await fetch('/api/start', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      startError.textContent = data.error;
+      startGameBtn.disabled = false;
+      startGameBtn.textContent = '🎲 Oyunu Başlat';
+    } else {
+      enterGame(data.world_state);
+      appendLive(data.gm_entry);
+      appendHistory(data.gm_entry);
+    }
+  } catch (e) {
+    startError.textContent = 'İstek başarısız oldu.';
+    startGameBtn.disabled = false;
+    startGameBtn.textContent = '🎲 Oyunu Başlat';
+  }
+});
+
+function enterGame(worldState) {
+  appState = 'playing';
+  startScreen.classList.add('hidden');
+  gameMain.classList.remove('hidden');
+  gameFooter.classList.remove('hidden');
+  renderWorldState(worldState); // roster + player-toggle burada kurulur
+}
+
+let groupLabel = null;
+let groupDisplayName = 'Ortak Karar (Grup)';
+let lastRosterKey = null;
+function buildPlayerToggle(chargenDone) {
+  const key = roster.join('|') + '::' + !!chargenDone;
+  if (key === lastRosterKey) return; // durum değişmediyse seçili radio'yu bozma
+  lastRosterKey = key;
+  const prevSelected = playerToggle.querySelector('input[name="player"]:checked')?.value;
+  playerToggle.innerHTML = '<span>Kimsin?</span>';
+  roster.forEach((name, i) => {
+    const label = document.createElement('label');
+    label.style.color = colorFor(name, roster);
+    const isChecked = name === prevSelected || (!prevSelected && i === 0);
+    label.innerHTML = `<input type="radio" name="player" value="${name}" ${isChecked ? 'checked' : ''}> ${name}`;
+    playerToggle.appendChild(label);
+  });
+  if (chargenDone && groupLabel) {
+    const label = document.createElement('label');
+    label.style.color = GROUP_COLOR;
+    const isChecked = groupLabel === prevSelected;
+    label.innerHTML = `<input type="radio" name="player" value="${groupLabel}" ${isChecked ? 'checked' : ''}> 🤝 ${groupDisplayName}`;
+    playerToggle.appendChild(label);
+  }
+}
+
+// ---------------- tabs ----------------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------------- rendering ----------------
+const GROUP_COLOR = '#c9a227';
+
+function entryLabel(entry) {
+  if (entry.role !== 'user') return entry.kind === 'opening' ? 'Anlatıcı (Açılış)' : 'Anlatıcı';
+  return entry.player;
+}
+
+function entryColor(entry) {
+  return entry.is_group ? GROUP_COLOR : colorFor(entry.player, roster);
+}
+
+function appendLive(entry) {
+  const div = document.createElement('div');
+  const isGm = entry.role !== 'user';
+  div.className = 'msg ' + (isGm ? 'gm' : 'player');
+  if (!isGm) div.style.color = entryColor(entry);
+  const who = document.createElement('div');
+  who.className = 'who';
+  if (isGm) {
+    who.textContent = entryLabel(entry);
+  } else {
+    who.innerHTML = entry.roll != null
+      ? `${entry.player} <span class="roll-badge">🎲 ${entry.roll} · ${entry.band}</span>`
+      : `${entry.player} <span class="roll-badge">karakter oluşturma</span>`;
+  }
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.style.color = 'var(--text)';
+  bubble.textContent = entry.text;
+  div.appendChild(who);
+  div.appendChild(bubble);
+  tabLive.appendChild(div);
+  tabLive.scrollTop = tabLive.scrollHeight;
+}
+
+function appendHistory(entry) {
+  const div = document.createElement('div');
+  div.className = 'hist-entry';
+  const who = document.createElement('span');
+  who.className = 'hist-who';
+  who.textContent = entryLabel(entry);
+  who.style.color = entry.role === 'user' ? entryColor(entry) : '';
+  const ts = document.createElement('span');
+  ts.className = 'hist-ts';
+  ts.textContent = entry.ts;
+  const rollTxt = entry.roll != null ? ` [🎲 ${entry.roll} · ${entry.band}]` : '';
+  div.appendChild(ts);
+  div.appendChild(who);
+  const textSpan = document.createElement('span');
+  textSpan.className = 'hist-text';
+  textSpan.textContent = rollTxt + '\n' + entry.text;
+  div.appendChild(textSpan);
+  historyList.appendChild(div);
+}
+
+function renderRecent(log) {
+  recentEl.innerHTML = '';
+  const last = log.slice(-5).reverse();
+  for (const e of last) {
+    const item = document.createElement('div');
+    item.className = 'recent-item';
+    const who = e.role === 'user' ? e.player : 'Anlatıcı';
+    const snippet = e.text.length > 90 ? e.text.slice(0, 90) + '…' : e.text;
+    item.innerHTML = `<b>${who}:</b> ${snippet}`;
+    recentEl.appendChild(item);
+  }
+}
+
+function renderCharCard(container, name, info, isNpc) {
+  const card = document.createElement('div');
+  card.className = 'char-card';
+  card.style.borderLeft = '3px solid ' + (isNpc ? 'var(--text-dim)' : colorFor(name, roster));
+  const invCount = (info.inventory || []).length;
+  const relCount = Object.keys(info.relationships || {}).length;
+  card.innerHTML = `<div class="name">${name}${isNpc ? ' <span class="tag" style="font-size:0.65rem;">NPC</span>' : ''}</div>
+    <div class="field">📜 ${info.background || 'karakter henüz oluşturulmadı'}</div>
+    <div class="field">✨ ${info.traits || '-'}</div>
+    <div class="field">❤️ ${info.status || '-'}</div>
+    <div class="field">📍 ${info.location || '-'}</div>
+    <div class="field">🎒 ${invCount} eşya · 🤝 ${relCount} ilişki</div>`;
+  card.addEventListener('click', () => openCharModal(name));
+  container.appendChild(card);
+}
+
+function renderWorldState(ws) {
+  dayLabel.textContent = 'Gün ' + (ws.day ?? '—') + (ws.location ? ' · ' + ws.location : '');
+
+  roster = Object.keys(ws.characters || {});
+  const chargenDone = roster.length > 0 && roster.every(n => !!(ws.characters[n] || {}).background);
+  buildPlayerToggle(chargenDone);
+
+  latestCharacters = { ...(ws.characters || {}), ...(ws.npcs || {}) };
+  charactersEl.innerHTML = '';
+  for (const [name, info] of Object.entries(ws.characters || {})) {
+    renderCharCard(charactersEl, name, info, false);
+  }
+  for (const [name, info] of Object.entries(ws.npcs || {})) {
+    renderCharCard(charactersEl, name, info, true);
+  }
+  // popup açıksa içeriğini de tazele (isim hâlâ listede varsa)
+  if (!charModalOverlay.classList.contains('hidden') && latestCharacters[modalName.textContent]) {
+    openCharModal(modalName.textContent);
+  }
+
+  factionsEl.innerHTML = '';
+  for (const [name, info] of Object.entries(ws.factions || {})) {
+    const row = document.createElement('div');
+    row.className = 'faction-row';
+    row.innerHTML = `<div class="name">${name}</div>
+      <div class="disp">${info.disposition || 'bilinmiyor'} — ${info.notes || ''}</div>`;
+    factionsEl.appendChild(row);
+  }
+
+  zombiesEl.innerHTML = '';
+  for (const z of (ws.zombie_sightings || [])) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = z;
+    zombiesEl.appendChild(tag);
+  }
+}
+
+function ingestLog(log) {
+  for (const entry of log) {
+    if (renderedIds.has(entry.id)) continue;
+    renderedIds.add(entry.id);
+    appendLive(entry);
+    appendHistory(entry);
+    if (entry.role === 'assistant' && entry.tension === 'yüksek') {
+      triggerTension();
+    }
+  }
+  renderRecent(log);
+}
+
+// ---------------- polling / bootstrap ----------------
+async function poll() {
+  try {
+    const res = await fetch('/api/state');
+    const data = await res.json();
+    roster = Object.keys(data.world_state.characters || {});
+    groupLabel = data.group_label || groupLabel;
+    groupDisplayName = data.group_display_name || groupDisplayName;
+
+    if (!data.characters_confirmed) {
+      if (appState === 'setup' && charRowsEl.children.length === 0) {
+        (data.default_players || []).forEach(n => addCharRow(n));
+        if (charRowsEl.children.length === 0) addCharRow('');
+      }
+      return;
+    }
+    if (!data.started) {
+      if (appState !== 'ready') showStartScreen(roster);
+      return;
+    }
+    if (appState !== 'playing') enterGame(data.world_state);
+    ingestLog(data.log);
+    renderWorldState(data.world_state);
+  } catch (e) {
+    statusEl.textContent = 'Sunucuya bağlanılamadı.';
+  }
+}
+
+async function send() {
+  const text = textInput.value.trim();
+  if (!text) return;
+  const checked = document.querySelector('input[name="player"]:checked');
+  if (!checked) return;
+  const player = checked.value;
+  sendBtn.disabled = true;
+  statusEl.textContent = 'Zar atılıyor, anlatıcı düşünüyor...';
+  try {
+    const res = await fetch('/api/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player, text }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Hata: ' + data.error;
+    } else {
+      ingestLog([...data.user_entries, data.gm_entry]);
+      renderWorldState(data.world_state);
+      textInput.value = '';
+      statusEl.textContent = '';
+    }
+  } catch (e) {
+    statusEl.textContent = 'İstek başarısız oldu.';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+sendBtn.addEventListener('click', send);
+textInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
+resetBtn.addEventListener('click', async () => {
+  if (!confirm('Tüm oyun geçmişi ve dünya durumu silinsin mi?')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  location.reload();
+});
+
+// ---------------- arka plan müziği (kendi dosyanız varsa onu, yoksa sentez) ----------------
+const musicBtn = document.getElementById('music-btn');
+const musicVolumeSlider = document.getElementById('music-volume');
+const SYNTH_MAX_GAIN = 0.4; // ham drone tam seviyede rahatsız edici olur, bu yüzden 100% burada tavanlanır
+let musicOn = false;
+let musicMode = null; // 'file' | 'synth'
+let audioEl = null;
+let audioCtx = null, masterGain = null, synthNodes = [];
+let musicVolume = parseFloat(localStorage.getItem('kizil-cokus-volume') || '0.5');
+musicVolumeSlider.value = Math.round(musicVolume * 100);
+
+function applyVolume(v) {
+  musicVolume = v;
+  localStorage.setItem('kizil-cokus-volume', String(v));
+  if (musicMode === 'file' && audioEl) audioEl.volume = v;
+  if (musicMode === 'synth' && masterGain && audioCtx) {
+    masterGain.gain.linearRampToValueAtTime(v * SYNTH_MAX_GAIN, audioCtx.currentTime + 0.15);
+  }
+}
+
+musicVolumeSlider.addEventListener('input', () => {
+  applyVolume(parseInt(musicVolumeSlider.value, 10) / 100);
+});
+
+async function detectAudioFile(baseName) {
+  for (const ext of ['mp3', 'ogg']) {
+    try {
+      const res = await fetch(`/static/audio/${baseName}.${ext}`, { method: 'HEAD' });
+      if (res.ok) return `/static/audio/${baseName}.${ext}`;
+    } catch (e) { /* yok say */ }
+  }
+  return null;
+}
+
+let tensionFilePath = null; // kullanıcı kendi tension.mp3 koyduysa
+let tensionAudioEl = null;
+let tensionActive = false;
+let tensionTimeout = null;
+const TENSION_DURATION_MS = 22000;
+const synthDrone = { filters: [], lfos: [], heartbeatGain: null, heartbeatTimer: null };
+
+function startSynthAmbience() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.0;
+  masterGain.connect(audioCtx.destination);
+  masterGain.gain.linearRampToValueAtTime(musicVolume * SYNTH_MAX_GAIN, audioCtx.currentTime + 2);
+
+  synthNodes = [];
+  synthDrone.filters = [];
+  synthDrone.lfos = [];
+
+  // düşük, karanlık drone katmanları (hafif detune ile "beating" efekti)
+  const freqs = [55, 56, 110];
+  freqs.forEach((f, i) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = i === 2 ? 'triangle' : 'sawtooth';
+    osc.frequency.value = f;
+    const gain = audioCtx.createGain();
+    gain.gain.value = i === 2 ? 0.15 : 0.35;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 300;
+    osc.connect(gain).connect(filter).connect(masterGain);
+    osc.start();
+    synthNodes.push(osc);
+    synthDrone.filters.push(filter);
+
+    // yavaş "nefes alma" modülasyonu (gerilim anında hızlanır)
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.04 + i * 0.01;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 120;
+    lfo.connect(lfoGain).connect(filter.frequency);
+    lfo.start();
+    synthNodes.push(lfo);
+    synthDrone.lfos.push(lfo);
+  });
+
+  // hafif rüzgar/statik dokusu (filtrelenmiş beyaz gürültü)
+  const bufferSize = 2 * audioCtx.sampleRate;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = noiseBuffer;
+  noise.loop = true;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 400;
+  noiseFilter.Q.value = 0.5;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.value = 0.05;
+  noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+  noise.start();
+  synthNodes.push(noise);
+
+  // sessizde bekleyen "kalp atışı" katmanı — sadece yüksek gerilimde devreye girer
+  synthDrone.heartbeatGain = audioCtx.createGain();
+  synthDrone.heartbeatGain.gain.value = 0;
+  synthDrone.heartbeatGain.connect(masterGain);
+}
+
+function stopSynthAmbience() {
+  if (!audioCtx) return;
+  clearTimeout(synthDrone.heartbeatTimer);
+  const ctx = audioCtx;
+  const gain = masterGain;
+  if (gain) gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+  setTimeout(() => { ctx.close(); }, 1300);
+  synthNodes = [];
+  synthDrone.filters = [];
+  synthDrone.lfos = [];
+  audioCtx = null;
+  masterGain = null;
+}
+
+function playHeartbeatPulse() {
+  if (!audioCtx || !synthDrone.heartbeatGain) return;
+  const t = audioCtx.currentTime;
+  const thump = audioCtx.createOscillator();
+  thump.type = 'sine';
+  thump.frequency.value = 60;
+  const env = audioCtx.createGain();
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(0.9, t + 0.03);
+  env.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+  thump.connect(env).connect(synthDrone.heartbeatGain);
+  thump.start(t);
+  thump.stop(t + 0.4);
+  synthDrone.heartbeatTimer = setTimeout(playHeartbeatPulse, tensionActive ? 620 : 999999);
+}
+
+function startTensionSynth() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  synthDrone.filters.forEach(f => f.frequency.linearRampToValueAtTime(900, t + 1.5));
+  synthDrone.lfos.forEach(l => l.frequency.linearRampToValueAtTime(l.frequency.value * 4, t + 1.5));
+  synthDrone.heartbeatGain.gain.linearRampToValueAtTime(0.5, t + 0.5);
+  clearTimeout(synthDrone.heartbeatTimer);
+  playHeartbeatPulse();
+}
+
+function stopTensionSynth() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  synthDrone.filters.forEach(f => f.frequency.linearRampToValueAtTime(300, t + 2));
+  synthDrone.lfos.forEach((l, i) => l.frequency.linearRampToValueAtTime(0.04 + i * 0.01, t + 2));
+  synthDrone.heartbeatGain.gain.linearRampToValueAtTime(0, t + 1.5);
+  clearTimeout(synthDrone.heartbeatTimer);
+}
+
+// Yüksek gerilimli bir sahne geldiğinde çağrılır — müzik açıksa geçici olarak
+// aksiyon/gerilim moduna geçer, süre dolunca (ya da tekrar tetiklenmezse)
+// normal ambiyansa döner. Kendi "tension.mp3" dosyanız varsa onu kullanır,
+// yoksa sentezlenmiş drone'u geçici olarak yoğunlaştırır.
+async function triggerTension() {
+  if (!musicOn) return;
+  if (tensionFilePath === null) {
+    // henüz kontrol edilmedi — bir kez kontrol et, sonucu (yol ya da false) sakla
+    tensionFilePath = (await detectAudioFile('tension')) || false;
+  }
+
+  if (musicMode === 'file' && tensionFilePath) {
+    if (!tensionActive) {
+      tensionActive = true;
+      if (audioEl) audioEl.volume = 0;
+      tensionAudioEl = new Audio(tensionFilePath);
+      tensionAudioEl.loop = true;
+      tensionAudioEl.volume = musicVolume;
+      tensionAudioEl.play().catch(() => {});
+    }
+  } else if (musicMode === 'synth') {
+    if (!tensionActive) {
+      tensionActive = true;
+      startTensionSynth();
+    }
+  } else {
+    return; // dosya modunda ama tension dosyası yok — sessizce yok say
+  }
+
+  clearTimeout(tensionTimeout);
+  tensionTimeout = setTimeout(endTension, TENSION_DURATION_MS);
+}
+
+function endTension() {
+  if (!tensionActive) return;
+  tensionActive = false;
+  if (musicMode === 'file' && tensionAudioEl) {
+    tensionAudioEl.pause();
+    tensionAudioEl = null;
+    if (audioEl) audioEl.volume = musicVolume;
+  } else if (musicMode === 'synth') {
+    stopTensionSynth();
+  }
+}
+
+async function toggleMusic() {
+  if (musicOn) {
+    musicOn = false;
+    musicBtn.textContent = '🔇';
+    musicBtn.classList.remove('on');
+    clearTimeout(tensionTimeout);
+    endTension();
+    if (musicMode === 'file' && audioEl) audioEl.pause();
+    if (musicMode === 'synth') stopSynthAmbience();
+    localStorage.setItem('kizil-cokus-music', 'off');
+    return;
+  }
+  musicOn = true;
+  musicBtn.textContent = '🔊';
+  musicBtn.classList.add('on');
+  localStorage.setItem('kizil-cokus-music', 'on');
+
+  if (!musicMode) {
+    const filePath = await detectAudioFile('ambient');
+    musicMode = filePath ? 'file' : 'synth';
+    if (musicMode === 'file') {
+      audioEl = new Audio(filePath);
+      audioEl.loop = true;
+      audioEl.volume = musicVolume;
+    }
+  }
+  if (musicMode === 'file') audioEl.play().catch(() => {});
+  else startSynthAmbience();
+}
+
+musicBtn.addEventListener('click', toggleMusic);
+// Tarayıcılar kullanıcı etkileşimi olmadan sesi başlatmaya izin vermez —
+// bu yüzden sayfa yüklenince otomatik başlatmıyoruz, sadece tercihi anımsıyoruz.
+if (localStorage.getItem('kizil-cokus-music') === 'on') {
+  musicBtn.title = 'Müzik açık kalsın istiyordunuz — devam etmek için tıklayın';
+}
+
+// ---------------- ayarlar menüsü: senaryo / oyun dışa-içe aktarma ----------------
+const settingsBtn = document.getElementById('settings-btn');
+const settingsMenu = document.getElementById('settings-menu');
+const fileImportScenario = document.getElementById('file-import-scenario');
+const fileImportGame = document.getElementById('file-import-game');
+
+settingsBtn.addEventListener('click', () => settingsMenu.classList.toggle('hidden'));
+document.addEventListener('click', (e) => {
+  if (!settingsMenu.classList.contains('hidden') && !settingsMenu.contains(e.target) && e.target !== settingsBtn) {
+    settingsMenu.classList.add('hidden');
+  }
+});
+
+function downloadJSON(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function readFileAsJSON(input) {
+  return new Promise((resolve, reject) => {
+    const file = input.files[0];
+    if (!file) return reject(new Error('Dosya seçilmedi'));
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { resolve(JSON.parse(reader.result)); }
+      catch (e) { reject(new Error('Dosya geçerli bir JSON değil')); }
+    };
+    reader.onerror = () => reject(new Error('Dosya okunamadı'));
+    reader.readAsText(file);
+  });
+}
+
+document.querySelectorAll('#settings-menu [data-action]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    settingsMenu.classList.add('hidden');
+    const action = btn.dataset.action;
+
+    if (action === 'export-scenario') {
+      const res = await fetch('/api/scenario/export');
+      downloadJSON(await res.json(), 'kizil-cokus-senaryo.json');
+
+    } else if (action === 'import-scenario') {
+      fileImportScenario.value = '';
+      fileImportScenario.click();
+
+    } else if (action === 'reset-scenario') {
+      if (!confirm('Varsayılan senaryoya dönülsün mü? Mevcut oyun sıfırlanacak.')) return;
+      await fetch('/api/scenario/reset-default', { method: 'POST' });
+      location.reload();
+
+    } else if (action === 'export-game') {
+      const res = await fetch('/api/game/export');
+      downloadJSON(await res.json(), 'kizil-cokus-oyun-' + new Date().toISOString().slice(0, 10) + '.json');
+
+    } else if (action === 'import-game') {
+      fileImportGame.value = '';
+      fileImportGame.click();
+    }
+  });
+});
+
+fileImportScenario.addEventListener('change', async () => {
+  try {
+    const data = await readFileAsJSON(fileImportScenario);
+    if (!confirm('Yeni senaryo yüklenecek ve mevcut oyun sıfırlanacak. Devam edilsin mi?')) return;
+    const res = await fetch('/api/scenario/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.error) alert('Hata: ' + result.error);
+    else location.reload();
+  } catch (e) {
+    alert('Hata: ' + e.message);
+  }
+});
+
+fileImportGame.addEventListener('change', async () => {
+  try {
+    const data = await readFileAsJSON(fileImportGame);
+    if (!confirm('Bu, mevcut oyunun üzerine yazılacak. Devam edilsin mi?')) return;
+    const res = await fetch('/api/game/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.error) alert('Hata: ' + result.error);
+    else location.reload();
+  } catch (e) {
+    alert('Hata: ' + e.message);
+  }
+});
+
+poll();
+setInterval(poll, 2500);
+</script>
+</body>
+</html>

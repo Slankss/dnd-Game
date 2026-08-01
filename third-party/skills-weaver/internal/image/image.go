@@ -1,0 +1,649 @@
+package image
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// Model represents a fal.ai image generation model.
+type Model struct {
+	ID       string // Full model ID (e.g., "fal-ai/flux/schnell")
+	Short    string // Short name for filenames (e.g., "schnell")
+	SyncURL  string // Synchronous API URL
+	QueueURL string // Queue API URL
+	MaxSteps int    // Maximum inference steps
+	DefSteps int    // Default inference steps
+}
+
+// Available models
+var (
+	// ModelSchnell is the fast FLUX.1 schnell model (~$0.003/image)
+	ModelSchnell = Model{
+		ID:       "fal-ai/flux/schnell",
+		Short:    "schnell",
+		SyncURL:  "https://fal.run/fal-ai/flux/schnell",
+		QueueURL: "https://queue.fal.run/fal-ai/flux/schnell",
+		MaxSteps: 4,
+		DefSteps: 4,
+	}
+	// ModelNanoBanana is Google's Nano Banana model with better quality (~$0.039/image)
+	ModelNanoBanana = Model{
+		ID:       "fal-ai/nano-banana",
+		Short:    "banana",
+		SyncURL:  "https://fal.run/fal-ai/nano-banana",
+		QueueURL: "https://queue.fal.run/fal-ai/nano-banana",
+		MaxSteps: 1,
+		DefSteps: 1,
+	}
+	// ModelSeedream is ByteDance's Seedream v4 for high-quality images (~$0.01/megapixel)
+	// Note: Seedream v4 does not use num_inference_steps parameter
+	ModelSeedream = Model{
+		ID:       "fal-ai/bytedance/seedream/v4/text-to-image",
+		Short:    "seedream",
+		SyncURL:  "https://fal.run/fal-ai/bytedance/seedream/v4/text-to-image",
+		QueueURL: "https://queue.fal.run/fal-ai/bytedance/seedream/v4/text-to-image",
+		MaxSteps: 0, // Not used by Seedream v4
+		DefSteps: 0, // Not used by Seedream v4
+	}
+	// ModelZImageTurbo is Z-Image Turbo for fast generation (~$0.005/megapixel)
+	ModelZImageTurbo = Model{
+		ID:       "fal-ai/z-image/turbo",
+		Short:    "zimage",
+		SyncURL:  "https://fal.run/fal-ai/z-image/turbo",
+		QueueURL: "https://queue.fal.run/fal-ai/z-image/turbo",
+		MaxSteps: 8, // Fast model, max 8 steps
+		DefSteps: 8, // Default to maximum quality
+	}
+	// ModelFluxPro11 is FLUX.1.1 Pro for high-quality professional images
+	ModelFluxPro11 = Model{
+		ID:       "fal-ai/flux-pro/v1.1",
+		Short:    "flux-pro-11",
+		SyncURL:  "https://fal.run/fal-ai/flux-pro/v1.1",
+		QueueURL: "https://queue.fal.run/fal-ai/flux-pro/v1.1",
+		MaxSteps: 50, // Professional model supports more steps
+		DefSteps: 28, // Default to balanced quality/speed
+	}
+	// ModelFlux2Pro is FLUX.2 Pro for state-of-the-art image quality (~$0.03/megapixel)
+	// Zero-config: no inference steps or guidance scale needed
+	ModelFlux2Pro = Model{
+		ID:       "fal-ai/flux-2-pro",
+		Short:    "flux-2-pro",
+		SyncURL:  "https://fal.run/fal-ai/flux-2-pro",
+		QueueURL: "https://queue.fal.run/fal-ai/flux-2-pro",
+		MaxSteps: 0, // Not used by FLUX.2 Pro
+		DefSteps: 0, // Not used by FLUX.2 Pro
+	}
+)
+
+// AvailableModels returns all available models.
+func AvailableModels() map[string]Model {
+	return map[string]Model{
+		"flux-2-pro":  ModelFlux2Pro,
+		"flux-pro-11": ModelFluxPro11,
+		"schnell":     ModelSchnell,
+		"banana":      ModelNanoBanana,
+		"seedream":    ModelSeedream,
+		"zimage":      ModelZImageTurbo,
+	}
+}
+
+// JournalModels returns models available for journal illustration.
+func JournalModels() map[string]Model {
+	return map[string]Model{
+		"flux-2-pro": ModelFlux2Pro, // State-of-the-art quality, default for journal
+	}
+}
+
+// GetModel returns a model by name, defaulting to flux-pro-11.
+func GetModel(name string) Model {
+	if m, ok := AvailableModels()[name]; ok {
+		return m
+	}
+	return ModelFluxPro11
+}
+
+// GeneratorI is the common interface implemented by all image generators.
+type GeneratorI interface {
+	Generate(prompt string, opts ...Option) (*GeneratedImage, error)
+}
+
+// NewGeneratorAuto selects the provider automatically based on available API keys.
+// Priority: GEMINI_API_KEY (Google Imagen) > FAL_KEY (fal.ai).
+//
+// When BOTH keys are configured, it returns a FallbackGenerator that uses Google
+// Imagen as the primary provider and transparently falls back to fal.ai when
+// Google fails (e.g. an HTTP 429 "RESOURCE_EXHAUSTED" quota error during a live
+// session). With only one key set, it returns that single provider directly.
+func NewGeneratorAuto(outputDir string) (GeneratorI, error) {
+	hasGemini := os.Getenv("GEMINI_API_KEY") != ""
+	hasFal := os.Getenv("FAL_KEY") != ""
+
+	switch {
+	case hasGemini && hasFal:
+		google, err := NewGoogleGenerator(outputDir)
+		if err != nil {
+			return nil, err
+		}
+		fal, err := NewGenerator(outputDir)
+		if err != nil {
+			return nil, err
+		}
+		return &FallbackGenerator{
+			primary:       google,
+			primaryName:   "Google Imagen",
+			secondary:     fal,
+			secondaryName: "fal.ai",
+		}, nil
+	case hasGemini:
+		return NewGoogleGenerator(outputDir)
+	case hasFal:
+		return NewGenerator(outputDir)
+	default:
+		return nil, fmt.Errorf("aucune API key configurée (GEMINI_API_KEY ou FAL_KEY requis)")
+	}
+}
+
+// FallbackGenerator wraps two image generators and falls back from the primary
+// to the secondary when the primary returns an error. This keeps image
+// generation working during a live session when the primary provider runs out
+// of quota (HTTP 429) or is otherwise unavailable.
+type FallbackGenerator struct {
+	primary       GeneratorI
+	primaryName   string
+	secondary     GeneratorI
+	secondaryName string
+}
+
+// Generate tries the primary generator first; on any error it logs the failure
+// and retries with the secondary generator. If both fail, it returns an error
+// describing both failures.
+func (f *FallbackGenerator) Generate(prompt string, opts ...Option) (*GeneratedImage, error) {
+	img, err := f.primary.Generate(prompt, opts...)
+	if err == nil {
+		return img, nil
+	}
+
+	if f.secondary == nil {
+		return nil, err
+	}
+
+	fmt.Printf("[image] primary provider (%s) failed: %v\n", f.primaryName, err)
+	fmt.Printf("[image] falling back to secondary provider (%s)\n", f.secondaryName)
+
+	img, ferr := f.secondary.Generate(prompt, opts...)
+	if ferr != nil {
+		return nil, fmt.Errorf("primary (%s) failed: %v; fallback (%s) also failed: %w",
+			f.primaryName, err, f.secondaryName, ferr)
+	}
+
+	fmt.Printf("[image] fallback provider (%s) succeeded\n", f.secondaryName)
+	return img, nil
+}
+
+// Generator handles image generation via fal.ai API.
+type Generator struct {
+	apiKey     string
+	httpClient *http.Client
+	outputDir  string
+}
+
+// FalRequest represents the request body for fal.ai API.
+type FalRequest struct {
+	Prompt              string `json:"prompt"`
+	NumImages           int    `json:"num_images,omitempty"`
+	EnableSafetyChecker bool   `json:"enable_safety_checker"`
+	OutputFormat        string `json:"output_format,omitempty"`
+	ImageSize           string `json:"image_size,omitempty"`
+	NumInferenceSteps   int    `json:"num_inference_steps,omitempty"`
+	Seed                *int   `json:"seed,omitempty"` // Pointer to distinguish between 0 and unset
+}
+
+// FalImage represents an image in the response.
+type FalImage struct {
+	URL         string `json:"url"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	ContentType string `json:"content_type"`
+}
+
+// FalResponse represents the response from fal.ai API.
+type FalResponse struct {
+	Images  []FalImage `json:"images"`
+	Timings struct {
+		Inference float64 `json:"inference"`
+	} `json:"timings"`
+	Seed      int64       `json:"seed"`
+	HasNSFW   interface{} `json:"has_nsfw_concepts"` // Can be bool or []bool depending on API version
+	RequestID string      `json:"request_id,omitempty"`
+}
+
+// FalQueueResponse represents the queue submission response.
+type FalQueueResponse struct {
+	RequestID string `json:"request_id"`
+	Status    string `json:"status"`
+}
+
+// FalStatusResponse represents the status check response.
+type FalStatusResponse struct {
+	Status string `json:"status"`
+}
+
+// GeneratedImage holds information about a generated image.
+type GeneratedImage struct {
+	URL       string
+	LocalPath string
+	Width     int
+	Height    int
+	Prompt    string
+}
+
+// NewGenerator creates a new image generator.
+func NewGenerator(outputDir string) (*Generator, error) {
+	apiKey := os.Getenv("FAL_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("FAL_KEY environment variable not set")
+	}
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return nil, fmt.Errorf("creating output directory: %w", err)
+	}
+
+	return &Generator{
+		apiKey: apiKey,
+		httpClient: &http.Client{
+			Timeout: 120 * time.Second,
+		},
+		outputDir: outputDir,
+	}, nil
+}
+
+// Generate creates an image from a prompt using the synchronous API.
+func (g *Generator) Generate(prompt string, opts ...Option) (*GeneratedImage, error) {
+	cfg := &config{
+		numImages:     1,
+		outputFormat:  "png",
+		imageSize:     "landscape_16_9",
+		safetyChecker: true,
+		model:         ModelFluxPro11, // Default model - high quality
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	fmt.Printf("Modele: %s\n", cfg.model.Short)
+
+	// Use model's default steps if not explicitly set
+	if cfg.steps == 0 {
+		cfg.steps = cfg.model.DefSteps
+	}
+	// Clamp steps to model's maximum
+	if cfg.steps > cfg.model.MaxSteps {
+		cfg.steps = cfg.model.MaxSteps
+	}
+
+	req := FalRequest{
+		Prompt:              prompt,
+		NumImages:           cfg.numImages,
+		EnableSafetyChecker: cfg.safetyChecker,
+		OutputFormat:        cfg.outputFormat,
+		ImageSize:           cfg.imageSize,
+		NumInferenceSteps:   cfg.steps,
+		Seed:                cfg.seed,
+	}
+
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling request: %w", err)
+	}
+
+	// Use model-specific URL
+	httpReq, err := http.NewRequest("POST", cfg.model.SyncURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	httpReq.Header.Set("Authorization", "Key "+g.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := g.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var falResp FalResponse
+	if err := json.Unmarshal(body, &falResp); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+
+	if len(falResp.Images) == 0 {
+		return nil, fmt.Errorf("no images returned")
+	}
+
+	img := falResp.Images[0]
+
+	// Build filename prefix with model name if prefix is provided
+	filenamePrefix := cfg.filenamePrefix
+	if filenamePrefix != "" {
+		filenamePrefix = filenamePrefix + "_" + cfg.model.Short
+	}
+
+	// Download the image
+	localPath, err := g.downloadImage(img.URL, cfg.outputFormat, filenamePrefix)
+	if err != nil {
+		return nil, fmt.Errorf("downloading image: %w", err)
+	}
+
+	return &GeneratedImage{
+		URL:       img.URL,
+		LocalPath: localPath,
+		Width:     img.Width,
+		Height:    img.Height,
+		Prompt:    prompt,
+	}, nil
+}
+
+// GenerateAsync submits an image generation request to the queue.
+func (g *Generator) GenerateAsync(prompt string, opts ...Option) (string, error) {
+	cfg := &config{
+		numImages:     1,
+		outputFormat:  "png",
+		imageSize:     "landscape_16_9",
+		safetyChecker: true,
+		model:         ModelFluxPro11, // Default model - high quality
+	}
+
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	// Use model's default steps if not explicitly set
+	if cfg.steps == 0 {
+		cfg.steps = cfg.model.DefSteps
+	}
+
+	req := FalRequest{
+		Prompt:              prompt,
+		NumImages:           cfg.numImages,
+		EnableSafetyChecker: cfg.safetyChecker,
+		OutputFormat:        cfg.outputFormat,
+		ImageSize:           cfg.imageSize,
+		NumInferenceSteps:   cfg.steps,
+		Seed:                cfg.seed,
+	}
+
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("marshaling request: %w", err)
+	}
+
+	// Use model-specific queue URL
+	httpReq, err := http.NewRequest("POST", cfg.model.QueueURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+
+	httpReq.Header.Set("Authorization", "Key "+g.apiKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := g.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var queueResp FalQueueResponse
+	if err := json.Unmarshal(body, &queueResp); err != nil {
+		return "", fmt.Errorf("parsing response: %w", err)
+	}
+
+	return queueResp.RequestID, nil
+}
+
+// CheckStatus checks the status of an async request.
+func (g *Generator) CheckStatus(requestID string) (string, error) {
+	url := fmt.Sprintf("https://queue.fal.run/fal-ai/flux/schnell/requests/%s/status", requestID)
+
+	httpReq, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+
+	httpReq.Header.Set("Authorization", "Key "+g.apiKey)
+
+	resp, err := g.httpClient.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var statusResp FalStatusResponse
+	if err := json.Unmarshal(body, &statusResp); err != nil {
+		return "", fmt.Errorf("parsing response: %w", err)
+	}
+
+	return statusResp.Status, nil
+}
+
+// GetResult retrieves the result of a completed async request.
+func (g *Generator) GetResult(requestID string, outputFormat string) (*GeneratedImage, error) {
+	url := fmt.Sprintf("https://queue.fal.run/fal-ai/flux/schnell/requests/%s", requestID)
+
+	httpReq, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+
+	httpReq.Header.Set("Authorization", "Key "+g.apiKey)
+
+	resp, err := g.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("sending request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var falResp FalResponse
+	if err := json.Unmarshal(body, &falResp); err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+
+	if len(falResp.Images) == 0 {
+		return nil, fmt.Errorf("no images returned")
+	}
+
+	img := falResp.Images[0]
+
+	// Download the image (no prefix for async results)
+	localPath, err := g.downloadImage(img.URL, outputFormat, "")
+	if err != nil {
+		return nil, fmt.Errorf("downloading image: %w", err)
+	}
+
+	return &GeneratedImage{
+		URL:       img.URL,
+		LocalPath: localPath,
+		Width:     img.Width,
+		Height:    img.Height,
+	}, nil
+}
+
+// downloadImage downloads an image from URL and saves it locally.
+// If filenamePrefix is provided, the file will be named "prefix.format",
+// otherwise it uses a timestamp-based name.
+func (g *Generator) downloadImage(url string, format string, filenamePrefix string) (string, error) {
+	resp, err := g.httpClient.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("fetching image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("image fetch failed with status %d", resp.StatusCode)
+	}
+
+	// Generate filename: use prefix if provided, otherwise use timestamp
+	var filename string
+	if filenamePrefix != "" {
+		filename = fmt.Sprintf("%s.%s", filenamePrefix, format)
+	} else {
+		filename = fmt.Sprintf("image_%d.%s", time.Now().UnixNano(), format)
+	}
+	localPath := filepath.Join(g.outputDir, filename)
+
+	file, err := os.Create(localPath)
+	if err != nil {
+		return "", fmt.Errorf("creating file: %w", err)
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("writing file: %w", err)
+	}
+
+	return localPath, nil
+}
+
+// Options
+
+type config struct {
+	numImages      int
+	outputFormat   string
+	imageSize      string
+	safetyChecker  bool
+	steps          int
+	filenamePrefix string
+	model          Model
+	seed           *int // Pointer to distinguish between 0 and unset
+}
+
+// Option is a functional option for image generation.
+type Option func(*config)
+
+// WithNumImages sets the number of images to generate.
+func WithNumImages(n int) Option {
+	return func(c *config) {
+		c.numImages = n
+	}
+}
+
+// WithOutputFormat sets the output format (png, jpeg, webp).
+func WithOutputFormat(format string) Option {
+	return func(c *config) {
+		c.outputFormat = format
+	}
+}
+
+// WithImageSize sets the image size.
+// Options: square_hd, square, portrait_4_3, portrait_16_9, landscape_4_3, landscape_16_9
+func WithImageSize(size string) Option {
+	return func(c *config) {
+		c.imageSize = size
+	}
+}
+
+// WithSafetyChecker enables or disables the safety checker.
+func WithSafetyChecker(enabled bool) Option {
+	return func(c *config) {
+		c.safetyChecker = enabled
+	}
+}
+
+// WithSteps sets the number of inference steps (model-dependent).
+// Steps will be automatically clamped to the model's maximum.
+func WithSteps(steps int) Option {
+	return func(c *config) {
+		if steps < 1 {
+			steps = 1
+		}
+		c.steps = steps
+	}
+}
+
+// WithFilenamePrefix sets a custom prefix for the generated image filename.
+// The final filename will be: prefix.format (e.g., "journal_008_combat.png")
+func WithFilenamePrefix(prefix string) Option {
+	return func(c *config) {
+		c.filenamePrefix = prefix
+	}
+}
+
+// WithModel sets the fal.ai model to use.
+// Available: "schnell" (fast), "banana", "seedream", "zimage", "flux-pro-11" (professional quality)
+func WithModel(modelName string) Option {
+	return func(c *config) {
+		c.model = GetModel(modelName)
+	}
+}
+
+// WithModelInstance sets the fal.ai model to use by passing a Model instance directly.
+// Prefer this over WithModel when using model constants (e.g., image.ModelFluxPro11).
+func WithModelInstance(model Model) Option {
+	return func(c *config) {
+		c.model = model
+	}
+}
+
+// WithSeed sets a deterministic seed for reproducible image generation.
+// Using the same seed with the same prompt will produce the same image.
+func WithSeed(seed int) Option {
+	return func(c *config) {
+		c.seed = &seed
+	}
+}
+
+// GetAvailableImageSizes returns the list of available image sizes.
+func GetAvailableImageSizes() []string {
+	return []string{
+		"square_hd",      // 1024x1024
+		"square",         // 512x512
+		"portrait_4_3",   // 768x1024
+		"portrait_16_9",  // 576x1024
+		"landscape_4_3",  // 1024x768
+		"landscape_16_9", // 1024x576
+	}
+}

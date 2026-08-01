@@ -1,0 +1,48 @@
+{
+  "world_state": {
+    "day": 97,
+    "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+    "factions": {
+      "Kızıl Şafak Tarikatı": {
+        "disposition": "bilinmiyor",
+        "notes": "Mutasyonu kutsayan fanatikler."
+      },
+      "Arınma Cemaati": {
+        "disposition": "bilinmiyor",
+        "notes": "Katı hiyerarşili, kaynak zengini kamp."
+      },
+      "Kalan Umut": {
+        "disposition": "bilinmiyor",
+        "notes": "Mülteci koalisyonu, savunmasız."
+      },
+      "Garnizon Komutanlığı": {
+        "disposition": "bilinmiyor",
+        "notes": "Kuzeydeki askeri üs, sıkıyönetim."
+      },
+      "Leş Avcıları": {
+        "disposition": "bilinmiyor",
+        "notes": "Fırsatçı bağımsız çeteler."
+      },
+      "Laboratuvar Kalıntısı": {
+        "disposition": "bilinmiyor",
+        "notes": "Güneydeki tesis, gizemli sakinler."
+      }
+    },
+    "characters": {},
+    "npcs": {},
+    "zombie_sightings": [
+      "Taze Ölü",
+      "Koşucu"
+    ],
+    "flags": {},
+    "narrator": {
+      "plot_summary": "",
+      "puzzles": {},
+      "upcoming_events": {}
+    }
+  },
+  "next_id": 1,
+  "session_id": null,
+  "characters_confirmed": false,
+  "started": false
+}

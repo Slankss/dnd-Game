@@ -1,0 +1,458 @@
+{
+  "valdorine": {
+    "cities": {
+      "prefixes": [
+        "Cor",
+        "Vel",
+        "Mar",
+        "Cas",
+        "Ven",
+        "Sal",
+        "Cres",
+        "Pal",
+        "Lor"
+      ],
+      "roots": [
+        "dova",
+        "antro",
+        "senna",
+        "velo",
+        "radi",
+        "mira",
+        "luca",
+        "pera",
+        "fina"
+      ],
+      "suffixes": [
+        "ia",
+        "eno",
+        "anto",
+        "esse",
+        "ura",
+        "ezza",
+        "ano",
+        "ero",
+        "ova"
+      ]
+    },
+    "towns": {
+      "prefixes": [
+        "Bel",
+        "Cal",
+        "Ros",
+        "Ser",
+        "Mol",
+        "Fal",
+        "Ven",
+        "Tor",
+        "Gal"
+      ],
+      "suffixes": [
+        "vento",
+        "campo",
+        "terra",
+        "verde",
+        "monte",
+        "ferro",
+        "nero",
+        "rosso",
+        "alto"
+      ]
+    },
+    "villages": {
+      "prefixes": [
+        "Val",
+        "Cas",
+        "Tor",
+        "Pon",
+        "Bor",
+        "Col",
+        "Mon",
+        "San",
+        "Vil"
+      ],
+      "suffixes": [
+        "uccio",
+        "ello",
+        "etto",
+        "ino",
+        "asco",
+        "agna",
+        "enzo",
+        "arno",
+        "olfo"
+      ]
+    },
+    "regions": {
+      "templates": [
+        "Côte {name}",
+        "Marches {name}",
+        "Îles {adjective}",
+        "Golfe {name}",
+        "Détroit {name}"
+      ],
+      "names": [
+        "Velantro",
+        "Corsenna",
+        "Mariveld",
+        "Salperro",
+        "Crescan",
+        "Paluro",
+        "Lorvenna"
+      ],
+      "adjectives": [
+        "Dorées",
+        "Marchandes",
+        "Occidentales",
+        "Saphir",
+        "Lointaines",
+        "Argentées"
+      ]
+    }
+  },
+  "karvath": {
+    "cities": {
+      "prefixes": [
+        "Fer",
+        "Ker",
+        "Roc",
+        "Gar",
+        "Drak",
+        "Kark",
+        "Skor",
+        "Brak",
+        "Grim"
+      ],
+      "roots": [
+        "lank",
+        "marthu",
+        "swod",
+        "kren",
+        "mur",
+        "grath",
+        "vorn",
+        "sted",
+        "holm"
+      ],
+      "suffixes": [
+        "krou",
+        "kros",
+        "heim",
+        "burg",
+        "gard",
+        "wald",
+        "kren",
+        "kar",
+        "mark"
+      ]
+    },
+    "towns": {
+      "prefixes": [
+        "Haut",
+        "Mont",
+        "Roc",
+        "Stark",
+        "Kark",
+        "Dure",
+        "Grak",
+        "Meh",
+        "Orn"
+      ],
+      "suffixes": [
+        "kern",
+        "crak",
+        "stein",
+        "wald",
+        "fort",
+        "hoff",
+        "dorf",
+        "holm",
+        "vang"
+      ]
+    },
+    "villages": {
+      "prefixes": [
+        "Kerm",
+        "Kemu",
+        "Emki",
+        "Serk",
+        "Durk",
+        "Brak",
+        "Gorn",
+        "Usk",
+        "Velt"
+      ],
+      "suffixes": [
+        "bourg",
+        "wald",
+        "dorf",
+        "heim",
+        "stein",
+        "hoff",
+        "garde",
+        "kross",
+        "thal"
+      ]
+    },
+    "regions": {
+      "templates": [
+        "Montagnes {name}",
+        "Plaines {name}",
+        "Défilé {name}",
+        "Pics {name}",
+        "Marches {name}"
+      ],
+      "names": [
+        "Haut Kerms",
+        "WalRoc",
+        "Durekren",
+        "Salk",
+        "Lankh",
+        "Martord",
+        "Kemul",
+        "Hoskros",
+        "Kerkhus",
+        "Grimvald",
+        "Skornheim"
+      ]
+    }
+  },
+  "lumenciel": {
+    "cities": {
+      "prefixes": [
+        "Sol",
+        "Cand",
+        "Ver",
+        "Sanct",
+        "Aug",
+        "Clar",
+        "Bened",
+        "Cael",
+        "Aur"
+      ],
+      "roots": [
+        "haven",
+        "orath",
+        "itum",
+        "orium",
+        "antis",
+        "elis",
+        "onus",
+        "aris",
+        "eum"
+      ],
+      "suffixes": [
+        "um",
+        "is",
+        "ax",
+        "ior",
+        "ens",
+        "ium",
+        "or",
+        "as",
+        "ia"
+      ]
+    },
+    "towns": {
+      "prefixes": [
+        "Alt",
+        "Prim",
+        "Nov",
+        "Vet",
+        "Bon",
+        "Sanct",
+        "Clar",
+        "Pur",
+        "Fel"
+      ],
+      "suffixes": [
+        "orium",
+        "anus",
+        "ensis",
+        "atus",
+        "icum",
+        "erum",
+        "onum",
+        "aris",
+        "ellum"
+      ]
+    },
+    "villages": {
+      "prefixes": [
+        "Pax",
+        "Fid",
+        "Sper",
+        "Grat",
+        "Vot",
+        "Cult",
+        "Rit",
+        "Fer",
+        "Sal"
+      ],
+      "suffixes": [
+        "holm",
+        "worth",
+        "bury",
+        "ford",
+        "well",
+        "wick",
+        "ton",
+        "ham",
+        "stead"
+      ]
+    },
+    "regions": {
+      "templates": [
+        "Terres {adjective}",
+        "Val {name}",
+        "Marches {name}",
+        "Champs {adjective}",
+        "Domaine {name}"
+      ],
+      "names": [
+        "Candor",
+        "Veritas",
+        "Solum",
+        "Clarion",
+        "Benedus",
+        "Sanctis",
+        "Aureum",
+        "Caelis"
+      ],
+      "adjectives": [
+        "Consacrées",
+        "Bénies",
+        "Radieuses",
+        "Sacrées",
+        "Éternelles",
+        "Divines",
+        "Pures",
+        "Exaltées"
+      ]
+    }
+  },
+  "astrene": {
+    "cities": {
+      "prefixes": [
+        "Nox",
+        "Stell",
+        "Lun",
+        "Astr",
+        "Vald",
+        "Skov",
+        "Eld",
+        "Mag",
+        "Arch"
+      ],
+      "roots": [
+        "heim",
+        "borg",
+        "fell",
+        "thorn",
+        "skald",
+        "vara",
+        "mira",
+        "lund",
+        "havn"
+      ],
+      "suffixes": [
+        "um",
+        "is",
+        "aris",
+        "heim",
+        "lund",
+        "gaard",
+        "fjord",
+        "mark",
+        "holt"
+      ]
+    },
+    "towns": {
+      "prefixes": [
+        "Gam",
+        "Vin",
+        "Kold",
+        "Høj",
+        "Dybe",
+        "Tavs",
+        "Vis",
+        "Forn",
+        "Bleik"
+      ],
+      "suffixes": [
+        "borg",
+        "lund",
+        "sted",
+        "toft",
+        "hus",
+        "vang",
+        "by",
+        "vik",
+        "næs"
+      ]
+    },
+    "villages": {
+      "prefixes": [
+        "Lille",
+        "Øde",
+        "Stille",
+        "Fald",
+        "Skum",
+        "Tåge",
+        "Grå",
+        "Hvid",
+        "Sort"
+      ],
+      "suffixes": [
+        "dal",
+        "bæk",
+        "sø",
+        "eng",
+        "ager",
+        "kær",
+        "mose",
+        "skov",
+        "hede"
+      ]
+    },
+    "regions": {
+      "templates": [
+        "Landes {adjective}",
+        "Étendue {name}",
+        "{noun} Fanées",
+        "Confins {adjective}",
+        "Domaine {name}"
+      ],
+      "names": [
+        "Stellaris",
+        "Noctum",
+        "Valdheim",
+        "Archivum",
+        "Memorae",
+        "Lunaris",
+        "Sapientia",
+        "Antiquum"
+      ],
+      "adjectives": [
+        "Déclinantes",
+        "Anciennes",
+        "Oubliées",
+        "Crépusculaires",
+        "Flétries",
+        "Silencieuses",
+        "Pâles",
+        "Perdues"
+      ],
+      "nouns": [
+        "Salles",
+        "Tours",
+        "Archives",
+        "Jardins",
+        "Bibliothèques",
+        "Cours",
+        "Flèches",
+        "Académies"
+      ]
+    }
+  }
+}
