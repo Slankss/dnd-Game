@@ -32,11 +32,13 @@
   }
   header h1 { font-size: 1.15rem; margin: 0; letter-spacing: 1px; color: var(--red-bright); }
   header .day { font-size: 0.9rem; color: var(--text-dim); }
-  #reset-btn, #settings-btn, #music-btn {
+  #reset-btn, #settings-btn, #music-btn, #gm-btn {
     background: transparent; color: var(--text-dim); border: 1px solid var(--border);
     padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 0.75rem;
   }
-  #reset-btn:hover, #settings-btn:hover, #music-btn:hover { border-color: var(--red); color: var(--red-bright); }
+  #reset-btn:hover, #settings-btn:hover, #music-btn:hover, #gm-btn:hover { border-color: var(--red); color: var(--red-bright); }
+  #gm-btn { border-color: #4a3a1a; color: #c9a227; }
+  #gm-btn:hover { border-color: #c9a227; color: #e5bb35; }
   #music-btn.on { border-color: var(--red); color: var(--red-bright); }
   #header-actions { position: relative; display: flex; align-items: center; gap: 8px; }
   #music-volume { width: 70px; accent-color: var(--red); cursor: pointer; }
@@ -68,7 +70,51 @@
   .char-row input {
     flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
     border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.95rem;
+    min-width: 0;
   }
+  .char-row input.char-item { flex: 1.35; }
+  .setup-head {
+    display: flex; gap: 8px; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); margin-bottom: 5px; padding: 0 2px;
+  }
+  .setup-head span:first-child { flex: 1; }
+  .setup-head span:last-child { flex: 1.35; }
+
+  /* ---- aktif zorluklar (problem-çözüm omurgası) ---- */
+  .chal {
+    background: var(--panel-2); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;
+    border-left: 3px solid var(--text-dim);
+  }
+  .chal.sev-yüksek { border-left-color: #c9622a; }
+  .chal.sev-kritik { border-left-color: var(--red-bright); }
+  .chal.sev-orta { border-left-color: #c9a227; }
+  .chal.sev-düşük { border-left-color: #4a8c5f; }
+  .chal.done { opacity: 0.5; }
+  .chal .c-name { font-weight: bold; font-size: 0.85rem; }
+  .chal .c-line { color: var(--text-dim); font-size: 0.76rem; margin-top: 2px; }
+  .chal .c-line b { color: var(--text); font-weight: normal; }
+  .chal .c-status {
+    font-size: 0.64rem; text-transform: uppercase; letter-spacing: 1px;
+    padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; margin-left: 6px;
+  }
+
+  /* ---- grup kaynakları (klan envanter sayımı) ---- */
+  .res-cat { margin-bottom: 12px; }
+  .res-cat-name {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-dim); margin-bottom: 4px;
+  }
+  .res-item {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    background: var(--panel-2); border-radius: 4px; padding: 4px 9px; margin-bottom: 3px;
+    font-size: 0.8rem;
+  }
+  .res-item .qty { font-weight: bold; white-space: nowrap; color: #9fbf9f; }
+  .res-item.low .qty { color: #c9a227; }
+  .res-item.out .qty { color: var(--red-bright); }
+  .res-item .res-name { color: var(--text); }
+  .res-item .res-note { color: var(--text-dim); font-size: 0.72rem; display: block; }
+  #start-resources .res-cat { margin-bottom: 8px; }
   .char-row button {
     background: transparent; border: 1px solid var(--border); color: var(--text-dim);
     border-radius: 6px; padding: 0 12px; cursor: pointer;
@@ -114,6 +160,11 @@
   }
   .msg.gm .bubble { background: #17100f; border-color: #3a1f1f; }
   .msg.player .bubble { border-left: 3px solid currentColor; }
+  .msg.system { max-width: 100%; }
+  .msg.system .who { color: var(--text-dim); }
+  .msg.system .bubble {
+    background: #201a12; border-color: #4a3a1a; color: #d8cba8; font-style: italic;
+  }
 
   #history-list .hist-entry { margin-bottom: 10px; font-size: 0.88rem; }
   #history-list .hist-ts { color: var(--text-dim); font-size: 0.72rem; margin-right: 6px; }
@@ -128,6 +179,8 @@
   .char-card, .faction-row { margin-bottom: 10px; padding: 8px 10px; background: var(--panel-2); border-radius: 6px; }
   .char-card { cursor: pointer; transition: background 0.15s; }
   .char-card:hover { background: #262b2b; }
+  .char-card.dead { opacity: 0.55; }
+  .char-card.dead .name { text-decoration: line-through; }
   .char-card .name { font-weight: bold; font-size: 0.9rem; }
   .char-card .field { color: var(--text-dim); font-size: 0.78rem; }
   .faction-row .name { font-weight: bold; }
@@ -140,8 +193,29 @@
     background: #0f1112; padding: 10px 14px;
     display: flex; flex-direction: column; gap: 8px;
   }
-  .player-toggle { display: flex; gap: 14px; align-items: center; font-size: 0.8rem; flex-wrap: wrap; }
-  .player-toggle label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  /* ---- oyuncu seçici (radio yerine renkli "chip" butonlar) ---- */
+  .player-toggle { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .player-toggle .who-label {
+    color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 1px; margin-right: 2px;
+  }
+  .pchip {
+    --chip: var(--text-dim);
+    display: inline-flex; align-items: center; gap: 7px;
+    background: transparent; color: var(--chip); border: 1px solid var(--chip);
+    border-radius: 999px; padding: 6px 15px; cursor: pointer;
+    font-family: inherit; font-size: 0.83rem; line-height: 1;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .pchip:hover:not(:disabled) { background: color-mix(in srgb, var(--chip) 18%, transparent); }
+  .pchip.active {
+    background: var(--chip); color: #0d0f10; font-weight: bold;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip) 25%, transparent);
+  }
+  .pchip:disabled { opacity: 0.3; cursor: not-allowed; }
+  .pchip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pchip.group { --chip: #c9a227; }
+  .chip-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; }
   #input-row { display: flex; gap: 8px; }
   #text-input {
     flex: 1; resize: none; background: var(--panel); color: var(--text); border: 1px solid var(--border);
@@ -155,12 +229,42 @@
   #status { font-size: 0.75rem; color: var(--text-dim); min-height: 1em; }
   .hidden { display: none !important; }
 
+  /* ---- ölüm bandı + karakter devralma ---- */
+  #death-banner {
+    background: #1d1112; border: 1px solid #5a2126; border-radius: 6px;
+    padding: 8px 12px; font-size: 0.82rem; display: flex; flex-wrap: wrap;
+    align-items: center; gap: 10px;
+  }
+  #death-banner .dead-name { color: var(--red-bright); font-weight: bold; }
+  #chargen-banner {
+    background: #17190f; border: 1px solid #4a4a1a; border-radius: 6px;
+    padding: 8px 12px; font-size: 0.8rem; color: #cfc9a8;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  }
+  #chargen-banner button {
+    background: #c9a227; color: #1a1a10; border: none; border-radius: 5px;
+    padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 0.78rem; font-weight: bold;
+  }
+  #death-banner button {
+    background: var(--red); color: #fff; border: none; border-radius: 5px;
+    padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 0.78rem;
+  }
+  #takeover-list { margin: 12px 0 0; }
+  .takeover-option {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+  }
+  .takeover-option:hover { border-color: var(--red); }
+  .takeover-option.selected { border-color: var(--red-bright); background: #241a1a; }
+  .takeover-option .t-name { font-weight: bold; font-size: 0.92rem; }
+  .takeover-option .t-field { color: var(--text-dim); font-size: 0.78rem; margin-top: 2px; }
+
   /* ---- character detail popup ---- */
-  #char-modal-overlay {
+  #char-modal-overlay, #takeover-modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.65);
     display: flex; align-items: center; justify-content: center; z-index: 100;
   }
-  #char-modal {
+  #char-modal, #takeover-modal {
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 24px 28px; max-width: 460px; width: 90%; max-height: 80vh; overflow-y: auto;
   }
@@ -195,6 +299,7 @@
     <div id="header-actions">
       <button id="music-btn" title="Arka plan müziği aç/kapat">🔇</button>
       <input type="range" id="music-volume" min="0" max="100" value="50" title="Müzik seviyesi">
+      <button id="gm-btn" title="Senaryo Yöneticisi — anlatıcı ekranı (PIN ister, oyunculara gösterme)">🎬 Senaryo Yöneticisi</button>
       <button id="settings-btn" title="Senaryo / Oyun dışa-içe aktar">⚙</button>
       <button id="reset-btn" title="Oyunu sıfırla">Sıfırla</button>
       <div class="hidden" id="settings-menu">
@@ -214,8 +319,11 @@
   <div class="center-screen" id="setup-screen">
     <div class="setup-card">
       <h2>Karakterleri Belirle</h2>
-      <p class="hint">Kaç kişi oynayacak ve isimleri ne olsun? İstediğin kadar ekleyip çıkarabilirsin.</p>
+      <p class="hint">Kaç kişi oynayacak, isimleri ne olsun ve her biri yanında hangi
+      eşyayı getirsin? Eşya isteğe bağlı — listeden seçebilir ya da kendin yazabilirsin.</p>
+      <div class="setup-head"><span>Karakter ismi</span><span>Başlangıç eşyası (1 adet)</span></div>
       <div id="char-rows"></div>
+      <datalist id="item-suggestions"></datalist>
       <button id="add-char-btn" type="button">+ Karakter Ekle</button>
       <button id="confirm-chars-btn" class="primary-btn" type="button">Karakterleri Onayla</button>
       <div class="setup-error" id="setup-error"></div>
@@ -227,6 +335,10 @@
     <div class="setup-card">
       <h2>Karakterler Hazır</h2>
       <p class="hint" id="start-char-list"></p>
+      <h2 style="font-size:0.95rem;">Grubun Başlangıç Stoğu</h2>
+      <p class="hint">Klanın deposundaki ortak kaynaklar. Oyun boyunca harcandıkça/
+      bulundukça anlatıcı bu sayıları günceller.</p>
+      <div id="start-resources" style="max-height:280px; overflow-y:auto; margin-bottom:14px;"></div>
       <button id="start-game-btn" class="primary-btn" type="button">🎲 Oyunu Başlat</button>
       <div class="setup-error" id="start-error"></div>
     </div>
@@ -245,10 +357,14 @@
       </div>
     </div>
     <aside id="sidebar">
+      <h2>Aktif Zorluklar</h2>
+      <div id="challenges"></div>
       <h2>Son Olaylar</h2>
       <div id="recent"></div>
       <h2>Karakterler</h2>
       <div id="characters"></div>
+      <h2>Grup Kaynakları</h2>
+      <div id="resources"></div>
       <h2>Fraksiyonlar</h2>
       <div id="factions"></div>
       <h2>Görülen Zombi Türleri</h2>
@@ -257,13 +373,19 @@
   </main>
 
   <footer class="hidden" id="game-footer">
+    <div class="hidden" id="death-banner"></div>
+    <div class="hidden" id="chargen-banner">
+      <span>🧩 Karakter oluşturma sürüyor — zar mekaniği ve ortak karar bu aşamada sınırlı.
+      Herkes karakterini kurmasa da devam etmek istersen:</span>
+      <button id="finish-chargen-btn" type="button">✔ Oluşturmayı bitir, oyuna geç</button>
+    </div>
     <div class="player-toggle" id="player-toggle"></div>
     <div id="input-row">
       <textarea id="text-input" placeholder="Ne yapıyorsun? (Birden fazla karakter için: her satıra &quot;İsim: aksiyon&quot; yazabilirsin)"></textarea>
       <button id="send-btn">Gönder</button>
     </div>
     <div id="multi-hint" style="font-size:0.72rem; color:var(--text-dim); margin-top:-4px;">
-      İpucu: "Celil: kapıyı zorluyor" / "Okan: pencereden bakıyor" gibi ayrı satırlar yazarsan, birden fazla karakter aynı anda hareket eder.
+      İpucu: her satıra "İsim: aksiyon" (ör. "&lt;karakter adı&gt;: kapıyı zorluyor") yazarsan, birden fazla karakter aynı anda hareket eder.
     </div>
     <div id="status"></div>
   </footer>
@@ -293,6 +415,20 @@
   </div>
 </div>
 
+<!-- ölen karakterin yerine hikayedeki bir karakteri devralma popup'ı -->
+<div class="hidden" id="takeover-modal-overlay">
+  <div id="takeover-modal">
+    <button id="takeover-close" type="button" style="float:right; background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:6px; padding:4px 10px; cursor:pointer; font-family:inherit;">Kapat ✕</button>
+    <h2 id="takeover-title"></h2>
+    <p class="hint" style="color:var(--text-dim); font-size:0.85rem;">
+      Hikayede şu ana kadar tanıştığınız, hayatta olan karakterlerden birini devral ve oyuna onunla devam et.
+    </p>
+    <div id="takeover-list"></div>
+    <button id="takeover-confirm" class="primary-btn" type="button" disabled style="margin-top:12px;">Bu Karakterle Devam Et</button>
+    <div class="setup-error" id="takeover-error"></div>
+  </div>
+</div>
+
 <script>
 const PALETTE = ['#4a7c59', '#4a6c9c', '#9c6c4a', '#8a4a9c', '#c9a227', '#4a9c8f', '#c05a4a', '#5a5ac0'];
 
@@ -319,6 +455,9 @@ const historyList = document.getElementById('history-list');
 const recentEl = document.getElementById('recent');
 const charactersEl = document.getElementById('characters');
 const factionsEl = document.getElementById('factions');
+const resourcesEl = document.getElementById('resources');
+const challengesEl = document.getElementById('challenges');
+const startResourcesEl = document.getElementById('start-resources');
 const zombiesEl = document.getElementById('zombies');
 const playerToggle = document.getElementById('player-toggle');
 const textInput = document.getElementById('text-input');
@@ -334,11 +473,27 @@ const modalStatus = document.getElementById('modal-status');
 const modalInventory = document.getElementById('modal-inventory');
 const modalRelationships = document.getElementById('modal-relationships');
 const charModalClose = document.getElementById('char-modal-close');
+const deathBanner = document.getElementById('death-banner');
+const takeoverOverlay = document.getElementById('takeover-modal-overlay');
+const takeoverTitle = document.getElementById('takeover-title');
+const takeoverListEl = document.getElementById('takeover-list');
+const takeoverConfirm = document.getElementById('takeover-confirm');
+const takeoverCloseBtn = document.getElementById('takeover-close');
+const takeoverError = document.getElementById('takeover-error');
+const multiHint = document.getElementById('multi-hint');
+const gmBtn = document.getElementById('gm-btn');
+const chargenBanner = document.getElementById('chargen-banner');
+const finishChargenBtn = document.getElementById('finish-chargen-btn');
 
 let renderedIds = new Set();
-let roster = [];
+let roster = [];          // tüm oyuncu karakterleri (ölüler dahil — renkler sabit kalsın diye)
+let aliveRoster = [];     // sadece hayatta olanlar — "Kimsin?" seçicisi bunu kullanır
 let appState = 'setup'; // 'setup' | 'ready' | 'playing'
 let latestCharacters = {}; // en güncel world_state.characters — popup için
+let latestNpcs = {};       // en güncel world_state.npcs — devralma listesi için
+let takeoverDead = null;   // devralma popup'ında yerine geçilen ölü karakter
+let takeoverPick = null;   // seçilen NPC ismi
+let selectedPlayer = null; // seçili chip: karakter ismi ya da groupLabel
 
 // ---------------- character detail popup ----------------
 function openCharModal(name) {
@@ -391,7 +546,8 @@ charModalOverlay.addEventListener('click', (e) => {
 function addCharRow(value) {
   const row = document.createElement('div');
   row.className = 'char-row';
-  row.innerHTML = `<input type="text" value="${value || ''}" placeholder="Karakter ismi">
+  row.innerHTML = `<input type="text" class="char-name" value="${value || ''}" placeholder="Karakter ismi">
+    <input type="text" class="char-item" list="item-suggestions" placeholder="Başlangıç eşyası (opsiyonel)">
     <button type="button" title="Kaldır">✕</button>`;
   row.querySelector('button').addEventListener('click', () => {
     if (charRowsEl.children.length > 1) row.remove();
@@ -401,8 +557,27 @@ function addCharRow(value) {
 
 addCharBtn.addEventListener('click', () => addCharRow(''));
 
+let itemSuggestionsLoaded = false;
+function fillItemSuggestions(items) {
+  if (itemSuggestionsLoaded || !items || !items.length) return;
+  itemSuggestionsLoaded = true;
+  const dl = document.getElementById('item-suggestions');
+  dl.innerHTML = '';
+  for (const it of items) {
+    const opt = document.createElement('option');
+    opt.value = it;
+    dl.appendChild(opt);
+  }
+}
+
 confirmCharsBtn.addEventListener('click', async () => {
-  const names = [...charRowsEl.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+  const players = [...charRowsEl.querySelectorAll('.char-row')]
+    .map(row => ({
+      name: row.querySelector('.char-name').value.trim(),
+      item: row.querySelector('.char-item').value.trim(),
+    }))
+    .filter(p => p.name);
+  const names = players.map(p => p.name);
   if (names.length === 0) {
     setupError.textContent = 'En az bir karakter ismi girin.';
     return;
@@ -412,14 +587,14 @@ confirmCharsBtn.addEventListener('click', async () => {
   try {
     const res = await fetch('/api/setup-characters', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ players: names }),
+      body: JSON.stringify({ players }),
     });
     const data = await res.json();
     if (data.error) {
       setupError.textContent = data.error;
     } else {
       roster = names;
-      showStartScreen(names);
+      showStartScreen(names, data.world_state);
     }
   } catch (e) {
     setupError.textContent = 'Sunucuya bağlanılamadı.';
@@ -428,11 +603,16 @@ confirmCharsBtn.addEventListener('click', async () => {
   }
 });
 
-function showStartScreen(names) {
+function showStartScreen(names, worldState) {
   appState = 'ready';
   setupScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
-  startCharList.textContent = 'Karakterler: ' + names.join(', ');
+  const chars = (worldState || {}).characters || {};
+  startCharList.innerHTML = 'Karakterler: ' + names.map(n => {
+    const inv = (chars[n] || {}).inventory || [];
+    return inv.length ? `<b>${n}</b> (${inv.join(', ')})` : `<b>${n}</b>`;
+  }).join(' · ');
+  if (worldState) renderResources(startResourcesEl, worldState.resources);
 }
 
 startGameBtn.addEventListener('click', async () => {
@@ -461,6 +641,10 @@ startGameBtn.addEventListener('click', async () => {
 
 function enterGame(worldState) {
   appState = 'playing';
+  // Sayfa, oyun ZATEN başlamışken yenilendiğinde showStartScreen() hiç
+  // çalışmıyor; setup ekranı burada gizlenmezse oyun ekranının üstünde
+  // asılı kalıyordu.
+  setupScreen.classList.add('hidden');
   startScreen.classList.add('hidden');
   gameMain.classList.remove('hidden');
   gameFooter.classList.remove('hidden');
@@ -471,25 +655,69 @@ let groupLabel = null;
 let groupDisplayName = 'Ortak Karar (Grup)';
 let lastRosterKey = null;
 function buildPlayerToggle(chargenDone) {
-  const key = roster.join('|') + '::' + !!chargenDone;
-  if (key === lastRosterKey) return; // durum değişmediyse seçili radio'yu bozma
+  const key = aliveRoster.join('|') + '::' + !!chargenDone;
+  if (key === lastRosterKey) return; // durum değişmediyse seçimi bozma
   lastRosterKey = key;
-  const prevSelected = playerToggle.querySelector('input[name="player"]:checked')?.value;
-  playerToggle.innerHTML = '<span>Kimsin?</span>';
-  roster.forEach((name, i) => {
-    const label = document.createElement('label');
-    label.style.color = colorFor(name, roster);
-    const isChecked = name === prevSelected || (!prevSelected && i === 0);
-    label.innerHTML = `<input type="radio" name="player" value="${name}" ${isChecked ? 'checked' : ''}> ${name}`;
-    playerToggle.appendChild(label);
-  });
-  if (chargenDone && groupLabel) {
-    const label = document.createElement('label');
-    label.style.color = GROUP_COLOR;
-    const isChecked = groupLabel === prevSelected;
-    label.innerHTML = `<input type="radio" name="player" value="${groupLabel}" ${isChecked ? 'checked' : ''}> 🤝 ${groupDisplayName}`;
-    playerToggle.appendChild(label);
+
+  // geçersizleşen seçimi düşür (karakter öldüyse)
+  if (selectedPlayer && selectedPlayer !== groupLabel && !aliveRoster.includes(selectedPlayer)) {
+    selectedPlayer = null;
   }
+  if (!selectedPlayer) selectedPlayer = aliveRoster[0] || null;
+
+  playerToggle.innerHTML = '';
+  const lbl = document.createElement('span');
+  lbl.className = 'who-label';
+  lbl.textContent = 'Kimsin?';
+  playerToggle.appendChild(lbl);
+
+  for (const name of aliveRoster) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'pchip';
+    chip.dataset.player = name;
+    chip.style.setProperty('--chip', colorFor(name, roster));
+    chip.innerHTML = `<span class="dot"></span>${name}`;
+    chip.addEventListener('click', () => selectPlayer(name));
+    playerToggle.appendChild(chip);
+  }
+
+  if (groupLabel) {
+    const sep = document.createElement('span');
+    sep.className = 'chip-sep';
+    playerToggle.appendChild(sep);
+
+    // Ortak karar oyun başladığı andan itibaren kullanılabilir. Eskiden
+    // "herkes karakterini kurana kadar" kilitliydi; biri hiç cevap vermeyince
+    // buton hiç açılmıyordu.
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'pchip group';
+    chip.dataset.player = groupLabel;
+    chip.textContent = '🤝 ' + groupDisplayName;
+    chip.title = chargenDone
+      ? 'Mesajı tek bir karakterin değil, tüm grubun ortak kararı olarak gönder'
+      : 'Grup olarak yaz — karakter oluşturma sürerken zar atılmaz';
+    chip.addEventListener('click', () => selectPlayer(groupLabel));
+    playerToggle.appendChild(chip);
+  }
+  paintPlayerToggle();
+}
+
+function selectPlayer(name) {
+  selectedPlayer = name;
+  paintPlayerToggle();
+}
+
+function paintPlayerToggle() {
+  playerToggle.querySelectorAll('.pchip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.player === selectedPlayer);
+  });
+  const isGroup = selectedPlayer === groupLabel;
+  textInput.placeholder = isGroup
+    ? 'Grup olarak ne yapıyorsunuz? (ortak karar — tek bir zar atılır)'
+    : 'Ne yapıyorsun? (Birden fazla karakter için: her satıra "İsim: aksiyon" yazabilirsin)';
+  multiHint.classList.toggle('hidden', isGroup);
 }
 
 // ---------------- tabs ----------------
@@ -506,6 +734,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 const GROUP_COLOR = '#c9a227';
 
 function entryLabel(entry) {
+  if (entry.role === 'system') return 'Sistem';
   if (entry.role !== 'user') return entry.kind === 'opening' ? 'Anlatıcı (Açılış)' : 'Anlatıcı';
   return entry.player;
 }
@@ -517,7 +746,7 @@ function entryColor(entry) {
 function appendLive(entry) {
   const div = document.createElement('div');
   const isGm = entry.role !== 'user';
-  div.className = 'msg ' + (isGm ? 'gm' : 'player');
+  div.className = 'msg ' + (entry.role === 'system' ? 'system' : (isGm ? 'gm' : 'player'));
   if (!isGm) div.style.color = entryColor(entry);
   const who = document.createElement('div');
   who.className = 'who';
@@ -564,37 +793,209 @@ function renderRecent(log) {
   for (const e of last) {
     const item = document.createElement('div');
     item.className = 'recent-item';
-    const who = e.role === 'user' ? e.player : 'Anlatıcı';
+    const who = entryLabel(e);
     const snippet = e.text.length > 90 ? e.text.slice(0, 90) + '…' : e.text;
     item.innerHTML = `<b>${who}:</b> ${snippet}`;
     recentEl.appendChild(item);
   }
 }
 
+// Aktif zorluklar — oyunun problem-çözüm omurgası. Kapananlar listenin
+// sonunda soluk gösterilir ki oyuncular ne başardığını görebilsin.
+function renderChallenges(container, challenges) {
+  if (!container) return;
+  container.innerHTML = '';
+  const all = Object.entries(challenges || {});
+  if (all.length === 0) {
+    container.innerHTML = '<div class="recent-item">Şu an aktif bir zorluk yok.</div>';
+    return;
+  }
+  const closed = s => s === 'çözüldü' || s === 'başarısız';
+  all.sort((a, b) => (closed(a[1].status) ? 1 : 0) - (closed(b[1].status) ? 1 : 0));
+  for (const [name, info] of all) {
+    const div = document.createElement('div');
+    const sev = (info.severity || 'orta').toLowerCase();
+    const isClosed = closed(info.status);
+    div.className = 'chal sev-' + sev + (isClosed ? ' done' : '');
+    const statusColor = info.status === 'çözüldü' ? '#4a8c5f'
+      : (info.status === 'başarısız' ? 'var(--red-bright)' : 'var(--text-dim)');
+    div.innerHTML = `<div class="c-name">${name}<span class="c-status" style="color:${statusColor}">${info.status || 'açık'}</span></div>
+      ${info.description ? `<div class="c-line">${info.description}</div>` : ''}
+      ${info.clock ? `<div class="c-line">⏳ <b>${info.clock}</b></div>` : ''}
+      ${info.progress ? `<div class="c-line">📈 <b>${info.progress}</b></div>` : ''}
+      ${info.consequence && !isClosed ? `<div class="c-line">⚠️ ${info.consequence}</div>` : ''}`;
+    container.appendChild(div);
+  }
+}
+
+// Grup stoğu: kategori > kalem > miktar. Azalan/biten kalemler renkle uyarır.
+function renderResources(container, resources) {
+  if (!container) return;
+  container.innerHTML = '';
+  const cats = Object.entries(resources || {});
+  if (cats.length === 0) {
+    container.innerHTML = '<div class="recent-item">Henüz kayıtlı bir kaynak yok.</div>';
+    return;
+  }
+  for (const [category, items] of cats) {
+    const block = document.createElement('div');
+    block.className = 'res-cat';
+    const title = document.createElement('div');
+    title.className = 'res-cat-name';
+    title.textContent = category;
+    block.appendChild(title);
+    for (const [name, info] of Object.entries(items || {})) {
+      const qty = typeof info === 'object' && info !== null ? info.qty : info;
+      const unit = (typeof info === 'object' && info !== null ? info.unit : '') || '';
+      const note = (typeof info === 'object' && info !== null ? info.notes : '') || '';
+      const n = Number(qty);
+      const row = document.createElement('div');
+      row.className = 'res-item' + (n <= 0 ? ' out' : (n <= 5 ? ' low' : ''));
+      row.innerHTML = `<span class="res-name">${name}${note ? `<span class="res-note">${note}</span>` : ''}</span>
+        <span class="qty">${Number.isFinite(n) ? n : qty} ${unit}</span>`;
+      block.appendChild(row);
+    }
+    container.appendChild(block);
+  }
+}
+
 function renderCharCard(container, name, info, isNpc) {
   const card = document.createElement('div');
-  card.className = 'char-card';
+  const isDead = info.alive === false;
+  card.className = 'char-card' + (isDead ? ' dead' : '');
   card.style.borderLeft = '3px solid ' + (isNpc ? 'var(--text-dim)' : colorFor(name, roster));
   const invCount = (info.inventory || []).length;
   const relCount = Object.keys(info.relationships || {}).length;
-  card.innerHTML = `<div class="name">${name}${isNpc ? ' <span class="tag" style="font-size:0.65rem;">NPC</span>' : ''}</div>
+  const tags = (isNpc ? ' <span class="tag" style="font-size:0.65rem;">NPC</span>' : '')
+    + (isDead ? ' <span class="tag" style="font-size:0.65rem; color:var(--red-bright);">💀 ÖLÜ</span>' : '');
+  const replaced = info.replaced_by
+    ? `<div class="field">🔁 yerine ${info.replaced_by} oynanıyor</div>` : '';
+  card.innerHTML = `<div class="name">${name}${tags}</div>
     <div class="field">📜 ${info.background || 'karakter henüz oluşturulmadı'}</div>
     <div class="field">✨ ${info.traits || '-'}</div>
     <div class="field">❤️ ${info.status || '-'}</div>
     <div class="field">📍 ${info.location || '-'}</div>
-    <div class="field">🎒 ${invCount} eşya · 🤝 ${relCount} ilişki</div>`;
+    <div class="field">🎒 ${invCount} eşya · 🤝 ${relCount} ilişki</div>${replaced}`;
   card.addEventListener('click', () => openCharModal(name));
   container.appendChild(card);
 }
+
+// ---------------- ölüm bandı + karakter devralma ----------------
+// Ölmüş ve henüz yerine kimse devralınmamış her oyuncu karakteri için
+// footer'da bir bant gösterir.
+function renderDeathBanner(ws) {
+  const pending = Object.entries(ws.characters || {})
+    .filter(([, info]) => info.alive === false && !info.replaced_by)
+    .map(([name]) => name);
+
+  if (pending.length === 0) {
+    deathBanner.classList.add('hidden');
+    deathBanner.innerHTML = '';
+    return;
+  }
+  deathBanner.innerHTML = '';
+  deathBanner.classList.remove('hidden');
+  for (const name of pending) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '10px';
+    const txt = document.createElement('span');
+    txt.innerHTML = `💀 <span class="dead-name">${name}</span> öldü. Oyuncusu hikayedeki başka bir karakteri devralarak devam edebilir.`;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Karakter Devral';
+    btn.addEventListener('click', () => openTakeoverModal(name));
+    row.appendChild(txt);
+    row.appendChild(btn);
+    deathBanner.appendChild(row);
+  }
+}
+
+function openTakeoverModal(deadName) {
+  takeoverDead = deadName;
+  takeoverPick = null;
+  takeoverError.textContent = '';
+  takeoverConfirm.disabled = true;
+  takeoverConfirm.textContent = 'Bu Karakterle Devam Et';
+  takeoverTitle.textContent = `💀 ${deadName} öldü — kiminle devam edeceksin?`;
+  takeoverListEl.innerHTML = '';
+
+  const options = Object.entries(latestNpcs).filter(([, info]) => info.alive !== false);
+  if (options.length === 0) {
+    takeoverListEl.innerHTML = '<p class="empty-hint" style="color:var(--text-dim); font-style:italic;">'
+      + 'Hikayede henüz devralınabilecek isimli bir karakter yok. Anlatıcı yeni birini sahneye '
+      + 'soktuğunda (grup birine rastladığında) burada listelenecek.</p>';
+  }
+  for (const [name, info] of options) {
+    const opt = document.createElement('div');
+    opt.className = 'takeover-option';
+    opt.innerHTML = `<div class="t-name">${name}</div>
+      <div class="t-field">📜 ${info.background || '-'}</div>
+      <div class="t-field">✨ ${info.traits || '-'}</div>
+      <div class="t-field">❤️ ${info.status || '-'} · 📍 ${info.location || '-'}</div>`;
+    opt.addEventListener('click', () => {
+      takeoverPick = name;
+      takeoverListEl.querySelectorAll('.takeover-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      takeoverConfirm.disabled = false;
+    });
+    takeoverListEl.appendChild(opt);
+  }
+  takeoverOverlay.classList.remove('hidden');
+}
+
+function closeTakeoverModal() {
+  takeoverOverlay.classList.add('hidden');
+  takeoverDead = null;
+  takeoverPick = null;
+}
+
+takeoverCloseBtn.addEventListener('click', closeTakeoverModal);
+takeoverOverlay.addEventListener('click', (e) => {
+  if (e.target === takeoverOverlay) closeTakeoverModal();
+});
+
+takeoverConfirm.addEventListener('click', async () => {
+  if (!takeoverDead || !takeoverPick) return;
+  takeoverConfirm.disabled = true;
+  takeoverConfirm.textContent = 'Sahne hazırlanıyor...';
+  takeoverError.textContent = '';
+  try {
+    const res = await fetch('/api/takeover', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dead_player: takeoverDead, new_character: takeoverPick }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      takeoverError.textContent = data.error;
+      takeoverConfirm.disabled = false;
+      takeoverConfirm.textContent = 'Bu Karakterle Devam Et';
+      return;
+    }
+    ingestLog([data.system_entry, data.gm_entry]);
+    renderWorldState(data.world_state);
+    closeTakeoverModal();
+  } catch (e) {
+    takeoverError.textContent = 'İstek başarısız oldu.';
+    takeoverConfirm.disabled = false;
+    takeoverConfirm.textContent = 'Bu Karakterle Devam Et';
+  }
+});
 
 function renderWorldState(ws) {
   dayLabel.textContent = 'Gün ' + (ws.day ?? '—') + (ws.location ? ' · ' + ws.location : '');
 
   roster = Object.keys(ws.characters || {});
-  const chargenDone = roster.length > 0 && roster.every(n => !!(ws.characters[n] || {}).background);
+  aliveRoster = roster.filter(n => (ws.characters[n] || {}).alive !== false);
+  const chargenDone = !!((ws.flags || {}).chargen_done)
+    || (aliveRoster.length > 0 && aliveRoster.every(n => !!(ws.characters[n] || {}).background));
   buildPlayerToggle(chargenDone);
+  renderDeathBanner(ws);
+  chargenBanner.classList.toggle('hidden', chargenDone);
 
   latestCharacters = { ...(ws.characters || {}), ...(ws.npcs || {}) };
+  latestNpcs = { ...(ws.npcs || {}) };
   charactersEl.innerHTML = '';
   for (const [name, info] of Object.entries(ws.characters || {})) {
     renderCharCard(charactersEl, name, info, false);
@@ -606,6 +1007,9 @@ function renderWorldState(ws) {
   if (!charModalOverlay.classList.contains('hidden') && latestCharacters[modalName.textContent]) {
     openCharModal(modalName.textContent);
   }
+
+  renderChallenges(challengesEl, ws.challenges);
+  renderResources(resourcesEl, ws.resources);
 
   factionsEl.innerHTML = '';
   for (const [name, info] of Object.entries(ws.factions || {})) {
@@ -647,6 +1051,8 @@ async function poll() {
     groupLabel = data.group_label || groupLabel;
     groupDisplayName = data.group_display_name || groupDisplayName;
 
+    fillItemSuggestions(data.start_item_suggestions);
+
     if (!data.characters_confirmed) {
       if (appState === 'setup' && charRowsEl.children.length === 0) {
         (data.default_players || []).forEach(n => addCharRow(n));
@@ -655,7 +1061,7 @@ async function poll() {
       return;
     }
     if (!data.started) {
-      if (appState !== 'ready') showStartScreen(roster);
+      if (appState !== 'ready') showStartScreen(roster, data.world_state);
       return;
     }
     if (appState !== 'playing') enterGame(data.world_state);
@@ -669,9 +1075,8 @@ async function poll() {
 async function send() {
   const text = textInput.value.trim();
   if (!text) return;
-  const checked = document.querySelector('input[name="player"]:checked');
-  if (!checked) return;
-  const player = checked.value;
+  if (!selectedPlayer) return;
+  const player = selectedPlayer;
   sendBtn.disabled = true;
   statusEl.textContent = 'Zar atılıyor, anlatıcı düşünüyor...';
   try {
@@ -695,6 +1100,30 @@ async function send() {
     sendBtn.disabled = false;
   }
 }
+
+finishChargenBtn.addEventListener('click', async () => {
+  if (!confirm('Karakter oluşturma bitmiş sayılsın mı? Bundan sonra her mesajda zar atılır.')) return;
+  finishChargenBtn.disabled = true;
+  try {
+    const res = await fetch('/api/finish-chargen', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      statusEl.textContent = 'Hata: ' + data.error;
+    } else {
+      lastRosterKey = null; // seçiciyi yeniden kur
+      renderWorldState(data.world_state);
+    }
+  } catch (e) {
+    statusEl.textContent = 'İstek başarısız oldu.';
+  } finally {
+    finishChargenBtn.disabled = false;
+  }
+});
+
+// Anlatıcı (senaryo yöneticisi) ekranı — PIN'li, ayrı sekmede açılır.
+gmBtn.addEventListener('click', () => {
+  window.open('/secrets', '_blank', 'noopener');
+});
 
 sendBtn.addEventListener('click', send);
 textInput.addEventListener('keydown', (e) => {

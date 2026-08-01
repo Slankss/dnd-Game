@@ -28,21 +28,184 @@
         "notes": "Güneydeki tesis, gizemli sakinler."
       }
     },
-    "characters": {},
+    "characters": {
+      "Okan": {
+        "background": null,
+        "traits": null,
+        "status": "İyi",
+        "alive": true,
+        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+        "inventory": [],
+        "relationships": {},
+        "notes": "Henüz karakter oluşturulmadı."
+      },
+      "Celil": {
+        "background": null,
+        "traits": null,
+        "status": "İyi",
+        "alive": true,
+        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+        "inventory": [],
+        "relationships": {},
+        "notes": "Henüz karakter oluşturulmadı."
+      }
+    },
     "npcs": {},
     "zombie_sightings": [
       "Taze Ölü",
       "Koşucu"
     ],
-    "flags": {},
+    "flags": {
+      "chargen_done": true
+    },
     "narrator": {
       "plot_summary": "",
       "puzzles": {},
       "upcoming_events": {}
+    },
+    "resources": {
+      "Yiyecek": {
+        "Konserve": {
+          "qty": 42,
+          "unit": "kutu",
+          "notes": "Yağmalanan marketten kalan"
+        },
+        "Kuru bakliyat": {
+          "qty": 18,
+          "unit": "kg",
+          "notes": ""
+        },
+        "Un": {
+          "qty": 25,
+          "unit": "kg",
+          "notes": ""
+        }
+      },
+      "Su": {
+        "İçme suyu": {
+          "qty": 160,
+          "unit": "litre",
+          "notes": "Depo + bidonlar"
+        },
+        "Arıtma tableti": {
+          "qty": 30,
+          "unit": "adet",
+          "notes": ""
+        }
+      },
+      "Tarım": {
+        "Patates ekili alan": {
+          "qty": 40,
+          "unit": "m²",
+          "notes": "Peron üstü ışıklıkta"
+        },
+        "Domates fidesi": {
+          "qty": 24,
+          "unit": "adet",
+          "notes": ""
+        },
+        "Tohum paketi": {
+          "qty": 9,
+          "unit": "paket",
+          "notes": "Karışık sebze"
+        }
+      },
+      "Hayvan": {
+        "Tavuk": {
+          "qty": 11,
+          "unit": "adet",
+          "notes": "Günde ~6 yumurta"
+        },
+        "Keçi": {
+          "qty": 2,
+          "unit": "adet",
+          "notes": "Biri sağmal"
+        },
+        "Köpek": {
+          "qty": 1,
+          "unit": "adet",
+          "notes": "Nöbetçi"
+        }
+      },
+      "Silah": {
+        "Av tüfeği": {
+          "qty": 2,
+          "unit": "adet",
+          "notes": ""
+        },
+        "Tabanca": {
+          "qty": 1,
+          "unit": "adet",
+          "notes": ""
+        },
+        "Balta / levye": {
+          "qty": 4,
+          "unit": "adet",
+          "notes": "Sessiz, yakın dövüş"
+        }
+      },
+      "Mühimmat": {
+        "12 kalibre fişek": {
+          "qty": 23,
+          "unit": "adet",
+          "notes": ""
+        },
+        "9mm mermi": {
+          "qty": 14,
+          "unit": "adet",
+          "notes": ""
+        }
+      },
+      "Tıbbi": {
+        "Antibiyotik": {
+          "qty": 6,
+          "unit": "kür",
+          "notes": "Enfeksiyon için kritik"
+        },
+        "Sargı / gazlı bez": {
+          "qty": 20,
+          "unit": "adet",
+          "notes": ""
+        },
+        "Ağrı kesici": {
+          "qty": 30,
+          "unit": "tablet",
+          "notes": ""
+        }
+      },
+      "Yakıt ve enerji": {
+        "Benzin": {
+          "qty": 35,
+          "unit": "litre",
+          "notes": "Jeneratör için"
+        },
+        "Akü": {
+          "qty": 2,
+          "unit": "adet",
+          "notes": ""
+        },
+        "Pil": {
+          "qty": 12,
+          "unit": "adet",
+          "notes": ""
+        }
+      },
+      "Takas": {
+        "Sigara": {
+          "qty": 8,
+          "unit": "paket",
+          "notes": "Bölgede para yerine geçiyor"
+        },
+        "Alkol": {
+          "qty": 5,
+          "unit": "şişe",
+          "notes": "Dezenfektan + takas"
+        }
+      }
     }
   },
-  "next_id": 1,
-  "session_id": null,
-  "characters_confirmed": false,
-  "started": false
+  "next_id": 51,
+  "session_id": "449a5198-f255-4484-ada0-53092c280f53",
+  "characters_confirmed": true,
+  "started": true
 }

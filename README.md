@@ -2,7 +2,7 @@
 
 ## 🧟 Active game: "Kızıl Çöküş" (zombi kıyamet, özel senaryo)
 
-Bu proje şu an Celil ve Emir için özel yazılmış bir zombi kıyamet senaryosu
+Bu proje çoklu oyuncu için özel yazılmış bir zombi kıyamet senaryosu
 oynatıyor — bkz. [`webapp/README.md`](webapp/README.md) çalıştırma talimatları
 için. Kısaca:
 

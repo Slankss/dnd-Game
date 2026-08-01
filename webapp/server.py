@@ -15,6 +15,7 @@ from scenario import (
     INITIAL_WORLD_STATE,
     OPENING_HOOKS,
     DEFAULT_PLAYERS,
+    START_ITEM_SUGGESTIONS,
     CHARACTER_TEMPLATE,
     GROUP_LABEL,
     GROUP_DISPLAY_NAME,
@@ -65,6 +66,56 @@ def roll_d100() -> int:
     return secrets.randbelow(100) + 1
 
 
+# Dünya zarı — oyuncunun zarından ayrı, oyuncudan bağımsız olarak DÜNYANIN o
+# turda ne yaptığını belirler. Oyunculara ASLA gösterilmez, sadece modele ve
+# /secrets ekranına gider.
+WORLD_DICE_BANDS = [
+    (1, 10, "Lehte Kırılma"),
+    (11, 35, "Durgun"),
+    (36, 65, "Sızıntı"),
+    (66, 88, "Baskı"),
+    (89, 100, "Kriz"),
+]
+
+WORLD_BAND_HINTS = {
+    "Lehte Kırılma": "dünya oyuncular lehine döner — beklenmedik kaynak, gecikme, dağılan bir tehdit",
+    "Durgun": "aktif tehditler ilerlemez, nefes alma payı doğar",
+    "Sızıntı": "aktif zorluklardan biri BİR ADIM ilerler; küçük ama somut yeni bir komplikasyon",
+    "Baskı": "aktif zorluk belirgin ilerler (süre kısalır, sayı artar, mesafe kapanır) ya da yeni zorluk doğar",
+    "Kriz": "yeni büyük tehdit patlar ya da mevcut zorluk en kötü aşamasına sıçrar",
+}
+
+
+def world_band_for(roll: int) -> str:
+    for lo, hi, label in WORLD_DICE_BANDS:
+        if lo <= roll <= hi:
+            return label
+    return "Durgun"
+
+
+def roll_world_dice(world_state: dict) -> dict:
+    roll = roll_d100()
+    band = world_band_for(roll)
+    entry = {"roll": roll, "band": band, "hint": WORLD_BAND_HINTS[band],
+             "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+    world_state["world_roll"] = entry
+    history = world_state.setdefault("world_roll_history", [])
+    history.append({"roll": roll, "band": band, "ts": entry["ts"]})
+    del history[:-12]  # son 12 atış yeter
+    return entry
+
+
+def world_dice_note(entry: dict) -> str:
+    return (
+        f"DÜNYA ZARI (GİZLİ — oyunculara ASLA gösterme, metninde ondan söz etme): "
+        f"{entry['roll']} ({entry['band']}) — {entry['hint']}.\n"
+        "Bu zar oyuncunun hamlesinden BAĞIMSIZ olarak dünyanın bu turda ne "
+        "yaptığını belirler: aktif `challenges` kayıtlarının clock/progress/"
+        "severity değerlerini bu banda göre ilerlet ya da sabit tut ve "
+        "state-update ile kaydet."
+    )
+
+
 # --------------------------------------------------------------- scenario.json
 # scenario.py'deki değerler varsayılandır. data/scenario_override.json varsa
 # (arayüzden "senaryo içe aktar" ile yüklenir) onun içeriği önceliklidir —
@@ -79,12 +130,14 @@ def load_scenario():
             "initial_world_state": data.get("initial_world_state") or INITIAL_WORLD_STATE,
             "default_players": data.get("default_players") or DEFAULT_PLAYERS,
             "opening_hooks": data.get("opening_hooks") or OPENING_HOOKS,
+            "start_item_suggestions": data.get("start_item_suggestions") or START_ITEM_SUGGESTIONS,
         }
     return {
         "scenario_text": SCENARIO_TEXT,
         "initial_world_state": INITIAL_WORLD_STATE,
         "default_players": DEFAULT_PLAYERS,
         "opening_hooks": OPENING_HOOKS,
+        "start_item_suggestions": START_ITEM_SUGGESTIONS,
     }
 
 
@@ -107,7 +160,13 @@ def load_state():
         save_state(state)
         return state
     with open(STATE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        state = json.load(f)
+    # Devam eden bir oyun, `resources` alanı eklenmeden önce başlamış olabilir —
+    # eksikse senaryonun başlangıç stoğuyla doldur, oyun bozulmasın.
+    ws = state.setdefault("world_state", {})
+    if not ws.get("resources"):
+        ws["resources"] = json.loads(json.dumps(load_scenario()["initial_world_state"].get("resources", {})))
+    return state
 
 
 def save_state(state):
@@ -180,32 +239,251 @@ def clear_gm_log() -> None:
 
 # ------------------------------------------------------------------ world state
 
+def _as_str_list(value) -> list:
+    """Model tek eşyayı string, birden fazlasını liste olarak yazabiliyor —
+    ikisini de listeye normalize eder."""
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, list):
+        return [v.strip() for v in value if isinstance(v, str) and v.strip()]
+    return []
+
+
 def _merge_person_like(target: dict, name: str, fields: dict) -> None:
     """`characters` ve `npcs` için ortak birleştirme mantığı (background/
     traits/status/location/notes üzerine yazar; inventory ekler/çıkarır;
     relationships iç içe günceller)."""
     entry = target.setdefault(
         name,
-        {"background": None, "traits": None, "status": "İyi", "location": None,
-         "inventory": [], "relationships": {}, "notes": ""},
+        {"background": None, "traits": None, "status": "İyi", "alive": True,
+         "location": None, "inventory": [], "relationships": {}, "notes": ""},
     )
     for scalar_key in ("background", "traits", "status", "location", "notes"):
         if scalar_key in fields:
             entry[scalar_key] = fields[scalar_key]
 
+    if isinstance(fields.get("alive"), bool):
+        entry["alive"] = fields["alive"]
+
     if isinstance(fields.get("relationships"), dict):
         entry.setdefault("relationships", {}).update(fields["relationships"])
 
     inv = entry.setdefault("inventory", [])
-    for item in fields.get("inventory_add") or []:
-        if item not in inv:
+    # Model bazen `inventory_add` yerine doğrudan tam listeyi (`inventory`)
+    # ya da tek bir eşyayı düz string olarak yazıyor. Eskiden ikisi de sessizce
+    # yok sayılıyordu — hikayede ortaya çıkan bir bıçak envantere hiç
+    # girmiyordu. Artık üçü de kabul ediliyor. `inventory` üzerine YAZMAZ,
+    # birleştirir: model listeyi eksik yazarsa mevcut eşyalar kaybolmasın.
+    for item in _as_str_list(fields.get("inventory")) + _as_str_list(fields.get("inventory_add")):
+        if item and item not in inv:
             inv.append(item)
-    for item in fields.get("inventory_remove") or []:
+    for item in _as_str_list(fields.get("inventory_remove")):
         if item in inv:
             inv.remove(item)
 
 
 TENSION_LEVELS = ("düşük", "orta", "yüksek")
+
+# "+3" / "-12" gibi göreli miktar değişimleri
+RESOURCE_DELTA_RE = re.compile(r"^\s*([+-])\s*(\d+(?:[.,]\d+)?)\s*$")
+
+
+def _as_number(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    return None
+
+
+def _tidy_qty(value):
+    """3.0 -> 3, 2.5 -> 2.5, negatif -> 0 (stok eksiye düşemez)."""
+    if value is None:
+        return 0
+    value = max(0, value)
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
+def _merge_resources(target: dict, patch: dict) -> None:
+    """Grup stoğunu (kategori > kalem > miktar) birleştirir. Kalem değeri
+    üç şekilde gelebilir: kesin sayı (12), göreli değişim ("-2"/"+9") ya da
+    detaylı sözlük ({"qty": .., "unit": .., "notes": ..})."""
+    for category, items in patch.items():
+        if not isinstance(items, dict):
+            continue
+        cat_key = canonical_name(target, category) or category
+        cat = target.setdefault(cat_key, {})
+        for raw_name, value in items.items():
+            item_key = canonical_name(cat, raw_name) or raw_name
+            entry = cat.setdefault(item_key, {"qty": 0, "unit": "adet", "notes": ""})
+            current = _as_number(entry.get("qty")) or 0
+
+            num = _as_number(value)
+            if num is not None:
+                entry["qty"] = _tidy_qty(num)
+            elif isinstance(value, str):
+                m = RESOURCE_DELTA_RE.match(value)
+                if m:
+                    delta = float(m.group(2).replace(",", "."))
+                    entry["qty"] = _tidy_qty(current + (delta if m.group(1) == "+" else -delta))
+                else:
+                    entry["notes"] = value  # "birkaç kutu" gibi serbest metin
+            elif isinstance(value, dict):
+                qty = value.get("qty")
+                qty_num = _as_number(qty)
+                if qty_num is not None:
+                    entry["qty"] = _tidy_qty(qty_num)
+                elif isinstance(qty, str):
+                    m = RESOURCE_DELTA_RE.match(qty)
+                    if m:
+                        delta = float(m.group(2).replace(",", "."))
+                        entry["qty"] = _tidy_qty(current + (delta if m.group(1) == "+" else -delta))
+                for field in ("unit", "notes"):
+                    if isinstance(value.get(field), str):
+                        entry[field] = value[field]
+
+
+def canonical_name(target: dict, name: str):
+    """Model aynı kişiyi farklı büyük/küçük harfle yazabiliyor ("celil" vs
+    "Celil") — mevcut kayda karşılık gelen gerçek anahtarı döner, eşleşme
+    yoksa None. Bu olmadan aynı kişi iki ayrı kayıt olarak birikiyor."""
+    if not isinstance(name, str):
+        return None
+    if name in target:
+        return name
+    lowered = name.strip().lower()
+    for key in target:
+        if key.lower() == lowered:
+            return key
+    return None
+
+
+def alive_players(world_state: dict) -> list:
+    return [
+        name
+        for name, info in (world_state.get("characters") or {}).items()
+        if info.get("alive", True)
+    ]
+
+
+# Her normal turda modele verilen "defter tutma" hatırlatması. Envanter ve
+# grup stoğu buraya eklenmeden önce model bunları çoğu turda atlıyordu —
+# hikayede ortaya çıkan bir bıçak arayüzdeki envanterde hiç görünmüyordu.
+UPKEEP_REMINDER = (
+    "(3) ENVANTER KONTROLÜ (her tur, atlama): bu turun anlatısında bir "
+    "karakterin elinde/üzerinde/cebinde bir eşya geçtiyse ve o eşya GÜNCEL "
+    "DÜNYA DURUMU'nda o karakterin `inventory` listesinde YOKSA, aynı bloğa "
+    "`inventory_add` ile ekle; tükenen/kırılan/verilen/düşürülen eşyayı "
+    "`inventory_remove` ile çıkar. Anlatıda var olup envanterde görünmeyen "
+    "eşya kalmasın — oyuncular envanteri arayüzden canlı izliyor.\n"
+    "(4) GRUP STOĞU: bu turda ortak stoktan bir şey harcandıysa/eklendiyse "
+    "(mermi, yiyecek, su, ilaç, yakıt, hayvan, mahsul, takas malı...) "
+    '`resources` alanını güncelle — ör. {"Mühimmat": {"9mm mermi": "-3"}, '
+    '"Yiyecek": {"Konserve": "+4"}}.\n'
+    "(5) ZORLUKLAR: sahnedeki aktif `challenges` kayıtlarının `clock` ve "
+    "`progress` alanlarını bu turda GÜNCELLE (oyuncu zarı ne kadar ilerletti, "
+    "dünya zarı sorunu ne kadar büyüttü). Zorluk kapandıysa status'ü "
+    "'çözüldü'/'başarısız' yap ve sonucunu gerçekten uygula. Sahnede aktif "
+    "zorluk kalmadıysa yenisini aç.\n"
+    "(6) BULMACALAR: oyuncular bu turda bir gizemle ilgili somut bir şey "
+    "öğrendiyse `narrator.puzzles.<ad>` altında `progress` (0-100), "
+    "`clues_found` ve `next_step` alanlarını güncelle — anlatıcı ekranı "
+    "ilerlemeyi buradan izliyor.\n"
+    "Ayrıca gerçekten değişen başka alanlar varsa (karakter durumu/ilişkisi, "
+    "fraksiyon tavrı, gün, konum, yeni NPC, narrator.upcoming_events vb.) "
+    "aynı bloğa ekle.\n"
+    "SON OLARAK: yanıtını 'SAHNE YAPISI' bölümündeki **DURUM** + **SEÇENEKLER** "
+    "bloğuyla bitir. Bu blok state-update'in DIŞINDA, oyuncuya görünen metnin "
+    "son parçası olsun."
+)
+
+
+def visible_timeline_note(log: list, limit: int = 6) -> str:
+    """Oyunculara FİİLEN gösterilmiş son akış. İki kanal (oyuncu sohbeti +
+    anlatıcı kanalı) aynı Claude oturumunu paylaşıyor; bu blok olmadan model
+    bazen hikayeyi, oyuncuların hiç görmediği GM onay mesajından devam
+    ettiriyor ve iki taraf birbirini tutmuyordu."""
+    lines = ["OYUNCULARIN EKRANINDA GÖRÜNEN SON AKIŞ (hikaye buradan devam eder):"]
+    for entry in (log or [])[-limit:]:
+        role = entry.get("role")
+        text = (entry.get("text") or "").strip().replace("\n", " ")
+        if role == "user":
+            roll = ""
+            if entry.get("roll") is not None:
+                roll = f" (ZAR {entry['roll']} - {entry.get('band')})"
+            lines.append(f"[{entry.get('player', '?')}{roll}] {text[:300]}")
+        elif role == "system":
+            lines.append(f"[SİSTEM] {text[:300]}")
+        else:
+            lines.append(f"[ANLATICI] {text[:600]}")
+    if len(lines) == 1:
+        lines.append("(henüz gösterilmiş bir sahne yok)")
+    lines.append(
+        "ÖNEMLİ — İKİ KANAL TEK HİKAYE: konuşma geçmişinde `[ANLATICI NOTU - "
+        "GİZLİ]` etiketli mesajlar ve onlara verdiğin kısa onaylar olabilir. "
+        "Bunlar oyuncuların GÖRMEDİĞİ ayrı bir yönetim kanalıdır — hikayeyi o "
+        "onaylardan değil, YUKARIDAKİ oyuncu akışından devam ettir ve "
+        "oyunculara görmedikleri bir şeye atıfta bulunma. `[ANLATICI MÜDAHALESİ "
+        "- ...]` etiketiyle yayınlanan sahneler ise oyuncuların gördüğü akışın "
+        "parçasıdır, onlara normal şekilde atıfta bulunabilirsin."
+    )
+    return "\n".join(lines)
+
+
+def inventory_note(world_state: dict) -> str:
+    """Kimde ne var — her turda modele düz metin olarak verilir. JSON'un içine
+    gömülü kalınca model bunu sık sık gözden kaçırıp olmayan eşya
+    kullandırıyordu ("bıçağını çıkardı" — bıçağı yokken)."""
+    lines = ["ENVANTER GERÇEĞİ (bu turda kimin üzerinde fiilen ne var):"]
+    for name, info in (world_state.get("characters") or {}).items():
+        if not info.get("alive", True):
+            continue
+        inv = info.get("inventory") or []
+        lines.append(f"- {name}: {', '.join(inv) if inv else '(üzerinde hiçbir eşya yok)'}")
+    lines.append(
+        "KURAL: bir karakter SADECE bu listedeki eşyaları, grubun `resources` "
+        "stoğundan sahnede fiilen aldığı bir şeyi, ya da bulunduğu ortamda "
+        "gerçekten var olan bir nesneyi kullanabilir. Listede olmayan bir eşyayı "
+        "ASLA kullandırma — oyuncu mesajında 'bıçağımı çekiyorum' gibi yazsa "
+        "bile bu sadece o oyuncunun iddiasıdır, gerçek değildir. Böyle bir "
+        "durumda sahnede gerçekçi biçimde düzelt (eli boşa gider, cebinde "
+        "olmadığını fark eder, eldeki başka bir şeyle idare etmek zorunda "
+        "kalır) ve bunu kuru bir ret değil, küçük bir gerilim anına çevir."
+    )
+    return "\n".join(lines)
+
+
+def starting_items_note(world_state: dict) -> str:
+    lines = []
+    for name, info in (world_state.get("characters") or {}).items():
+        inv = info.get("inventory") or []
+        lines.append(f"- {name}: {', '.join(inv) if inv else '(eşya seçmedi)'}")
+    return "\n".join(lines) if lines else "(karakter yok)"
+
+
+def roster_note(world_state: dict) -> str:
+    """Her turda modele verilen sabit oyuncu kadrosu hatırlatması — model
+    hikayenin ortasında isim uydurmasın/karıştırmasın diye."""
+    characters = world_state.get("characters") or {}
+    alive = alive_players(world_state)
+    dead = [n for n in characters if n not in alive]
+    lines = [
+        "OYUNCU KARAKTERLERİ (SABİT LİSTE — bunların dışında oyuncu karakteri YOKTUR): "
+        + (", ".join(alive) if alive else "(yok)")
+    ]
+    if dead:
+        lines.append(
+            "ÖLMÜŞ oyuncu karakterleri (kalıcı olarak öldü, canlı gibi sahneye sokma): "
+            + ", ".join(dead)
+        )
+    lines.append(
+        "Bu isimleri harfi harfine, aynı yazımla kullan. Yeni bir oyuncu karakteri "
+        "UYDURMA, mevcut birini başka isimle anma. Hikayedeki diğer herkes NPC'dir "
+        "ve state-update'te `npcs` altına yazılır."
+    )
+    return "\n".join(lines)
 
 
 def deep_merge_world_state(world_state: dict, patch: dict) -> None:
@@ -226,13 +504,46 @@ def deep_merge_world_state(world_state: dict, patch: dict) -> None:
             entry = target.setdefault(key, {})
             entry.update(fields)
 
+    # Oyuncu kadrosu (`characters`) kurulumda sabitlenir ve model tarafından
+    # GENİŞLETİLEMEZ. Model tanımadık bir ismi `characters` altına yazarsa
+    # (hikayede geçen birini oyuncu sanması, ya da isim uydurması) o kayıt
+    # sessizce `npcs`'e yönlendirilir — aksi halde uydurma isim rostere girip
+    # sonraki turlarda dünya durumuyla birlikte modele geri besleniyor ve
+    # kalıcılaşıyordu. Ters yön de düzeltilir: `npcs` altına yazılmış gerçek
+    # bir oyuncu karakteri `characters`'a geri alınır.
+    characters = world_state.setdefault("characters", {})
+    npcs = world_state.setdefault("npcs", {})
+
     for section in ("characters", "npcs"):
-        if section in patch and isinstance(patch[section], dict):
-            target = world_state.setdefault(section, {})
-            for name, fields in patch[section].items():
-                if not isinstance(fields, dict):
-                    continue
-                _merge_person_like(target, name, fields)
+        if not isinstance(patch.get(section), dict):
+            continue
+        for name, fields in patch[section].items():
+            if not isinstance(fields, dict):
+                continue
+            pc_key = canonical_name(characters, name)
+            if pc_key:
+                _merge_person_like(characters, pc_key, fields)
+            else:
+                _merge_person_like(npcs, canonical_name(npcs, name) or name, fields)
+
+    if isinstance(patch.get("resources"), dict):
+        _merge_resources(world_state.setdefault("resources", {}), patch["resources"])
+
+    if isinstance(patch.get("challenges"), dict):
+        target = world_state.setdefault("challenges", {})
+        for raw_name, fields in patch["challenges"].items():
+            if not isinstance(fields, dict):
+                continue
+            key = canonical_name(target, raw_name) or raw_name
+            entry = target.setdefault(
+                key,
+                {"description": "", "severity": "orta", "clock": "", "progress": "",
+                 "status": "açık", "consequence": "", "gm_notes": ""},
+            )
+            for field in ("description", "severity", "clock", "progress",
+                          "status", "consequence", "gm_notes"):
+                if isinstance(fields.get(field), (str, int, float)) and not isinstance(fields.get(field), bool):
+                    entry[field] = fields[field]
 
     if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
         seen = world_state.setdefault("zombie_sightings", [])
@@ -259,11 +570,38 @@ def deep_merge_world_state(world_state: dict, patch: dict) -> None:
             narrator.setdefault("upcoming_events", {}).update(npatch["upcoming_events"])
 
 
+# Oyuncuların /api/state ile ASLA görmemesi gereken alanlar. `narrator`
+# (plot_summary/puzzles/upcoming_events) buraya eklenene kadar dünya durumuyla
+# birlikte her oyuncunun tarayıcısına gidiyordu — spoiler sızıntısıydı.
+GM_ONLY_FIELDS = ("narrator", "world_roll", "world_roll_history")
+
+
+def public_world_state(world_state: dict) -> dict:
+    """Oyuncu arayüzüne gidecek, gizli alanları ayıklanmış kopya."""
+    public = {k: v for k, v in world_state.items() if k not in GM_ONLY_FIELDS}
+    challenges = public.get("challenges")
+    if isinstance(challenges, dict):
+        # zorluklar oyunculara görünür ama her zorluğun gm_notes'u görünmez
+        public["challenges"] = {
+            name: {k: v for k, v in (info or {}).items() if k != "gm_notes"}
+            for name, info in challenges.items()
+        }
+    return public
+
+
 def chargen_complete(world_state: dict) -> bool:
+    # Oyuncular karakter oluşturmayı arayüzden elle bitirmiş olabilir —
+    # biri hiç cevap vermezse oyun sonsuza kadar chargen'de takılı kalıp zar
+    # mekaniği ve ortak karar hiç açılmıyordu.
+    if (world_state.get("flags") or {}).get("chargen_done"):
+        return True
     characters = world_state.get("characters", {})
     if not characters:
         return False
-    return all(info.get("background") for info in characters.values())
+    alive = [info for info in characters.values() if info.get("alive", True)]
+    if not alive:
+        return False
+    return all(info.get("background") for info in alive)
 
 
 CHAR_LINE_RE = re.compile(r"^\s*([^\n:：]+?)\s*[:：]\s*(.+)$")
@@ -292,23 +630,95 @@ def detect_multi_character(text: str, valid_players: list):
     return matches
 
 
-STATE_BLOCK_RE = re.compile(r"```state-update\s*(\{.*?\})\s*```", re.DOTALL)
+# Bir bloğun "durum güncellemesi" olduğunu ele veren anahtarlar — fence'i
+# unutulmuş ham JSON'ı normal metindeki süslü parantezlerden ayırmak için.
+STATE_KEYS = {
+    "day", "location", "tension", "factions", "characters", "npcs",
+    "resources", "zombie_sightings_add", "flags", "narrator",
+}
+
+# Etiketi ne olursa olsun (state-update / json / etiketsiz), içinde bir JSON
+# nesnesi olan HER ``` bloğu. Ne oyuncuya ne anlatıcıya ham JSON gösterilmeli,
+# o yüzden etiketin doğru yazılmış olmasına güvenmiyoruz.
+FENCED_STATE_RE = re.compile(
+    r"```[ \t]*[A-Za-z_-]*[ \t]*\r?\n?(\{.*?\})[ \t]*\r?\n?```", re.DOTALL
+)
+LEFTOVER_FENCE_RE = re.compile(
+    r"```[ \t]*(?:state-update|state_update|json)[ \t]*\r?\n?", re.IGNORECASE
+)
+EMPTY_FENCE_RE = re.compile(r"```\s*```", re.DOTALL)
+
+
+def _strip_bare_json_objects(text: str):
+    """Model ``` fence'ini unuttuğunda ham JSON metnin içinde kalıyor ve
+    hem oyuncu hem anlatıcı ekranında görünüyordu. Bu tarayıcı, gerçekten
+    JSON olarak parse edilen VE bilinen bir durum alanı içeren nesneleri
+    söker; normal metindeki süslü parantezlere dokunmaz."""
+    patches = []
+    out = []
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] != "{":
+            out.append(text[i])
+            i += 1
+            continue
+        depth, in_str, esc, j = 0, False, False, i
+        while j < n:
+            c = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif c == "\\":
+                    esc = True
+                elif c == '"':
+                    in_str = False
+            elif c == '"':
+                in_str = True
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        parsed = None
+        if j < n:
+            try:
+                parsed = json.loads(text[i:j + 1])
+            except json.JSONDecodeError:
+                parsed = None
+        if isinstance(parsed, dict) and (set(parsed) & STATE_KEYS):
+            patches.append(parsed)
+            i = j + 1
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out), patches
 
 
 def extract_state_update(text: str):
-    """Metindeki TÜM ```state-update``` bloklarını (model bazen birden fazla
-    ayrı blok yazabiliyor) ayrıştırıp listeler, hepsini metinden temizler."""
+    """Modelin yanıtındaki TÜM durum verisini ayrıştırıp metinden temizler.
+    Üç kademe: (1) ``` içindeki JSON blokları, (2) fence'i unutulmuş ham JSON
+    nesneleri, (3) boşta kalan fence kalıntıları. Bozuk JSON parse edilemese
+    bile metinden SİLİNİR — ekrana asla ham JSON düşmemeli."""
     patches = []
 
     def _collect(match):
         try:
             patches.append(json.loads(match.group(1)))
         except json.JSONDecodeError:
-            pass
+            pass  # parse edilemedi ama yine de gösterilmez
         return ""
 
-    cleaned = STATE_BLOCK_RE.sub(_collect, text).strip()
-    return cleaned, patches
+    cleaned = FENCED_STATE_RE.sub(_collect, text)
+    cleaned, bare = _strip_bare_json_objects(cleaned)
+    patches.extend(bare)
+    cleaned = LEFTOVER_FENCE_RE.sub("", cleaned)
+    cleaned = EMPTY_FENCE_RE.sub("", cleaned)
+    # sökülen blokların ardında kalan boş satır yığınlarını topla
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip(), patches
 
 
 # ------------------------------------------------------------------ claude CLI
@@ -386,11 +796,13 @@ def get_state():
         log = read_log()
     return jsonify(
         {
-            "world_state": state["world_state"],
+            "world_state": public_world_state(state["world_state"]),
             "log": log,
             "started": state["started"],
             "characters_confirmed": state["characters_confirmed"],
+            "chargen_done": chargen_complete(state["world_state"]),
             "default_players": load_scenario()["default_players"],
+            "start_item_suggestions": load_scenario()["start_item_suggestions"],
             "custom_scenario": SCENARIO_OVERRIDE_FILE.exists(),
             "group_label": GROUP_LABEL,
             "group_display_name": GROUP_DISPLAY_NAME,
@@ -401,13 +813,23 @@ def get_state():
 @app.route("/api/setup-characters", methods=["POST"])
 def setup_characters():
     body = request.get_json(force=True) or {}
-    names = body.get("players") or []
-    names = [n.strip() for n in names if isinstance(n, str) and n.strip()]
+    # `players` iki biçimde gelebilir: düz isim listesi (eski istemciler) ya da
+    # {"name": "...", "item": "seçtiği başlangıç eşyası"} sözlükleri.
+    picks = []
+    for raw in body.get("players") or []:
+        if isinstance(raw, str):
+            picks.append((raw.strip(), ""))
+        elif isinstance(raw, dict):
+            picks.append(
+                (str(raw.get("name") or "").strip(), str(raw.get("item") or "").strip())
+            )
+    picks = [(n, item) for n, item in picks if n]
     # tekrarları kaldır, sırayı koru
     seen = set()
-    names = [n for n in names if not (n in seen or seen.add(n))]
+    picks = [(n, item) for n, item in picks if not (n in seen or seen.add(n))]
+    names = [n for n, _ in picks]
 
-    if not (1 <= len(names) <= 8):
+    if not (1 <= len(picks) <= 8):
         return jsonify({"error": "1 ile 8 arasında karakter ismi girin."}), 400
 
     with lock:
@@ -419,9 +841,11 @@ def setup_characters():
 
         start_location = state["world_state"].get("location")
         characters = {}
-        for name in names:
+        for name, item in picks:
             char = json.loads(json.dumps(CHARACTER_TEMPLATE))
             char["location"] = start_location
+            # oyuncunun kurulum ekranında seçtiği tek başlangıç eşyası
+            char["inventory"] = [item] if item else []
             characters[name] = char
         state["world_state"]["characters"] = characters
         state["characters_confirmed"] = True
@@ -429,7 +853,7 @@ def setup_characters():
 
     return jsonify(
         {
-            "world_state": state["world_state"],
+            "world_state": public_world_state(state["world_state"]),
             "characters_confirmed": True,
         }
     )
@@ -449,12 +873,24 @@ def start_game():
         hook = secrets.choice(scenario["opening_hooks"])
         extra_system = (
             "OYUN BAŞLANGICI.\n"
-            f"Bu oyundaki karakterler: {', '.join(players)}.\n"
+            f"Bu oyundaki karakterler (SABİT, TAM LİSTE — başka oyuncu karakteri "
+            f"YOK, isim uydurma): {', '.join(players)}.\n"
             f"Rastgele açılış olayı (sunucu tarafından seçildi): {hook}\n\n"
             "Yukarıdaki SCENARIO talimatlarındaki 'OYUN BAŞLANGICI VE KARAKTER "
             "OLUŞTURMA' bölümüne göre davran: bu olayı sahne olarak anlat, "
             "ardından yukarıdaki karakter listesindeki HERKES için karakter "
-            "oluşturma seçeneklerini sun. Bu turda zar mekaniği YOK."
+            "oluşturma seçeneklerini sun. Bu turda zar mekaniği YOK.\n\n"
+            "OYUNCULARIN KURULUM EKRANINDA SEÇTİĞİ BAŞLANGIÇ EŞYALARI (zaten "
+            "envanterlerine işlendi — tekrar eklemene gerek yok, ama sahnede "
+            "bunları biliyormuş gibi davran ve karakter oluşturmayı bunlarla "
+            "tutarlı kur):\n"
+            + starting_items_note(state["world_state"])
+            + "\n\nGrubun ortak stoğu (klan envanter sayımı) GÜNCEL DÜNYA "
+            "DURUMU'ndaki `resources` altındadır — açılış sahnesinde gerekirse "
+            "buna atıfta bulun, ve oyun boyunca SCENARIO'daki 'GRUP KAYNAKLARI' "
+            "kurallarına göre güncel tut.\n\n"
+            "GÜNCEL DÜNYA DURUMU (JSON):\n"
+            + json.dumps(state["world_state"], ensure_ascii=False)
         )
         prompt = "(Oyun başlıyor. Sahneyi aç.)"
 
@@ -486,7 +922,7 @@ def start_game():
         append_log(gm_entry)
         save_state(state)
 
-    return jsonify({"gm_entry": gm_entry, "world_state": state["world_state"], "started": True})
+    return jsonify({"gm_entry": gm_entry, "world_state": public_world_state(state["world_state"]), "started": True})
 
 
 @app.route("/api/message", methods=["POST"])
@@ -501,9 +937,14 @@ def post_message():
         state = load_state()
         if not state["started"]:
             return jsonify({"error": "Önce oyunu başlatın."}), 400
-        valid_players = list(state["world_state"]["characters"].keys())
+        # ölen karakterler adına mesaj gönderilemez — oyuncusu devralma
+        # ekranından yeni bir karakter seçmeli
+        valid_players = alive_players(state["world_state"])
         in_chargen = not chargen_complete(state["world_state"])
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        # Tur başına TEK dünya zarı (karakter başına değil) — oyunculara
+        # gösterilmez, sadece modele ve /secrets ekranına gider.
+        world_entry = None if in_chargen else roll_world_dice(state["world_state"])
 
         multi = detect_multi_character(text, valid_players)
 
@@ -538,9 +979,17 @@ def post_message():
                     "ÇOKLU KARAKTER TURU — KARAKTER OLUŞTURMA AŞAMASI, zar mekaniği YOK.\n"
                     "Aşağıdaki her satır farklı bir oyuncunun AYNI ANDA gönderdiği karakter "
                     "oluşturma cevabıdır. Her biri için (gerçekten karakterini kuruyorsa) "
-                    "state-update bloğuna characters.<isim> altına background/traits "
+                    "state-update bloğuna characters.<isim> altına background, traits VE "
+                    "inventory_add (mesleğine uyan 2-3 mütevazı başlangıç eşyası; kurulum "
+                    "ekranında seçtikleri eşya zaten envanterlerinde, tekrar ekleme) "
                     "eklemeyi UNUTMA — hepsi TEK bir state-update bloğunda birleşsin.\n\n"
                     + combined
+                    + "\n\n"
+                    + roster_note(state["world_state"])
+                    + "\n\n"
+                    + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
                 )
@@ -550,30 +999,66 @@ def post_message():
                     "göre davran: aşağıdaki her satır farklı bir karakterin AYNI ANDA "
                     "aldığı farklı bir aksiyon, her biri KENDİ zarına göre ayrı ayrı "
                     "sonuçlanır ama sahneyi birleşik/akıcı anlat.\n"
-                    "HATIRLATMA: yanıtının sonuna TEK bir state-update bloğu ekle, içine "
-                    "en azından tension VE narrator.plot_summary (2-4 cümlelik güncel "
-                    "özet) yaz — ikisi de her turda zorunlu.\n\n"
+                    + world_dice_note(world_entry)
+                    + "\n\nHATIRLATMA: yanıtının sonuna TEK bir state-update bloğu ekle. "
+                    "(1) tension ve (2) narrator.plot_summary (2-4 cümlelik güncel "
+                    "özet) her turda zorunlu.\n"
+                    + UPKEEP_REMINDER
+                    + "\n\n"
                     + combined
+                    + "\n\n"
+                    + roster_note(state["world_state"])
+                    + "\n\n"
+                    + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
                 )
         else:
             is_group = player == GROUP_LABEL
             if not is_group and player not in valid_players:
+                if player in (state["world_state"].get("characters") or {}):
+                    return jsonify(
+                        {"error": f"{player} öldü — bu karakterle oynanamaz. "
+                                  "Devam etmek için hikayedeki bir karakteri devralın."}
+                    ), 400
                 return jsonify({"error": f"player must be one of {valid_players + [GROUP_LABEL]}"}), 400
-            if is_group and in_chargen:
-                return jsonify({"error": "Ortak karar, karakter oluşturma bitmeden kullanılamaz."}), 400
+            # Ortak karar artık karakter oluşturma sırasında da kullanılabilir
+            # (eskiden burada 400 dönüyordu ve biri karakterini kurmayınca
+            # buton hiç açılmıyordu). Chargen sürerken zar atılmaz, model
+            # bunu grup aksiyonu olarak işler.
 
             if in_chargen:
                 roll, band = None, None
+                if is_group:
+                    chargen_head = (
+                        "KARAKTER OLUŞTURMA AŞAMASI — zar mekaniği uygulanmaz.\n"
+                        "Bu mesaj [GRUP - ORTAK KARAR] etiketiyle geliyor: tek bir "
+                        "karakterin değil, grubun ortak sözü/aksiyonu. Karakter "
+                        "oluşturma henüz bitmemiş olabilir; grubu birlikte ele al, "
+                        "hâlâ karakterini kurmamış olan varsa ona kısaca hatırlat.\n\n"
+                    )
+                else:
+                    chargen_head = (
+                        "KARAKTER OLUŞTURMA AŞAMASI — bu turda zar mekaniği uygulanmaz.\n"
+                        f"Bu mesajı yazan: {player}. Eğer bu mesajda {player} karakterini "
+                        "kuruyorsa (bir seçenek seçtiyse ya da kendi tarifini yazdıysa), "
+                        "yanıtının sonuna MUTLAKA ```state-update``` bloğu ekleyip "
+                        f"characters.{player} altına background, traits VE inventory_add "
+                        "(mesleğine/geçmişine uyan 2-3 mütevazı başlangıç eşyası; kurulum "
+                        "ekranında seçtiği eşya zaten envanterinde, onu tekrar ekleme) "
+                        "alanlarını yaz — bunu unutma, atlarsan karakter bilgisi kalıcı "
+                        "olarak kaybolur.\n\n"
+                    )
                 extra_system = (
-                    "KARAKTER OLUŞTURMA AŞAMASI — bu turda zar mekaniği uygulanmaz.\n"
-                    f"Bu mesajı yazan: {player}. Eğer bu mesajda {player} karakterini "
-                    "kuruyorsa (bir seçenek seçtiyse ya da kendi tarifini yazdıysa), "
-                    "yanıtının sonuna MUTLAKA ```state-update``` bloğu ekleyip "
-                    f'characters.{player} altına background/traits alanlarını yaz — '
-                    "bunu unutma, atlarsan karakter bilgisi kalıcı olarak kaybolur.\n\n"
-                    "GÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
+                    chargen_head
+                    + roster_note(state["world_state"])
+                    + "\n\n"
+                    + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + visible_timeline_note(read_log())
+                    + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
                 )
             else:
@@ -586,7 +1071,9 @@ def post_message():
                     if is_group else ""
                 )
                 extra_system = (
-                    f"ZAR: {roll} ({band})\n\n"
+                    f"ZAR (oyuncunun hamlesi): {roll} ({band})\n"
+                    + world_dice_note(world_entry)
+                    + "\n\n"
                     + group_note
                     + "HATIRLATMA (teknik, MUTLAKA uygula): yanıtının SONUNA bir "
                     "```state-update``` bloğu ekle ve içine EN AZINDAN şunları yaz — "
@@ -594,11 +1081,15 @@ def post_message():
                     'atlama: (1) bu sahnenin "tension" seviyesi (\"düşük\"/\"orta\"/'
                     '\"yüksek\"); (2) `narrator.plot_summary` — hikayenin şu anki '
                     "durumunun 2-4 cümlelik güncel özeti (bu SADECE anlatıcı ekranında "
-                    "görünür, oyunculara asla gösterilmez). "
-                    "Ayrıca gerçekten değişen başka alanlar varsa (karakter durumu/"
-                    "envanteri/ilişkisi, fraksiyon tavrı, gün, konum, yeni NPC, "
-                    "narrator.puzzles/upcoming_events vb.) aynı bloğa ekle.\n\n"
-                    "GÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
+                    "görünür, oyunculara asla gösterilmez).\n"
+                    + UPKEEP_REMINDER
+                    + "\n\n"
+                    + roster_note(state["world_state"])
+                    + "\n\n"
+                    + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + visible_timeline_note(read_log())
+                    + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
                 )
 
@@ -650,9 +1141,128 @@ def post_message():
         {
             "user_entries": user_entries,
             "gm_entry": gm_entry,
-            "world_state": state["world_state"],
+            "world_state": public_world_state(state["world_state"]),
         }
     )
+
+
+@app.route("/api/takeover", methods=["POST"])
+def takeover_character():
+    """Ölen bir oyuncu karakterinin oyuncusu, hikayede zaten var olan bir
+    NPC'yi devralıp oyuna onunla devam eder. NPC `npcs`'ten `characters`'a
+    taşınır (geçmişi/envanteri/ilişkileri korunarak), ölen karakter listede
+    ölü olarak kalır."""
+    body = request.get_json(force=True) or {}
+    dead_name = (body.get("dead_player") or "").strip()
+    new_name = (body.get("new_character") or "").strip()
+
+    with lock:
+        state = load_state()
+        if not state["started"]:
+            return jsonify({"error": "Oyun henüz başlamadı."}), 400
+
+        ws = state["world_state"]
+        characters = ws.setdefault("characters", {})
+        npcs = ws.setdefault("npcs", {})
+
+        dead_key = canonical_name(characters, dead_name)
+        if not dead_key:
+            return jsonify({"error": "Ölen karakter bulunamadı."}), 400
+        if characters[dead_key].get("alive", True):
+            return jsonify({"error": f"{dead_key} hâlâ hayatta — devralma yapılamaz."}), 400
+        if characters[dead_key].get("replaced_by"):
+            return jsonify(
+                {"error": f"{dead_key} için zaten bir karakter devralındı "
+                          f"({characters[dead_key]['replaced_by']})."}
+            ), 400
+
+        new_key = canonical_name(npcs, new_name)
+        if not new_key:
+            return jsonify({"error": "Devralınacak karakter hikayedeki NPC'ler arasında yok."}), 400
+        if not npcs[new_key].get("alive", True):
+            return jsonify({"error": f"{new_key} hayatta değil, devralınamaz."}), 400
+
+        entry = npcs.pop(new_key)
+        entry["alive"] = True
+        characters[new_key] = entry
+        characters[dead_key]["replaced_by"] = new_key
+
+        prompt = (
+            f"[KARAKTER DEVRALMA]\n{dead_key} öldü. O oyuncu bundan sonra hikayede "
+            f"zaten var olan {new_key} karakterini oynayacak."
+        )
+        extra_system = (
+            "KARAKTER DEVRALMA TURU — zar mekaniği YOK.\n"
+            f"{dead_key} kalıcı olarak öldü ve ölü kalacak; onun oyuncusu artık "
+            f"{new_key} karakterini oynuyor. {new_key} bu andan itibaren bir NPC "
+            "DEĞİL, bir OYUNCU KARAKTERİDİR — state-update'te `characters` altında "
+            "takip et ve doğrudan ona hitap et.\n"
+            f"Kısa (1-2 paragraf) bir geçiş sahnesi yaz: {new_key} sahnenin/grubun "
+            f"merkezine nasıl geçiyor, {dead_key}'in ölümü gruba nasıl yansıyor. "
+            f"Sonra {new_key}'e ne yapacağını sor.\n"
+            "Yanıtının sonuna TEK bir state-update bloğu ekle; içinde en azından "
+            "tension ve narrator.plot_summary olsun.\n\n"
+            + roster_note(ws)
+            + "\n\n"
+            + inventory_note(ws)
+            + "\n\n"
+            + visible_timeline_note(read_log())
+            + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
+            + json.dumps(ws, ensure_ascii=False)
+        )
+
+        try:
+            result = call_claude(prompt, extra_system, state["session_id"], load_scenario()["scenario_text"])
+        except subprocess.TimeoutExpired:
+            return jsonify({"error": "claude CLI zaman aşımına uğradı."}), 504
+        except RuntimeError as e:
+            return jsonify({"error": str(e)}), 502
+
+        if result.get("is_error"):
+            return jsonify({"error": f"claude hata döndürdü: {result.get('result')}"}), 502
+
+        state["session_id"] = result.get("session_id") or state["session_id"]
+
+        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        system_entry = {
+            "id": next_id(state),
+            "role": "system",
+            "text": f"💀 {dead_key} öldü. Oyuncusu artık {new_key} karakteriyle devam ediyor.",
+            "ts": ts,
+        }
+        append_log(system_entry)
+
+        raw_text = result.get("result", "")
+        gm_text, patches = extract_state_update(raw_text)
+        for patch in patches:
+            deep_merge_world_state(ws, patch)
+
+        gm_entry = {
+            "id": next_id(state),
+            "role": "assistant",
+            "kind": "takeover",
+            "text": gm_text,
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "tension": ws.get("tension"),
+        }
+        append_log(gm_entry)
+        save_state(state)
+
+    return jsonify({"system_entry": system_entry, "gm_entry": gm_entry, "world_state": public_world_state(ws)})
+
+
+@app.route("/api/finish-chargen", methods=["POST"])
+def finish_chargen():
+    """Karakter oluşturmayı elle bitirir. Biri hiç cevap vermezse oyun sonsuza
+    kadar chargen'de takılı kalıp zar mekaniği ve ortak karar açılmıyordu."""
+    with lock:
+        state = load_state()
+        if not state["started"]:
+            return jsonify({"error": "Oyun henüz başlamadı."}), 400
+        ws = state["world_state"]
+        ws.setdefault("flags", {})["chargen_done"] = True
+        save_state(state)
+    return jsonify({"ok": True, "world_state": public_world_state(ws)})
 
 
 @app.route("/api/reset", methods=["POST"])
@@ -683,7 +1293,16 @@ def gm_state():
     with lock:
         state = load_state()
         gm_log = read_gm_log()
-    return jsonify({"world_state": state["world_state"], "gm_log": gm_log, "started": state["started"]})
+        log = read_log()
+    return jsonify(
+        {
+            "world_state": state["world_state"],
+            "gm_log": gm_log,
+            # anlatıcı, oyuncuların turlarını da bu ekrandan canlı izleyebilsin
+            "log": log[-40:],
+            "started": state["started"],
+        }
+    )
 
 
 @app.route("/api/gm/note", methods=["POST"])
@@ -692,7 +1311,13 @@ def gm_note():
     if body.get("pin") != GM_PIN:
         return jsonify({"error": "Yanlış PIN."}), 403
     text = (body.get("text") or "").strip()
-    if not text:
+    # gizli   = yönlendirme; yanıt SADECE anlatıcı ekranında kalır
+    # sahne   = müdahale doğrudan oyuncu akışına sahne olarak yayınlanır
+    # surpriz = anlatıcı sürpriz bir gelişme uydurur ve sahne olarak yayınlar
+    mode = (body.get("mode") or "gizli").strip().lower()
+    if mode not in ("gizli", "sahne", "surpriz"):
+        mode = "gizli"
+    if not text and mode != "surpriz":
         return jsonify({"error": "Not metni boş olamaz."}), 400
 
     with lock:
@@ -700,17 +1325,75 @@ def gm_note():
         if not state["started"]:
             return jsonify({"error": "Oyun henüz başlamadı — önce ana ekrandan başlatın."}), 400
 
-        prompt = f"[ANLATICI NOTU - GİZLİ]\n{text}"
-        extra_system = (
-            "Bu mesaj oyunculardan DEĞİL, oyunu yöneten gerçek kişiden (GM) "
-            "geliyor ve oyunculara ASLA gösterilmeyecek. SCENARIO talimatlarındaki "
-            "'Anlatıcıdan (GM) gizli yönetmen notu gelirse' bölümüne göre davran: "
-            "notu otoriter kabul et, gerekiyorsa narrator alanlarını (plot_summary/"
-            "puzzles/upcoming_events) state-update ile güncelle, ve SADECE bu "
-            "anlatıcıya hitap eden kısa bir onay/yanıt yaz — bu yanıt oyunculara "
-            "gösterilmeyecek, endişelenme.\n\n"
-            "GÜNCEL DÜNYA DURUMU (JSON):\n" + json.dumps(state["world_state"], ensure_ascii=False)
+        ws = state["world_state"]
+        common_tail = (
+            roster_note(ws)
+            + "\n\n"
+            + inventory_note(ws)
+            + "\n\n"
+            + visible_timeline_note(read_log())
+            + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
+            + json.dumps(ws, ensure_ascii=False)
         )
+        publish = mode in ("sahne", "surpriz")
+
+        if mode == "gizli":
+            prompt = f"[ANLATICI NOTU - GİZLİ]\n{text}"
+            extra_system = (
+                "Bu mesaj oyunculardan DEĞİL, oyunu yöneten gerçek kişiden (GM) "
+                "geliyor ve oyunculara ASLA gösterilmeyecek. SCENARIO talimatlarındaki "
+                "'Anlatıcıdan (GM) gizli yönetmen notu gelirse' bölümüne göre davran: "
+                "notu otoriter kabul et, gerekiyorsa narrator alanlarını (plot_summary/"
+                "puzzles/upcoming_events) state-update ile güncelle, ve SADECE bu "
+                "anlatıcıya hitap eden kısa bir onay/yanıt yaz. Bu turda oyunculara "
+                "gidecek HİÇBİR sahne yazma — talimatı sonraki oyuncu turlarında "
+                "hayata geçir.\n\n"
+                + common_tail
+            )
+        elif mode == "sahne":
+            prompt = f"[ANLATICI MÜDAHALESİ - SAHNE OLARAK YAYINLA]\n{text}"
+            extra_system = (
+                "Bu talimat oyunu yöneten gerçek kişiden (GM) geliyor ve OTORİTERDİR. "
+                "Bu turda yazdığın metin DOĞRUDAN oyuncuların ekranına, hikayenin bir "
+                "parçası olarak düşecek.\n"
+                "- Sadece sahneyi yaz: anlatıcı sesiyle, 1-3 paragraf, atmosferik.\n"
+                "- GM'den, bu talimattan ya da perde arkasından ASLA söz etme; "
+                "oyuncular böyle bir müdahalenin varlığını bilmemeli.\n"
+                "- Bu bir oyuncu aksiyonunun sonucu değil, dünyanın kendi hamlesi: "
+                "zar mekaniği UYGULAMA.\n"
+                "- Sahnenin sonunda oyunculara net bir durum bırak ve ne yapacaklarını sor.\n"
+                "- Sahne SOMUT BİR PROBLEM üretsin ya da mevcut bir zorluğu ilerletsin: "
+                "ölçülebilir parametre (sayı/mesafe/süre), bedeli olan seçenekler. "
+                "'SAHNE YAPISI' bölümündeki **DURUM** + **SEÇENEKLER** bloğuyla bitir.\n"
+                "- Yanıtının sonuna TEK bir state-update bloğu ekle: tension, "
+                "narrator.plot_summary ve `challenges` (yeni zorluk ya da güncellenen "
+                "clock/progress).\n\n"
+                + common_tail
+            )
+        else:  # surpriz
+            steer = f"\nGM'in yönlendirmesi (bunu dikkate al): {text}" if text else ""
+            prompt = "[ANLATICI MÜDAHALESİ - SÜRPRİZ OLAY]" + steer
+            extra_system = (
+                "Oyunu yöneten kişi hikayeye SÜRPRİZ bir gelişme sokmanı istiyor. "
+                "Bu turda yazdığın metin DOĞRUDAN oyuncuların ekranına düşecek.\n"
+                "- Olayı SEN icat et, ama rastgele olmasın: mevcut dünya durumundan "
+                "beslen — narrator.upcoming_events'teki kendi planların, çözülmemiş "
+                "bulmacalar, fraksiyonların tavrı, karakter/NPC ilişkileri ve notları, "
+                "azalan kaynaklar, son sahnedeki gerilim.\n"
+                "- Beklenmedik ama GERİYE DÖNÜK TUTARLI olsun: oyuncular 'bunun izleri "
+                "zaten vardı' diyebilmeli. Ucuz deus ex machina yazma.\n"
+                "- Oyuncuların elini bağlama: sürpriz onlara karar verecekleri yeni bir "
+                "durum açsın, sonucu sen dayatma.\n"
+                "- GM'den ya da bu talimattan ASLA söz etme. Zar mekaniği UYGULAMA. "
+                "1-3 paragraf, sonunda oyunculara ne yapacaklarını sor.\n"
+                "- Sürpriz SOMUT BİR ZORLUĞA dönüşsün (ya da mevcut bir bulmacayı "
+                "ilerletsin): ölçülebilir parametre + bedeli olan seçenekler. "
+                "'SAHNE YAPISI' bölümündeki **DURUM** + **SEÇENEKLER** bloğuyla bitir.\n"
+                "- Yanıtının sonuna TEK bir state-update bloğu ekle: tension, "
+                "narrator.plot_summary, `challenges` ve gerekiyorsa "
+                "narrator.puzzles (progress/clues_found/next_step).\n\n"
+                + common_tail
+            )
 
         try:
             result = call_claude(prompt, extra_system, state["session_id"], load_scenario()["scenario_text"])
@@ -727,16 +1410,52 @@ def gm_note():
         raw_text = result.get("result", "")
         reply_text, patches = extract_state_update(raw_text)
         for patch in patches:
-            deep_merge_world_state(state["world_state"], patch)
+            deep_merge_world_state(ws, patch)
 
-        note_entry = {"id": None, "role": "gm_note", "text": text, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
-        reply_entry = {"id": None, "role": "gm_reply", "text": reply_text, "ts": time.strftime("%Y-%m-%d %H:%M:%S")}
+        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        note_entry = {
+            "id": None,
+            "role": "gm_note",
+            "mode": mode,
+            "text": text or "(sürpriz olay üret — konu serbest)",
+            "ts": ts,
+        }
         append_gm_log(note_entry)
+
+        gm_entry = None
+        if publish:
+            # Sahne oyuncu akışına düşer; anlatıcı ekranında kaydı da kalır.
+            gm_entry = {
+                "id": next_id(state),
+                "role": "assistant",
+                "kind": "gm_scene",
+                "text": reply_text,
+                "ts": ts,
+                "tension": ws.get("tension"),
+            }
+            append_log(gm_entry)
+
+        reply_entry = {
+            "id": None,
+            "role": "gm_reply",
+            "mode": mode,
+            "published": publish,
+            "text": ("✅ Sahne oyuncu akışına yayınlandı:\n\n" + reply_text) if publish else reply_text,
+            "ts": ts,
+        }
         append_gm_log(reply_entry)
 
         save_state(state)
 
-    return jsonify({"note_entry": note_entry, "reply_entry": reply_entry, "world_state": state["world_state"]})
+    return jsonify(
+        {
+            "note_entry": note_entry,
+            "reply_entry": reply_entry,
+            "gm_entry": gm_entry,
+            "published": publish,
+            "world_state": ws,
+        }
+    )
 
 
 # ------------------------------------------------------------- senaryo dışa/içe
@@ -759,6 +1478,7 @@ def import_scenario():
         "initial_world_state": body["initial_world_state"],
         "default_players": body.get("default_players") or DEFAULT_PLAYERS,
         "opening_hooks": body.get("opening_hooks") or OPENING_HOOKS,
+        "start_item_suggestions": body.get("start_item_suggestions") or START_ITEM_SUGGESTIONS,
     }
     with lock:
         SCENARIO_OVERRIDE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -833,7 +1553,7 @@ def import_game():
     return jsonify(
         {
             "ok": True,
-            "world_state": base["world_state"],
+            "world_state": public_world_state(base["world_state"]),
             "started": base["started"],
             "characters_confirmed": base["characters_confirmed"],
         }

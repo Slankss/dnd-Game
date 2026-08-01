@@ -81,6 +81,139 @@ kullanması** — iyi ilişkisi olan biri yardımsever, kötü ilişkisi olan bi
 NPC'ye tıklayınca açılan popup'ta geçmiş, özellikler, sağlık, konum,
 envanter ve ilişkiler görülebilir.
 
+## Ölüm ve karakter devralma
+
+Bir oyuncu karakteri hikayede kalıcı olarak ölürse anlatıcı onu
+`alive: false` olarak işaretler. O andan itibaren:
+
+- Karakter kenar çubuğunda **💀 ÖLÜ** etiketiyle (üstü çizili, soluk) görünür
+  ve "Kimsin?" seçicisinden kalkar — o karakter adına artık mesaj gönderilemez.
+- Alt kısımda kırmızı bir bant çıkar: **"Karakter Devral"**. Butona basınca
+  hikayede o ana kadar tanışılmış, **hayatta olan NPC'lerin** listesi açılır
+  (geçmişi, özellikleri, sağlığı, konumuyla birlikte).
+- Seçilen NPC oyuncu karakterine dönüşür — geçmişi, envanteri ve ilişkileri
+  aynen korunarak `npcs`'ten `characters`'a taşınır — ve anlatıcı kısa bir
+  geçiş sahnesi yazar (zar atılmaz). Ölen karakter listede ölü olarak kalır,
+  altında "🔁 yerine \<isim\> oynanıyor" yazar.
+
+Devralınabilecek bir NPC henüz yoksa (grup kimseyle tanışmamışsa) popup bunu
+söyler; anlatıcı hikayede yeni birini sahneye soktuğunda liste dolar.
+
+## Oyuncu kadrosu kilidi
+
+Oyuncu karakterlerinin listesi kurulum ekranında **bir kez** belirlenir ve
+anlatıcı bu listeyi genişletemez:
+
+- Her turda modele kadro ("SABİT LİSTE") + ölmüş karakterler ayrıca
+  hatırlatılır, ve senaryo metninde isim uydurma/isim değiştirme açıkça
+  yasaklanmıştır.
+- Buna rağmen model `characters` altına tanımadık bir isim yazarsa sunucu o
+  kaydı sessizce `npcs`'e taşır; `npcs` altına yazılmış gerçek bir oyuncu
+  karakteri de `characters`'a geri alınır. Aynı kişinin farklı büyük/küçük
+  harfle ("celil" / "Celil") ikinci bir kayıt açması da engellenir.
+- Devralma (yukarıya bak) bu kilidin tek istisnasıdır — kadroya yeni isim
+  sadece bu yolla, oyuncunun onayıyla girer.
+
+## Oyun yapısı: problem-çözüm, roman değil
+
+Anlatıcı "kitap okur gibi" ilerlemesin diye üç mekanizma var:
+
+**1. Aktif zorluklar (`challenges`)** — oyunun omurgası. Her an sahnede en az
+bir somut, ölçülebilir, süreli problem olmalı: *"Kuzey tünelinden ~40 kişilik
+sürü, 3 tur içinde kapıda; barikat %20, elde 23 fişek."* Her zorluğun
+`clock` (kalan süre), `progress` (ilerleme), `severity`, `consequence`
+(çözülmezse ne olur) alanları var ve **her turda güncelleniyor**. Bir zorluk
+tek zarla çözülmez — 2-5 tur süren bir süreç. Kapanınca somut ödül ya da
+`consequence`'ın gerçekten uygulanması. Oyuncu arayüzünde "Aktif Zorluklar"
+paneli, anlatıcı ekranında ayrıca `gm_notes` ile.
+
+**2. Sahne yapısı** — her normal tur 250-450 kelime ve dört şeyi içermek
+zorunda: SONUÇ (hamle ne yaptı, zar bandına bağlı, sayı/mesafe/süre ile),
+BEDEL/KAZANÇ (fiilen ne değişti), DURUM (zorluğun ölçülebilir hali), KARAR.
+Yanıt şu blokla biter:
+
+```
+**DURUM:** <aktif tehdit + somut parametre>
+**SEÇENEKLER:**
+A) <eylem> — bedeli/riski: <somut>
+B) ...   C) ...   Ç) Kendi planını yaz.
+```
+
+Seçenekler gerçek takaslar sunmalı (hız↔güvenlik, kaynak↔zaman,
+gizlilik↔güç), aynı şeyin süslü hali değil.
+
+**3. Bulmacalar (`narrator.puzzles`)** — çözülecek gizemler. `progress`
+(0-100), `clues_found`, `next_step`, `solution` alanlarıyla takip edilir.
+İlerleme sadece oyuncular somut bir şey yaptığında ve zar izin verdiğinde
+artar; en az 3-4 turluk süreç. Anlatıcı ekranında ilerleme çubuğu +
+gerçek cevap görünür — oyunculara asla.
+
+## Dünya zarı (sadece /secrets görür)
+
+Her normal turda oyuncunun zarından **ayrı** ikinci bir d100 atılır. Oyuncu
+zarı hamlenin ne kadar iyi gittiğini, dünya zarı ise dünyanın o turda ne
+yaptığını belirler:
+
+| Bant | Ne olur |
+|---|---|
+| 1-10 **Lehte Kırılma** | Dünya oyuncular lehine döner — beklenmedik kaynak, gecikme, dağılan tehdit |
+| 11-35 **Durgun** | Tehditler ilerlemez, nefes payı |
+| 36-65 **Sızıntı** | Aktif zorluk bir adım ilerler, küçük komplikasyon |
+| 66-88 **Baskı** | Zorluk belirgin ilerler (süre kısalır, sayı artar) ya da yeni zorluk doğar |
+| 89-100 **Kriz** | Yeni büyük tehdit patlar ya da mevcut zorluk en kötü aşamasına sıçrar |
+
+Böylece mükemmel bir hamle sert bir dünyayla, beceriksiz bir hamle sakin bir
+dünyayla çakışabilir. Zar `/secrets` ekranında son 10 atışlık geçmişiyle
+görünür; oyunculara **hiç** gösterilmez ve anlatıcı metninde ondan söz etmez.
+
+> **Not:** `narrator` bölümü (özet, bulmaca çözümleri, planlanan olaylar)
+> eskiden `/api/state` ile her oyuncunun tarayıcısına gidiyordu. Artık
+> oyuncuya giden tüm yanıtlar `narrator`, `world_roll`, `world_roll_history`
+> ve zorlukların `gm_notes` alanı ayıklanarak dönüyor.
+
+## Anlatıcı müdahalesi — üç mod
+
+`/secrets` ekranındaki "Senaryoya Müdahale" panelinde üç mod var. Modu
+seçmek, müdahalenin oyunculara görünüp görünmeyeceğini belirler — böylece
+iki ayrı sohbet oluşmaz, her şey tek hikayede kalır:
+
+| Mod | Ne olur |
+|---|---|
+| 🔒 **Gizli yönlendirme** | Sadece anlatıcı ekranında kalır. Anlatıcı o turda oyunculara hiçbir şey yazmaz, talimatı sonraki turlarda uygular. |
+| 🎭 **Sahne olarak yayınla** | Yazdığınız olay anında oyuncuların akışına sahne olarak düşer. Anlatıcı sizden ya da müdahaleden hiç söz etmez, zar atılmaz. |
+| 🎲 **Sürpriz olay üret** | Olayı anlatıcı kendisi icat eder — kendi `upcoming_events` planları, çözülmemiş bulmacalar, fraksiyon tavırları, ilişkiler ve azalan kaynaklardan besleneni seçer — ve oyunculara yayınlar. Metin kutusu boş bırakılabilir; yazarsanız yön verirsiniz. |
+
+Her turda modele "oyuncuların ekranında görünen son akış" ayrıca düz metin
+olarak veriliyor ve iki kanalın farkı açıkça anlatılıyor — böylece anlatıcı
+hikayeyi, oyuncuların hiç görmediği bir GM onayından devam ettirmiyor.
+
+## Uydurma eşya koruması
+
+Anlatıcıya her turda "ENVANTER GERÇEĞİ" bloğu gidiyor: hangi karakterin
+üzerinde fiilen ne olduğu düz metin olarak listeleniyor. Kural net —
+bir karakter yalnızca kendi envanterindeki eşyayı, grup stoğundan sahnede
+fiilen aldığı bir şeyi ya da ortamda gerçekten bulunan bir nesneyi
+kullanabilir. Oyuncu "bıçağımı çekiyorum" yazsa bile bıçağı yoksa bu
+gerçekleşmez; anlatıcı kuru bir ret yerine sahnede gerçekçi biçimde düzeltir.
+Aynı kural mühimmat/ilaç gibi grup kaynakları için de geçerli.
+
+## Ham JSON sızıntısı koruması
+
+Modelin `state-update` bloğu ne oyuncu ekranına ne anlatıcı ekranına
+düşmemeli. Temizleme üç kademeli: (1) etiketi ne olursa olsun içinde JSON
+nesnesi olan tüm ``` blokları, (2) fence'i unutulmuş ham JSON nesneleri
+(süslü parantez eşleştiren tarayıcı; sadece gerçekten JSON olan ve bilinen
+durum alanı içeren bloklar silinir, normal metne dokunulmaz), (3) boşta
+kalan fence kalıntıları. Bozuk JSON parse edilemese bile metinden silinir.
+
+## Karakter oluşturmayı bitirme
+
+Biri hiç cevap vermezse oyun sonsuza kadar karakter oluşturma aşamasında
+takılı kalıyordu (zar atılmıyor, ortak karar açılmıyordu). Artık alt kısımda
+**"✔ Oluşturmayı bitir, oyuna geç"** bandı var — basınca `flags.chargen_done`
+işaretlenir ve normal oyun mekaniği açılır. Ortak Karar butonu ise oyun
+başladığı andan itibaren kullanılabilir.
+
 ## Senaryo / oyun dışa-içe aktarma
 
 Üst çubuktaki **⚙** menüsünden:
