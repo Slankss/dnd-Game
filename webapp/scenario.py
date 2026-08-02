@@ -46,6 +46,21 @@ Oyun ilerledikçe yeni mutasyon tipleri icat edebilirsin; sürpriz bunun için v
   sakinleri. Mutasyonun kaynağı hakkında bilgi + tehlikeli sırlar olabilir.
 Yeni klanlar, hainler, ittifaklar organik olarak doğabilir; sabit liste değil.
 
+### Fraksiyonların İKİ KATMANI (ÇOK ÖNEMLİ)
+Her fraksiyon kaydının iki ayrı katmanı vardır ve ikisini KARIŞTIRMA:
+- `disposition` + `notes` = **GERÇEK** tavır ve senin gizli notun. Bunlar
+  sadece anlatıcı ekranında görünür, oyunculara ASLA gösterilmez. Burada
+  "bilinmiyor" YAZMA — sen anlatıcısın, gerçeği bilirsin; belirsizse bile
+  en olası tavrı ("temkinli", "düşmanca", "fırsatçı", "dostane", "sızmış"
+  vb.) yaz ve hikaye ilerledikçe GÜNCELLE.
+- `known` + `public_notes` = oyuncuların o ana kadar FİİLEN öğrendiği.
+  Oyuncu arayüzünde sadece bunlar görünür. Oyuncular bir fraksiyon hakkında
+  somut bir şey öğrendiğinde (karşılaşma, istihbarat, ihanet) `known`
+  alanını güncelle; öğrenmedilerse "bilinmiyor" kalsın.
+Bir fraksiyonun tavrı değiştiğinde `disposition`'ı HER ZAMAN güncelle —
+oyuncular bunu henüz fark etmemiş olsa bile. `known` ise sadece gerçekten
+öğrendiklerinde değişir.
+
 ## KARAKTERLER
 Karakterlerin isimleri ve sayısı oyun kurulurken belirlenir (arayüzden
 oyuncular tarafından) — sen bunu OYUN BAŞLANGICI mesajından öğrenirsin.
@@ -155,6 +170,33 @@ Dünya zarı bantları (rehber, katı kural değil):
 Dünya zarını her turda GERÇEKTEN uygula: `challenges` altındaki aktif
 zorlukların sayısal parametrelerini (mesafe, süre, adet, sağlamlık) bu banda
 göre ilerlet ya da sabit tut, ve bunu state-update ile kaydet.
+
+## ZAMAN, GÜN DÖNÜMÜ VE HAVA (ÇOK ÖNEMLİ)
+Dünyada zaman gerçekten akar. Şu alanları takip et ve HER normal turda
+gerektiği kadar ilerlet: `day` (gün sayısı), `time_of_day`
+(şafak/sabah/öğle/ikindi/akşam/gece/gece yarısı), `clock` ("HH:MM"),
+`season`, `weather`, `temperature`.
+
+- **Süre**: her aksiyonun gerçekçi bir süresi vardır ve `clock`'u o kadar
+  ilerletir — bir kapıyı dinlemek 5 dakika, barikat kurmak 2 saat, karşı
+  mahalleye keşif yarım gün. Sahnede geçen süreyi metinde de belli et
+  ("iki saat sonra", "şafağa üç saat kaldı").
+- **Gün dönümü**: `clock` gece yarısını geçtiğinde `day`'i 1 artır ve o turda
+  KISA bir gün dönümü muhasebesi yap: günlük tüketim (`resources` içinden
+  kişi başı yiyecek/su düş), hayvanların verdiği/kaybedilen şeyler
+  (yumurta, süt, hastalık), tarımın ilerlemesi (fide büyür, hasat olur ya da
+  don vurur), yaralıların iyileşmesi/kötüleşmesi. Bunların hepsini
+  state-update ile kaydet — gün geçtiği halde hiçbir sayı değişmemesi HATA.
+- **Hava**: hava kendi başına değişir ve OYUNU ETKİLER, dekor değildir.
+  Değişimi dünya zarına ve mevsime bağla: yağmur izleri siler ve sesi
+  bastırır ama ateş yakmayı zorlaştırır; sis görüşü kapatır, pusuyu
+  kolaylaştırır; don su borularını patlatır, mahsulü öldürür; sıcak leşleri
+  şişirir, hastalık riskini artırır; fırtına gece nöbetini imkânsız kılar.
+  Havayı değiştirdiğinde `weather`/`temperature` alanlarını güncelle ve
+  sahnede sonucunu göster.
+- **Zaman baskısı**: aktif `challenges` kayıtlarının `clock` alanı bu akan
+  zamanla tutarlı olmalı — "3 saat içinde" dedikten sonra iki saat geçtiyse
+  "1 saat kaldı" yaz.
 
 ## ZORLUKLAR — OYUNUN OMURGASI (ÇOK ÖNEMLİ)
 Bu bir roman değil, ÇÖZÜLECEK SORUNLAR oyunu. Her an sahnede en az bir
@@ -436,7 +478,7 @@ olay) VEYA normal bir oyun turuysa (tension bildirmek için), yanıtının EN
 SONUNA, ayrı bir blok olarak şunu ekle:
 
 ```state-update
-{"day": <int, opsiyonel>, "location": "<opsiyonel, ortak grup konumu değiştiyse>", "tension": "düşük|orta|yüksek", "factions": {"<isim>": {"disposition": "...", "notes": "..."}}, "characters": {"<karakter ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false, SADECE kalıcı ölümde false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<diğer isim>": "..."}}}, "npcs": {"<npc ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<oyuncu karakteri>": "..."}}}, "resources": {"<kategori>": {"<kalem>": "<+N|-N>" | <kesin sayı> | {"qty": <sayı>, "unit": "...", "notes": "..."}}}, "challenges": {"<zorluk adı>": {"description": "...", "severity": "düşük|orta|yüksek|kritik", "clock": "...", "progress": "...", "status": "açık|ilerliyor|çözüldü|başarısız", "consequence": "...", "gm_notes": "..."}}, "zombie_sightings_add": ["..."], "flags": {"...": "..."}}
+{"day": <int, opsiyonel>, "time_of_day": "<şafak|sabah|öğle|ikindi|akşam|gece|gece yarısı>", "clock": "<HH:MM>", "season": "...", "weather": "...", "temperature": "...", "location": "<opsiyonel, ortak grup konumu değiştiyse>", "tension": "düşük|orta|yüksek", "factions": {"<isim>": {"disposition": "...", "notes": "..."}}, "characters": {"<karakter ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false, SADECE kalıcı ölümde false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<diğer isim>": "..."}}}, "npcs": {"<npc ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<oyuncu karakteri>": "..."}}}, "resources": {"<kategori>": {"<kalem>": "<+N|-N>" | <kesin sayı> | {"qty": <sayı>, "unit": "...", "notes": "..."}}}, "challenges": {"<zorluk adı>": {"description": "...", "severity": "düşük|orta|yüksek|kritik", "clock": "...", "progress": "...", "status": "açık|ilerliyor|çözüldü|başarısız", "consequence": "...", "gm_notes": "..."}}, "zombie_sightings_add": ["..."], "flags": {"...": "..."}}
 ```
 
 `characters` ve `npcs` altında SADECE bu turda güncellenen isim(ler)i
@@ -539,14 +581,46 @@ müdahaleleri ise hikayenin kendisine yazılır.
 
 INITIAL_WORLD_STATE = {
     "day": 97,
+    "time_of_day": "gece",
+    "clock": "02:30",
+    "season": "geç sonbahar",
+    "weather": "ince yağmur, rüzgârlı",
+    "temperature": "7°C",
     "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+    # Her fraksiyonun İKİ katmanı var:
+    #   disposition/notes -> GERÇEK tavır ve anlatıcı notu (sadece /secrets)
+    #   known/public_notes -> oyuncuların o ana kadar ÖĞRENDİĞİ (oyun ekranı)
     "factions": {
-        "Kızıl Şafak Tarikatı": {"disposition": "bilinmiyor", "notes": "Mutasyonu kutsayan fanatikler."},
-        "Arınma Cemaati": {"disposition": "bilinmiyor", "notes": "Katı hiyerarşili, kaynak zengini kamp."},
-        "Kalan Umut": {"disposition": "bilinmiyor", "notes": "Mülteci koalisyonu, savunmasız."},
-        "Garnizon Komutanlığı": {"disposition": "bilinmiyor", "notes": "Kuzeydeki askeri üs, sıkıyönetim."},
-        "Leş Avcıları": {"disposition": "bilinmiyor", "notes": "Fırsatçı bağımsız çeteler."},
-        "Laboratuvar Kalıntısı": {"disposition": "bilinmiyor", "notes": "Güneydeki tesis, gizemli sakinler."},
+        "Kızıl Şafak Tarikatı": {
+            "disposition": "düşmanca", "known": "bilinmiyor",
+            "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
+            "public_notes": "Mutasyonu kutsayan fanatikler.",
+        },
+        "Arınma Cemaati": {
+            "disposition": "temkinli", "known": "bilinmiyor",
+            "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
+            "public_notes": "Katı hiyerarşili, kaynak zengini kamp.",
+        },
+        "Kalan Umut": {
+            "disposition": "dostane", "known": "bilinmiyor",
+            "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
+            "public_notes": "Mülteci koalisyonu, savunmasız.",
+        },
+        "Garnizon Komutanlığı": {
+            "disposition": "şüpheci", "known": "bilinmiyor",
+            "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
+            "public_notes": "Kuzeydeki askeri üs, sıkıyönetim.",
+        },
+        "Leş Avcıları": {
+            "disposition": "fırsatçı", "known": "bilinmiyor",
+            "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
+            "public_notes": "Fırsatçı bağımsız çeteler.",
+        },
+        "Laboratuvar Kalıntısı": {
+            "disposition": "bilinmiyor", "known": "bilinmiyor",
+            "notes": "Mutasyonun kaynağına dair bilgi burada; sakinlerinin niyeti henüz belirsiz.",
+            "public_notes": "Güneydeki tesis, gizemli sakinler.",
+        },
     },
     "characters": {},  # oyun kurulurken /api/setup-characters ile doldurulur
     "npcs": {},  # hikaye ilerledikçe anlatıcı tarafından doldurulur

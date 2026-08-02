@@ -179,6 +179,19 @@
   .char-card, .faction-row { margin-bottom: 10px; padding: 8px 10px; background: var(--panel-2); border-radius: 6px; }
   .char-card { cursor: pointer; transition: background 0.15s; }
   .char-card:hover { background: #262b2b; }
+  @keyframes cardFlash {
+    0%   { background: #33402f; border-color: #6f9a5e; }
+    100% { background: var(--panel-2); border-color: transparent; }
+  }
+  .char-card.changed { animation: cardFlash 1.8s ease-out; }
+  .char-card .inv-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .char-card .inv-chip {
+    background: #23292a; border: 1px solid var(--border); border-radius: 9px;
+    padding: 1px 7px; font-size: 0.68rem; color: var(--text);
+  }
+  .char-card .hp-ok { color: #7fb08a; }
+  .char-card .hp-warn { color: #c9a227; }
+  .char-card .hp-bad { color: var(--red-bright); }
   .char-card.dead { opacity: 0.55; }
   .char-card.dead .name { text-decoration: line-through; }
   .char-card .name { font-weight: bold; font-size: 0.9rem; }
@@ -363,8 +376,13 @@
       <div id="recent"></div>
       <h2>Karakterler</h2>
       <div id="characters"></div>
-      <h2>Grup Kaynakları</h2>
-      <div id="resources"></div>
+      <h2 id="resources-head" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span>📦 Grup Kaynakları</span><span id="resources-caret">▸</span>
+      </h2>
+      <div class="hidden" id="resources"></div>
+      <div id="resources-hint" style="color:var(--text-dim); font-size:0.72rem; margin-top:-4px;">
+        Sayım istemek için "envanter sayımı yapalım" yazın ya da başlığa tıklayın.
+      </div>
       <h2>Fraksiyonlar</h2>
       <div id="factions"></div>
       <h2>Görülen Zombi Türleri</h2>
@@ -457,6 +475,17 @@ const charactersEl = document.getElementById('characters');
 const factionsEl = document.getElementById('factions');
 const resourcesEl = document.getElementById('resources');
 const challengesEl = document.getElementById('challenges');
+const resourcesHead = document.getElementById('resources-head');
+const resourcesCaret = document.getElementById('resources-caret');
+const resourcesHint = document.getElementById('resources-hint');
+let lastResourceSig = null;
+
+function setResourcesOpen(open) {
+  resourcesEl.classList.toggle('hidden', !open);
+  resourcesHint.classList.toggle('hidden', open);
+  resourcesCaret.textContent = open ? '▾' : '▸';
+}
+resourcesHead.addEventListener('click', () => setResourcesOpen(resourcesEl.classList.contains('hidden')));
 const startResourcesEl = document.getElementById('start-resources');
 const zombiesEl = document.getElementById('zombies');
 const playerToggle = document.getElementById('player-toggle');
@@ -859,23 +888,45 @@ function renderResources(container, resources) {
   }
 }
 
+// Kartın o anki içeriğinin imzası — değiştiğinde kart kısa süre yanıp söner,
+// böylece oyuncu hangi karakterin durumunun güncellendiğini anında görür.
+const cardSignatures = new Map();
+
+function healthClass(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('öldü')) return 'hp-bad';
+  if (s.includes('ağır') || s.includes('enfekte') || s.includes('kritik')) return 'hp-bad';
+  if (s.includes('yaralı') || s.includes('bitkin') || s.includes('hasta')) return 'hp-warn';
+  return 'hp-ok';
+}
+
 function renderCharCard(container, name, info, isNpc) {
   const card = document.createElement('div');
   const isDead = info.alive === false;
   card.className = 'char-card' + (isDead ? ' dead' : '');
   card.style.borderLeft = '3px solid ' + (isNpc ? 'var(--text-dim)' : colorFor(name, roster));
-  const invCount = (info.inventory || []).length;
+  const inv = info.inventory || [];
   const relCount = Object.keys(info.relationships || {}).length;
   const tags = (isNpc ? ' <span class="tag" style="font-size:0.65rem;">NPC</span>' : '')
     + (isDead ? ' <span class="tag" style="font-size:0.65rem; color:var(--red-bright);">💀 ÖLÜ</span>' : '');
   const replaced = info.replaced_by
     ? `<div class="field">🔁 yerine ${info.replaced_by} oynanıyor</div>` : '';
+  const chips = inv.length
+    ? `<div class="inv-chips">${inv.map(i => `<span class="inv-chip">${i}</span>`).join('')}</div>`
+    : '<div class="field">🎒 envanter boş</div>';
   card.innerHTML = `<div class="name">${name}${tags}</div>
     <div class="field">📜 ${info.background || 'karakter henüz oluşturulmadı'}</div>
     <div class="field">✨ ${info.traits || '-'}</div>
-    <div class="field">❤️ ${info.status || '-'}</div>
+    <div class="field ${healthClass(info.status)}">❤️ ${info.status || '-'}</div>
     <div class="field">📍 ${info.location || '-'}</div>
-    <div class="field">🎒 ${invCount} eşya · 🤝 ${relCount} ilişki</div>${replaced}`;
+    ${chips}
+    <div class="field">🤝 ${relCount} ilişki</div>${replaced}`;
+
+  const sig = JSON.stringify([info.status, info.location, info.background, info.traits,
+                              inv, info.relationships, info.alive, info.replaced_by]);
+  const prev = cardSignatures.get(name);
+  if (prev !== undefined && prev !== sig) card.classList.add('changed');
+  cardSignatures.set(name, sig);
   card.addEventListener('click', () => openCharModal(name));
   container.appendChild(card);
 }
@@ -983,8 +1034,16 @@ takeoverConfirm.addEventListener('click', async () => {
   }
 });
 
+// Başlıktaki dünya saati: "Gün 97 · 02:30 gece · ince yağmur, 7°C · konum"
+// Boş alanlar sessizce atlanır (eski kayıtlarda zaman/hava olmayabilir).
+function worldClockLabel(ws) {
+  const time = [ws.clock, ws.time_of_day].filter(Boolean).join(' ');
+  const sky = [ws.weather, ws.temperature].filter(Boolean).join(', ');
+  return ['Gün ' + (ws.day ?? '—'), time, sky, ws.location].filter(Boolean).join(' · ');
+}
+
 function renderWorldState(ws) {
-  dayLabel.textContent = 'Gün ' + (ws.day ?? '—') + (ws.location ? ' · ' + ws.location : '');
+  dayLabel.textContent = worldClockLabel(ws);
 
   roster = Object.keys(ws.characters || {});
   aliveRoster = roster.filter(n => (ws.characters[n] || {}).alive !== false);
@@ -1009,7 +1068,14 @@ function renderWorldState(ws) {
   }
 
   renderChallenges(challengesEl, ws.challenges);
+
+  // Kaynak paneli normalde kapalı; stok gerçekten değiştiğinde ya da sayım
+  // istendiğinde kendiliğinden açılır (sürekli açık stok tablosu sahnenin
+  // içinde doğal durmuyordu).
+  const resSig = JSON.stringify(ws.resources || {});
   renderResources(resourcesEl, ws.resources);
+  if (lastResourceSig !== null && lastResourceSig !== resSig) setResourcesOpen(true);
+  lastResourceSig = resSig;
 
   factionsEl.innerHTML = '';
   for (const [name, info] of Object.entries(ws.factions || {})) {
@@ -1043,10 +1109,17 @@ function ingestLog(log) {
 }
 
 // ---------------- polling / bootstrap ----------------
+let stateVersion = null;
+let polling = false;
 async function poll() {
+  if (polling) return;           // yavaş bir istek varken üst üste binmesin
+  polling = true;
   try {
-    const res = await fetch('/api/state');
+    const url = stateVersion === null ? '/api/state' : '/api/state?since=' + stateVersion;
+    const res = await fetch(url);
     const data = await res.json();
+    if (data.changed === false) { stateVersion = data.version; return; }
+    if (typeof data.version === 'number') stateVersion = data.version;
     roster = Object.keys(data.world_state.characters || {});
     groupLabel = data.group_label || groupLabel;
     groupDisplayName = data.group_display_name || groupDisplayName;
@@ -1069,6 +1142,8 @@ async function poll() {
     renderWorldState(data.world_state);
   } catch (e) {
     statusEl.textContent = 'Sunucuya bağlanılamadı.';
+  } finally {
+    polling = false;
   }
 }
 
@@ -1089,8 +1164,10 @@ async function send() {
     if (data.error) {
       statusEl.textContent = 'Hata: ' + data.error;
     } else {
+      if (typeof data.version === 'number') stateVersion = data.version;
       ingestLog([...data.user_entries, data.gm_entry]);
       renderWorldState(data.world_state);
+      if (data.inventory_report) setResourcesOpen(true);
       textInput.value = '';
       statusEl.textContent = '';
     }
@@ -1470,7 +1547,7 @@ fileImportGame.addEventListener('change', async () => {
 });
 
 poll();
-setInterval(poll, 2500);
+setInterval(poll, 1200);   // sürüm kontrolü sayesinde ucuz — değişmediyse gövde yok
 </script>
 </body>
 </html>

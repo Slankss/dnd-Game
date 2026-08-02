@@ -143,6 +143,10 @@ def load_scenario():
 
 # ---------------------------------------------------------------- state.json
 
+# Dünya saati/takvimi/havası — state-update ile güncellenen, hepsi metin alan.
+TIME_FIELDS = ("time_of_day", "clock", "season", "weather", "temperature")
+
+
 def default_state():
     scenario = load_scenario()
     return {
@@ -166,10 +170,22 @@ def load_state():
     ws = state.setdefault("world_state", {})
     if not ws.get("resources"):
         ws["resources"] = json.loads(json.dumps(load_scenario()["initial_world_state"].get("resources", {})))
+    # Aynı şekilde zaman/hava alanları da sonradan eklendi — devam eden oyunda
+    # eksikse senaryonun başlangıç değeriyle doldur, yoksa arayüzde ve
+    # prompt'ta boş görünüp anlatıcı saati hiç ilerletmiyor.
+    missing = [f for f in TIME_FIELDS if not ws.get(f)]
+    if missing:
+        initial = load_scenario()["initial_world_state"]
+        for field in missing:
+            if initial.get(field):
+                ws[field] = initial[field]
     return state
 
 
 def save_state(state):
+    # Sürüm sayacı: istemciler /api/state?since=<v> ile yoklayıp değişmediyse
+    # gövdesiz cevap alır — böylece 1 saniyelik hızlı polling ucuz kalır.
+    state["version"] = int(state.get("version", 0)) + 1
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
@@ -391,6 +407,12 @@ UPKEEP_REMINDER = (
     "öğrendiyse `narrator.puzzles.<ad>` altında `progress` (0-100), "
     "`clues_found` ve `next_step` alanlarını güncelle — anlatıcı ekranı "
     "ilerlemeyi buradan izliyor.\n"
+    "(7) ZAMAN VE HAVA (her tur, atlama): bu turdaki aksiyonların gerçekçi "
+    "süresi kadar `clock`'u ilerlet, gerekirse `time_of_day`'i değiştir. "
+    "Gece yarısı geçildiyse `day`'i 1 artır ve gün dönümü muhasebesini "
+    "(tüketim, hayvan/tarım, iyileşme) `resources` ile birlikte işle. "
+    "Hava değiştiyse `weather`/`temperature` alanlarını güncelle ve etkisini "
+    "sahnede göster.\n"
     "Ayrıca gerçekten değişen başka alanlar varsa (karakter durumu/ilişkisi, "
     "fraksiyon tavrı, gün, konum, yeni NPC, narrator.upcoming_events vb.) "
     "aynı bloğa ekle.\n"
@@ -455,6 +477,28 @@ def inventory_note(world_state: dict) -> str:
     return "\n".join(lines)
 
 
+# "envanter sayımı yapalım", "depoda ne kadar mermi var" gibi taleplerde
+# arayüzdeki Grup Kaynakları paneli açılır ve anlatıcıdan kalem kalem döküm
+# istenir. Panel bunun dışında kapalı durur — sürekli açık bir stok tablosu
+# sahnenin içinde doğal durmuyordu.
+INVENTORY_INTENT_RE = re.compile(
+    r"(envanter|stok\b|sayım|sayim|depoyu\s*(?:say|kontrol)|"
+    r"kaç\s+(?:tane\s+)?(?:mermi|fişek|tavuk|keçi|konserve|litre|kutu)|"
+    r"ne\s+kadar\s+(?:yiyecek|su|mermi|fişek|ilaç|yakıt|erzak|mahsul)|"
+    r"kaynak(?:lar)?\s*(?:durum|listesi|sayım|kontrol))",
+    re.IGNORECASE,
+)
+
+INVENTORY_REPORT_INSTRUCTION = (
+    "ENVANTER SAYIMI TALEBİ: bu turda oyuncular grubun stoğunu saymak/kontrol "
+    "etmek istiyor. Sahneyi normal kur, ama içinde sayımı KALEM KALEM ve "
+    "SAYIYLA aktar (kategori kategori: yiyecek, su, tarım, hayvan, silah, "
+    "mühimmat, tıbbi, yakıt, takas). Sayım sırasında hikaye gereği bir "
+    "tutarsızlık çıkarabilirsin (eksik çıkan bir şey, bozulmuş erzak) — "
+    "çıkarırsan `resources` alanını buna göre güncelle."
+)
+
+
 def starting_items_note(world_state: dict) -> str:
     lines = []
     for name, info in (world_state.get("characters") or {}).items():
@@ -489,6 +533,14 @@ def roster_note(world_state: dict) -> str:
 def deep_merge_world_state(world_state: dict, patch: dict) -> None:
     if "day" in patch and isinstance(patch["day"], int):
         world_state["day"] = patch["day"]
+
+    # Zaman ve hava: anlatıcı her turda ilerletir (saat akar, gün döner, hava
+    # değişir). Boş string gönderilirse mevcut değer korunur — model alanı
+    # "unutup" boş bıraktığında dünya saati sıfırlanmasın.
+    for field in TIME_FIELDS:
+        value = patch.get(field)
+        if isinstance(value, str) and value.strip():
+            world_state[field] = value.strip()
 
     if "location" in patch and isinstance(patch["location"], str):
         world_state["location"] = patch["location"]
@@ -586,6 +638,17 @@ def public_world_state(world_state: dict) -> dict:
             name: {k: v for k, v in (info or {}).items() if k != "gm_notes"}
             for name, info in challenges.items()
         }
+    factions = public.get("factions")
+    if isinstance(factions, dict):
+        # Fraksiyonun GERÇEK tavrı (disposition/notes) anlatıcıya özeldir;
+        # oyuncular sadece öğrendiklerini (known/public_notes) görür.
+        public["factions"] = {
+            name: {
+                "disposition": (info or {}).get("known") or "bilinmiyor",
+                "notes": (info or {}).get("public_notes") or "",
+            }
+            for name, info in factions.items()
+        }
     return public
 
 
@@ -633,8 +696,9 @@ def detect_multi_character(text: str, valid_players: list):
 # Bir bloğun "durum güncellemesi" olduğunu ele veren anahtarlar — fence'i
 # unutulmuş ham JSON'ı normal metindeki süslü parantezlerden ayırmak için.
 STATE_KEYS = {
-    "day", "location", "tension", "factions", "characters", "npcs",
-    "resources", "zombie_sightings_add", "flags", "narrator",
+    "day", "time_of_day", "clock", "season", "weather", "temperature",
+    "location", "tension", "factions", "characters", "npcs",
+    "resources", "challenges", "zombie_sightings_add", "flags", "narrator",
 }
 
 # Etiketi ne olursa olsun (state-update / json / etiketsiz), içinde bir JSON
@@ -791,11 +855,18 @@ def secrets_page():
 
 @app.route("/api/state", methods=["GET"])
 def get_state():
+    since = request.args.get("since")
     with lock:
         state = load_state()
+        version = int(state.get("version", 0))
+        # Hızlı yoklama: durum değişmediyse ağır gövdeyi hiç kurma.
+        if since is not None and since.isdigit() and int(since) == version:
+            return jsonify({"version": version, "changed": False})
         log = read_log()
     return jsonify(
         {
+            "version": version,
+            "changed": True,
             "world_state": public_world_state(state["world_state"]),
             "log": log,
             "started": state["started"],
@@ -945,6 +1016,8 @@ def post_message():
         # Tur başına TEK dünya zarı (karakter başına değil) — oyunculara
         # gösterilmez, sadece modele ve /secrets ekranına gider.
         world_entry = None if in_chargen else roll_world_dice(state["world_state"])
+        wants_inventory = bool(INVENTORY_INTENT_RE.search(text)) and not in_chargen
+        inventory_block = ("\n\n" + INVENTORY_REPORT_INSTRUCTION) if wants_inventory else ""
 
         multi = detect_multi_character(text, valid_players)
 
@@ -1000,6 +1073,7 @@ def post_message():
                     "aldığı farklı bir aksiyon, her biri KENDİ zarına göre ayrı ayrı "
                     "sonuçlanır ama sahneyi birleşik/akıcı anlat.\n"
                     + world_dice_note(world_entry)
+                    + inventory_block
                     + "\n\nHATIRLATMA: yanıtının sonuna TEK bir state-update bloğu ekle. "
                     "(1) tension ve (2) narrator.plot_summary (2-4 cümlelik güncel "
                     "özet) her turda zorunlu.\n"
@@ -1073,6 +1147,7 @@ def post_message():
                 extra_system = (
                     f"ZAR (oyuncunun hamlesi): {roll} ({band})\n"
                     + world_dice_note(world_entry)
+                    + inventory_block
                     + "\n\n"
                     + group_note
                     + "HATIRLATMA (teknik, MUTLAKA uygula): yanıtının SONUNA bir "
@@ -1142,6 +1217,9 @@ def post_message():
             "user_entries": user_entries,
             "gm_entry": gm_entry,
             "world_state": public_world_state(state["world_state"]),
+            # arayüz Grup Kaynakları panelini bu bayrakla açar
+            "inventory_report": wants_inventory,
+            "version": int(state.get("version", 0)),
         }
     )
 
@@ -1265,6 +1343,24 @@ def finish_chargen():
     return jsonify({"ok": True, "world_state": public_world_state(ws)})
 
 
+@app.route("/api/gm/patch", methods=["POST"])
+def gm_patch():
+    """Anlatıcının doğrudan (model çağrısı olmadan) dünya durumunu düzenlemesi:
+    fraksiyon tavrı, zorluk saati, bulmaca ilerlemesi vb. Anında uygulanır."""
+    body = request.get_json(force=True) or {}
+    if body.get("pin") != GM_PIN:
+        return jsonify({"error": "Yanlış PIN."}), 403
+    patch = body.get("patch")
+    if not isinstance(patch, dict) or not patch:
+        return jsonify({"error": "Boş ya da geçersiz düzenleme."}), 400
+    with lock:
+        state = load_state()
+        deep_merge_world_state(state["world_state"], patch)
+        save_state(state)
+        version = int(state.get("version", 0))
+    return jsonify({"ok": True, "version": version, "world_state": state["world_state"]})
+
+
 @app.route("/api/reset", methods=["POST"])
 def reset_state():
     with lock:
@@ -1290,12 +1386,18 @@ def gm_state():
     body = request.args
     if body.get("pin") != GM_PIN:
         return jsonify({"error": "Yanlış PIN."}), 403
+    since = body.get("since")
     with lock:
         state = load_state()
+        version = int(state.get("version", 0))
+        if since is not None and since.isdigit() and int(since) == version:
+            return jsonify({"version": version, "changed": False})
         gm_log = read_gm_log()
         log = read_log()
     return jsonify(
         {
+            "version": version,
+            "changed": True,
             "world_state": state["world_state"],
             "gm_log": gm_log,
             # anlatıcı, oyuncuların turlarını da bu ekrandan canlı izleyebilsin

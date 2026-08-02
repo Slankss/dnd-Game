@@ -202,10 +202,69 @@
           "notes": "Dezenfektan + takas"
         }
       }
-    }
+    },
+    "world_roll": {
+      "roll": 4,
+      "band": "Lehte Kırılma",
+      "hint": "dünya oyuncular lehine döner — beklenmedik kaynak, gecikme, dağılan bir tehdit",
+      "ts": "2026-08-02 03:39:24"
+    },
+    "world_roll_history": [
+      {
+        "roll": 61,
+        "band": "Sızıntı",
+        "ts": "2026-08-02 02:51:26"
+      },
+      {
+        "roll": 64,
+        "band": "Sızıntı",
+        "ts": "2026-08-02 02:57:03"
+      },
+      {
+        "roll": 52,
+        "band": "Sızıntı",
+        "ts": "2026-08-02 03:00:46"
+      },
+      {
+        "roll": 15,
+        "band": "Durgun",
+        "ts": "2026-08-02 03:08:34"
+      },
+      {
+        "roll": 100,
+        "band": "Kriz",
+        "ts": "2026-08-02 03:13:59"
+      },
+      {
+        "roll": 19,
+        "band": "Durgun",
+        "ts": "2026-08-02 03:17:25"
+      },
+      {
+        "roll": 9,
+        "band": "Lehte Kırılma",
+        "ts": "2026-08-02 03:20:55"
+      },
+      {
+        "roll": 41,
+        "band": "Sızıntı",
+        "ts": "2026-08-02 03:25:22"
+      },
+      {
+        "roll": 87,
+        "band": "Baskı",
+        "ts": "2026-08-02 03:33:23"
+      },
+      {
+        "roll": 4,
+        "band": "Lehte Kırılma",
+        "ts": "2026-08-02 03:39:24"
+      }
+    ]
   },
-  "next_id": 51,
+  "next_id": 74,
   "session_id": "449a5198-f255-4484-ada0-53092c280f53",
   "characters_confirmed": true,
-  "started": true
+  "started": true,
+  "version": 3
 }

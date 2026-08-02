@@ -171,6 +171,43 @@ görünür; oyunculara **hiç** gösterilmez ve anlatıcı metninde ondan söz e
 > oyuncuya giden tüm yanıtlar `narrator`, `world_roll`, `world_roll_history`
 > ve zorlukların `gm_notes` alanı ayıklanarak dönüyor.
 
+## Zaman, gün dönümü ve hava
+
+Dünya durumunda zaman gerçekten akar: `day`, `time_of_day`
+(şafak/sabah/öğle/ikindi/akşam/gece/gece yarısı), `clock` ("HH:MM"),
+`season`, `weather`, `temperature`. Anlatıcı her turda bunları
+`state-update` ile ilerletir; başlık çubuğunda
+`Gün 97 · 02:30 gece · ince yağmur, 7°C · konum` olarak görünür.
+
+- **Süre:** her aksiyon saati kendi gerçekçi süresi kadar ilerletir — kapı
+  dinlemek 5 dakika, barikat kurmak 2 saat, keşif yarım gün.
+- **Gün dönümü:** saat gece yarısını geçince `day` 1 artar ve o turda kısa
+  bir muhasebe yapılır — günlük yiyecek/su tüketimi, hayvanların verdiği ya
+  da kaybedilen şeyler, tarımın ilerlemesi, yaralıların iyileşmesi. Gün
+  geçtiği halde hiçbir sayının değişmemesi hata sayılır.
+- **Hava:** dekor değil, mekanik — yağmur izleri siler ama ateşi zorlaştırır,
+  sis pusuyu kolaylaştırır, don mahsulü öldürür, fırtına nöbeti imkânsız
+  kılar. Değişimi dünya zarına ve mevsime bağlıdır.
+- Aktif zorlukların `clock` alanı bu akan zamanla tutarlı tutulur.
+
+Alanlar sonradan eklendi; devam eden bir oyunda eksiklerse `load_state`
+senaryonun başlangıç değerleriyle doldurur. Model bir alanı boş gönderirse
+mevcut değer korunur — dünya saati sıfırlanmaz.
+
+## Fraksiyonların iki katmanı
+
+Her fraksiyon kaydı iki katman tutar:
+
+| Alan | Kim görür |
+|---|---|
+| `disposition` + `notes` | **Gerçek** tavır ve anlatıcı notu — sadece `/secrets` |
+| `known` + `public_notes` | Oyuncuların fiilen öğrendiği — oyun ekranı |
+
+`/api/state` fraksiyonları oyuncuya çevirirken `known`/`public_notes`
+alanlarını `disposition`/`notes` yerine koyar; gerçek tavır hiç sızmaz.
+Anlatıcı tavır değiştiğinde `disposition`'ı her zaman günceller, `known` ise
+sadece oyuncular somut bir şey öğrendiğinde değişir.
+
 ## Anlatıcı müdahalesi — üç mod
 
 `/secrets` ekranındaki "Senaryoya Müdahale" panelinde üç mod var. Modu
