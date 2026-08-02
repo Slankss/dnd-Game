@@ -297,6 +297,36 @@ Alanlar sonradan eklendi; devam eden bir oyunda eksiklerse `load_state`
 senaryonun başlangıç değerleriyle doldurur. Model bir alanı boş gönderirse
 mevcut değer korunur — dünya saati sıfırlanmaz.
 
+## Sahne katılımı — herkes her turda sahnede değildir
+
+Her karakterin bir `presence` kaydı var: `sahnede` (varsayılan), `uyuyor`,
+`uzakta`, `baygın`, `esir`. Sahne dışındaki karaktere anlatıcı replik, aksiyon
+ya da karar yazmaz; ortak kararlara da katmaz. Ondan bir tur boyunca hiç ses
+çıkmaması normaldir — anlatıcının bunu her turda açıklaması gerekmez. Sahnede
+olanların da hepsine sırayla söz verilmez; sadece o anki aksiyona gerçekten
+karışanlar yazılır.
+
+```json
+{"characters": {"Okan": {"presence": {
+  "state": "uyuyor", "note": "revirde",
+  "until": {"day_gte": 99, "clock_gte": "06:00"}}}}}
+```
+
+`until` bir randevudur: koşul dolduğunda sunucu karakteri kendiliğinden sahneye
+döndürür ve anlatıcıya "geri döndü" diye bildirir. Koşulu `director.matches`
+değerlendirir — beat tetikleyicileriyle aynı motor (`day_gte`, `clock_gte`,
+`location_in`, `tension_gte`, `flags_set`/`flags_unset`, `world_roll_lte/gte`).
+`day_gte` ile `clock_gte` birlikte verilirse tek bir an olarak okunur, yani
+gece yarısı dönümü randevuyu bozmaz.
+
+Bir oyuncu sahne dışındaki karakteriyle mesaj yazarsa o karakter uyanmış/dönmüş
+sayılır ve sunucu onu sahneye alır. Uyuyan karakterin yorgunluğu ve stresi
+geçen süreye göre kendiliğinden **düşer** (açlık/susuzluk uykuda da artar),
+`awake_hours` sıfırlanır.
+
+Oyuncu ekranında kart üstünde rozet (😴/🚶/💫/⛓️), `/secrets` ekranında ayrıca
+dönüş koşulunun özeti görünür.
+
 ## Fraksiyonların iki katmanı
 
 Her fraksiyon kaydı iki katman tutar:
@@ -425,6 +455,8 @@ otomatik olarak onu kullanır.
 ## Dosyalar
 
 - `server.py` — Flask backend, `claude` CLI çağrıları, zar mantığı, durum yönetimi, dışa/içe aktarma uç noktaları
+- `director.py` — koşul motoru (`matches`: gün/saat randevusu, konum, gerilim, bayrak, dünya zarı) + olay örgüsü planı (`data/plot.json`) yardımcıları. Sahne katılımının `until` koşulunu ve ileride beat tetikleyicilerini bu modül çözer
+- `docs/senarist-yetenegi.md` — senarist katmanının faz planı (hangi faz uygulandı, sırada ne var)
 - `scenario.py` — senaryo metni (system prompt), başlangıç dünya durumu, varsayılan karakter önerileri ve rastgele açılış olayları listesi — **oyunun içeriğini değiştirmek için bu dosyayı düzenleyin** (ya da arayüzden bir senaryo JSON'u içe aktarın)
 - `static/index.html` — tek sayfalık arayüz (karakter kurulumu → oyunu başlat → canlı oyun/geçmiş sekmeleri + durum paneli + müzik/ayarlar)
 - `static/audio/` — buraya kendi ambiyans/müzik dosyanızı (`ambient.mp3`) koyabilirsiniz
