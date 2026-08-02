@@ -17,7 +17,9 @@
       },
       "Garnizon Komutanlığı": {
         "disposition": "bilinmiyor",
-        "notes": "Kuzeydeki askeri üs, sıkıyönetim."
+        "notes": "Kuzeydeki askeri üs, sıkıyönetim.",
+        "public_notes": "",
+        "known": ""
       },
       "Leş Avcıları": {
         "disposition": "bilinmiyor",
@@ -204,10 +206,10 @@
       }
     },
     "world_roll": {
-      "roll": 4,
-      "band": "Lehte Kırılma",
-      "hint": "dünya oyuncular lehine döner — beklenmedik kaynak, gecikme, dağılan bir tehdit",
-      "ts": "2026-08-02 03:39:24"
+      "roll": 71,
+      "band": "Baskı",
+      "hint": "aktif zorluk belirgin ilerler (süre kısalır, sayı artar, mesafe kapanır) ya da yeni zorluk doğar",
+      "ts": "2026-08-02 03:46:25"
     },
     "world_roll_history": [
       {
@@ -259,12 +261,17 @@
         "roll": 4,
         "band": "Lehte Kırılma",
         "ts": "2026-08-02 03:39:24"
+      },
+      {
+        "roll": 71,
+        "band": "Baskı",
+        "ts": "2026-08-02 03:46:25"
       }
     ]
   },
-  "next_id": 74,
+  "next_id": 77,
   "session_id": "449a5198-f255-4484-ada0-53092c280f53",
   "characters_confirmed": true,
   "started": true,
-  "version": 3
+  "version": 10
 }
