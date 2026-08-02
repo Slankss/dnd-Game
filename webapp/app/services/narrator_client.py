@@ -5,7 +5,9 @@ Sunucunun geri kalanı subprocess bilmez; sadece `NarratorClient.ask(...)`
 """
 
 import json
+import os
 import subprocess
+import tempfile
 
 from app import config
 from app.errors import NarratorError, NarratorTimeout
@@ -24,34 +26,62 @@ class NarratorClient:
         self.timeout = timeout or config.CLAUDE_TIMEOUT
         self.cwd = str(cwd or config.BASE_DIR)
 
+    @staticmethod
+    def _write_temp(text: str, prefix: str) -> str:
+        """Prompt metnini geçici bir UTF-8 dosyaya yazar, yolunu döndürür."""
+        fd, path = tempfile.mkstemp(prefix=prefix, suffix=".txt")
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text or "")
+        return path
+
     def ask(self, prompt: str, extra_system: str, session_id,
             scenario_text: str = None) -> dict:
         """`session_id` None ise yeni oturum açılır (senaryo sistem promptu
-        olarak verilir); değilse mevcut oturum --resume ile sürdürülür."""
-        cmd = [
-            self.binary,
-            "-p", prompt,
-            "--tools", "",
-            "--output-format", "json",
-            "--model", self.model,
-            "--effort", self.effort,
-            "--append-system-prompt", extra_system,
-        ]
-        if session_id is None:
-            cmd += ["--system-prompt", scenario_text or ""]
-        else:
-            cmd += ["--resume", session_id]
+        olarak verilir); değilse mevcut oturum --resume ile sürdürülür.
 
+        Uzun metinler komut satırından DEĞİL, geçici dosyalardan geçer
+        (`--system-prompt-file` / `--append-system-prompt-file`). Windows'ta
+        CreateProcess'in komut satırı sınırı 32767 karakterdir; senaryo metni
+        tek başına 35 000 karaktere yaklaştığı için argüman olarak
+        geçirildiğinde her yeni oturum `WinError 206` ile düşüyordu. Dosya
+        yolu geçmek bu tavanı tamamen ortadan kaldırır.
+        """
+        gecici = []
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=self.cwd,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout,
-            )
-        except subprocess.TimeoutExpired:
-            raise NarratorTimeout()
+            append_path = self._write_temp(extra_system, "kc-append-")
+            gecici.append(append_path)
+            cmd = [
+                self.binary,
+                "-p", prompt,
+                "--tools", "",
+                "--output-format", "json",
+                "--model", self.model,
+                "--effort", self.effort,
+                "--append-system-prompt-file", append_path,
+            ]
+            if session_id is None:
+                system_path = self._write_temp(scenario_text or "", "kc-system-")
+                gecici.append(system_path)
+                cmd += ["--system-prompt-file", system_path]
+            else:
+                cmd += ["--resume", session_id]
+
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=self.cwd,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout,
+                )
+            except subprocess.TimeoutExpired:
+                raise NarratorTimeout()
+        finally:
+            for path in gecici:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
 
         if result.returncode != 0:
             raise NarratorError(
