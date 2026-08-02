@@ -36,9 +36,12 @@ const MODLAR = [
     ozet: 'oyunculara gitmez',
     aciklama:
       'Yalnızca sana görünür. Anlatıcı bu turda oyunculara hiçbir sahne yazmaz; ' +
-      'talimatı sonraki turlarda hayata geçirir. Yanıt bu ekranda kalır.',
+      'talimatı sonraki turlarda hayata geçirir. Yanıt bu ekranda kalır. ' +
+      'Bu turda dünya durumundan SADECE anlatıcı defteri kaydedilir: zorluk, ' +
+      'NPC, karakter, kaynak gibi oyuncuya görünen alanlar uygulanmaz — yoksa ' +
+      'oyuncular henüz yaşamadıkları olayı panelde görüp önceden hazırlanır.',
     yerTutucu:
-      'Örn: Kızıl Şafak devriyesi iki tur içinde bölgeye girsin, ama önce izlerini göster.',
+      'Örn: Crimson Dawn devriyesi iki tur içinde bölgeye girsin, ama önce izlerini göster.',
     dugme: 'Gizli notu gönder',
     yayin: false,
     metinZorunlu: true,
@@ -244,6 +247,16 @@ function tusla(e) {
         </Badge>
       </div>
       <div class="whitespace-pre-wrap text-meta text-text" v-html="metinBicimle(sonuc.text)" />
+
+      <!-- Gizli modda uygulanmayan alanlar: anlatıcı yazdı ama sunucu
+           düşürdü (oyuncu paneline sızmasın diye). GM bilsin ki gerekirse
+           elle yama ile kendisi yazsın. -->
+      <p v-if="sonuc.dropped?.length" class="mt-2 flex flex-wrap items-center gap-1 text-label text-muted">
+        <Icon name="block" :size="14" class="text-warn" />
+        <span>Oyuncuya görünen alanlar kaydedilmedi:</span>
+        <code v-for="alan in sonuc.dropped" :key="alan" class="font-mono text-text">{{ alan }}</code>
+        <span>— olay sahnede yaşandığında kaydedilecek.</span>
+      </p>
     </div>
   </div>
 </template>

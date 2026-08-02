@@ -757,6 +757,14 @@ Oyunculara ASLA gösterilmez. Bu turda oyunculara gidecek bir sahne YAZMA;
 sadece `narrator` alanlarını güncelle ve SADECE anlatıcıya hitap eden kısa
 bir onay yaz. Talimatı sonraki oyuncu turlarında hayata geçir.
 
+Bu turda state-update'te SADECE `narrator` alanları kaydedilir. `challenges`,
+`npcs`, `characters`, `resources`, `factions`, `day`/`clock` gibi oyuncuya
+görünen alanlara yazdıkların UYGULANMAZ, sunucu tarafından düşürülür. Sebep:
+oyuncular o olayı henüz yaşamadı — panelde açılmamış bir zorluk ya da
+"ısırıldı" yazan bir NPC belirirse olmamış bir tehdide karşı önceden
+hazırlanırlar ve sürpriz ölür. O alanları, olay sahnede GERÇEKTEN yaşandığı
+turda yaz.
+
 **2) `[ANLATICI MÜDAHALESİ - SAHNE OLARAK YAYINLA]`** — GM'in yazdığı olayın
 HEMEN oyuncu akışına düşmesi istenir. Yazdığın metin doğrudan oyuncuların
 ekranına gider: sadece sahneyi yaz (anlatıcı sesi, 1-3 paragraf), GM'den ya

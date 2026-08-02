@@ -160,6 +160,13 @@ function kunyeAc(ad) {
   kunyeAcik.value = true
 }
 
+/* --------------------------------------------------------- anlatıcı ekranı */
+
+/** `/secrets` yeni sekmede açılır — oyun ekranındaki tur akışı bozulmasın. */
+function anlaticiEkraniniAc() {
+  window.open('/secrets', '_blank', 'noopener')
+}
+
 /* ---------------------------------------------------------------- ayarlar */
 
 const ayarlarAcik = ref(false)
@@ -249,6 +256,17 @@ function yeniSahneyeGit() {
         aria-label="Durumu yenile"
         :loading="oyun.pollingBusy"
         @click="oyun.pollNow()"
+      />
+      <!-- Anlatıcı ekranı: PIN'le kilitli, yeni sekmede açılır ki oyun
+           ekranı olduğu gibi kalsın. -->
+      <BaseButton
+        variant="quiet"
+        size="md"
+        icon="visibility_off"
+        icon-only
+        aria-label="Anlatıcı ekranı (/secrets)"
+        title="Anlatıcı ekranı"
+        @click="anlaticiEkraniniAc()"
       />
       <BaseButton
         variant="quiet"

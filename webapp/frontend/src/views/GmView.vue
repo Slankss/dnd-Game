@@ -119,6 +119,9 @@ async function notGonder({ metin, mod }) {
       text: yayinOnEkiniAt(
         veri?.reply_entry?.text || veri?.gm_entry?.text || '(anlatıcı boş yanıt döndü)',
       ),
+      // Gizli modda sunucunun uygulamadığı üst düzey alanlar (oyuncuya
+      // görünen her şey) — bestecide uyarı olarak gösterilir.
+      dropped: Array.isArray(veri?.dropped) ? veri.dropped : [],
     }
   } catch (e) {
     notHatasi.value = e?.message || 'Müdahale gönderilemedi.'

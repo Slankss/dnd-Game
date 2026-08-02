@@ -110,6 +110,17 @@ class GmService:
 
             raw_text = result.get("result", "")
             reply_text, patches = state_update.extract(raw_text)
+            # GİZLİ modda oyuncuya görünen HİÇBİR alan yazılmaz. Bu turda
+            # oyunculara sahne gitmiyor; buna rağmen `challenges`/`npcs`/
+            # `characters` güncellenirse oyuncu panelinde henüz yaşanmamış bir
+            # olay belirir (açılmamış bir zorluk, "ısırıldı" yazan bir NPC) ve
+            # oyuncular olmamış tehdide karşı önceden hazırlık yapar.
+            # Anlatıcının defteri (`narrator.*`) zaten yalnız /secrets'ta
+            # göründüğü için o kısım uygulanır; gerisi düşer. Değişiklik,
+            # sahne gerçekten yaşandığı turda normal yoldan kaydedilir.
+            dropped = []
+            if mode == "gizli":
+                patches, dropped = self._gm_only_patches(patches)
             for patch in patches:
                 world.merge_patch(patch)
 
@@ -141,6 +152,9 @@ class GmService:
                 "role": "gm_reply",
                 "mode": mode,
                 "published": publish,
+                # Gizli modda uygulanmayan alanlar — GM neyin kaydedilmediğini
+                # görsün, gerekirse elle yamayla kendisi yazsın.
+                "dropped": dropped,
                 "text": ("✅ Sahne oyuncu akışına yayınlandı:\n\n" + reply_text) if publish else reply_text,
                 "ts": ts,
             }
@@ -153,9 +167,32 @@ class GmService:
             "note_entry": note_entry,
             "reply_entry": reply_entry,
             "gm_entry": gm_entry,
+            # gizli modda uygulanmayan üst düzey alanlar
+            "dropped": dropped,
             "published": publish,
             "world_state": state["world_state"],
         }
+
+    @staticmethod
+    def _gm_only_patches(patches):
+        """Gizli yönlendirmede uygulanacak yamaları süzer.
+
+        Yalnız `narrator` (anlatıcı defteri: plot_summary / puzzles /
+        upcoming_events) geçer — o alan zaten oyuncuya gönderilmiyor.
+        Düşürülen üst düzey alan adları ikinci değer olarak döner; anlatıcı
+        günlüğünde "uygulanmadı" diye yazılır ki GM neyin kaydedilmediğini
+        bilsin ve gerekirse elle yamayla (/api/gm/patch) kendisi yazsın.
+        """
+        temiz, dusen = [], []
+        for patch in patches:
+            if not isinstance(patch, dict):
+                continue
+            tutulan = {k: v for k, v in patch.items() if k == "narrator"}
+            dusen += [k for k in patch if k != "narrator"]
+            if tutulan:
+                temiz.append(tutulan)
+        # sırayı koruyarak tekrarları at
+        return temiz, list(dict.fromkeys(dusen))
 
     def _compose(self, mode: str, text: str, common_tail: str):
         """(prompt, extra_system) — üç müdahale kipinin metinleri."""
@@ -169,7 +206,14 @@ class GmService:
                 "puzzles/upcoming_events) state-update ile güncelle, ve SADECE bu "
                 "anlatıcıya hitap eden kısa bir onay/yanıt yaz. Bu turda oyunculara "
                 "gidecek HİÇBİR sahne yazma — talimatı sonraki oyuncu turlarında "
-                "hayata geçir.\n\n"
+                "hayata geçir.\n"
+                "ÖNEMLİ: bu turda SADECE `narrator` alanları kaydedilir. "
+                "`challenges`, `npcs`, `characters`, `resources`, `factions`, "
+                "`day`/`clock` gibi oyuncuya görünen alanlara yazdıkların "
+                "UYGULANMAZ ve düşer — çünkü oyuncular bu olayı henüz "
+                "yaşamadı; panelde belirirse olmamış bir tehdide karşı "
+                "önceden hazırlanırlar. O alanları, olay sahnede GERÇEKTEN "
+                "yaşandığı turda yaz.\n\n"
                 + common_tail
             )
         elif mode == "sahne":
