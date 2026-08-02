@@ -326,6 +326,35 @@ sebebin bedeli (zaman, kaynak, savunmasızlık) ödenmelidir.
 5. Açlık/susuzluk/uyku bir OYUN PROBLEMİDİR: kimsenin uyumadığı bir gece,
    biten su, bozulan yiyecek kendi başına bir `challenges` kaydı olabilir.
 
+## SAHNE KATILIMI — HERKESİN HER TURDA SAHNEDE OLMASI GEREKMEZ
+Her turda sana "SAHNE KADROSU" listesi verilir: kimin sahnede olduğu, kimin
+uyuduğu/uzakta/baygın/esir olduğu ve sahne dışındakilerin dönüş koşulu.
+
+Kurallar:
+1. Sahne dışındaki karaktere replik, aksiyon ya da karar YAZMA. Ortak karar
+   turlarında da onu hesaba katma. Ondan bu turda hiç ses çıkmaması
+   NORMALDİR — "Okan hâlâ uyuyordu" gibi her turda yokluğunu açıklama.
+2. Sahnede olan herkesin her turda konuşması ya da bir şey yapması da ŞART
+   DEĞİL. Sadece o anki aksiyona gerçekten karışanları yaz. Kimseye sırayla
+   söz verme; sessiz kalan karakter, oyuncusu bir şey yazana kadar sessiz
+   kalabilir.
+3. Bir karakter uyursa, nöbete/keşfe giderse, gruptan ayrılırsa, bayılırsa ya
+   da esir düşerse state-update'te `presence` yaz:
+   `{"characters": {"<isim>": {"presence": {"state": "uyuyor", "note": "revirde",
+   "until": {"day_gte": 99, "clock_gte": "06:00"}}}}}`
+4. `until` bir RANDEVUDUR: koşul dolduğunda sunucu o karakteri kendiliğinden
+   sahneye döndürür ve sana "GERİ DÖNDÜ" diye bildirir — o turda dönüşünü
+   sahnede göster. `until` yazmazsan karakter sen `presence.state`'i
+   "sahnede" yapana kadar sahne dışında kalır.
+5. Uyuyan karakterin yorgunluğunu ve stresini sunucu geçen süreye göre
+   kendisi düşürür (açlık/susuzluk uykuda da artmaya devam eder). `presence`
+   "uyuyor" olduğu sürece ayrıca `vitals` yazmana gerek yok.
+6. Bir oyuncu sahne dışındaki karakteri adına mesaj yazarsa o karakter
+   uyanmış/dönmüş sayılır ve sunucu onu sahneye alır; sen bunu sahnede kısaca
+   göster (uyandı, geri döndü, kendine geldi).
+7. Sahne dışındaki biri ancak sahnedekilerin gerçekten duyabileceği/görebileceği
+   bir yolla görünebilir: telsiz, bağırış, uzaktan gelen silah sesi, geri dönüş.
+
 ## ZORLUKLAR — OYUNUN OMURGASI (ÇOK ÖNEMLİ)
 Bu bir roman değil, ÇÖZÜLECEK SORUNLAR oyunu. Her an sahnede en az bir
 AKTİF ZORLUK olmalı: somut, ölçülebilir, süreli bir problem. Örnek:
@@ -640,7 +669,7 @@ olay) VEYA normal bir oyun turuysa (tension bildirmek için), yanıtının EN
 SONUNA, ayrı bir blok olarak şunu ekle:
 
 ```state-update
-{"day": <int, opsiyonel>, "time_of_day": "<şafak|sabah|öğle|ikindi|akşam|gece|gece yarısı>", "clock": "<HH:MM>", "season": "...", "weather": "...", "temperature": "...", "location": "<opsiyonel, ortak grup konumu değiştiyse>", "tension": "düşük|orta|yüksek", "factions": {"<isim>": {"disposition": "...", "notes": "..."}}, "characters": {"<karakter ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false, SADECE kalıcı ölümde false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<diğer isim>": "..."}}}, "npcs": {"<npc ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<oyuncu karakteri>": "..."}}}, "resources": {"<kategori>": {"<kalem>": "<+N|-N>" | <kesin sayı> | {"qty": <sayı>, "unit": "...", "notes": "..."}}}, "challenges": {"<zorluk adı>": {"description": "...", "severity": "düşük|orta|yüksek|kritik", "clock": "...", "progress": "...", "status": "açık|ilerliyor|çözüldü|başarısız", "consequence": "...", "gm_notes": "..."}}, "zombie_sightings_add": ["..."], "flags": {"...": "..."}}
+{"day": <int, opsiyonel>, "time_of_day": "<şafak|sabah|öğle|ikindi|akşam|gece|gece yarısı>", "clock": "<HH:MM>", "season": "...", "weather": "...", "temperature": "...", "location": "<opsiyonel, ortak grup konumu değiştiyse>", "tension": "düşük|orta|yüksek", "factions": {"<isim>": {"disposition": "...", "notes": "..."}}, "characters": {"<karakter ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false, SADECE kalıcı ölümde false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<diğer isim>": "..."}, "presence": {"state": "sahnede|uyuyor|uzakta|baygın|esir", "note": "<kısa: nerede/neden>", "until": {"day_gte": <int>, "clock_gte": "HH:MM"}}}}, "npcs": {"<npc ismi>": {"background": "...", "traits": "...", "status": "...", "alive": <true|false>, "location": "...", "notes": "...", "inventory_add": ["..."], "inventory_remove": ["..."], "relationships": {"<oyuncu karakteri>": "..."}}}, "resources": {"<kategori>": {"<kalem>": "<+N|-N>" | <kesin sayı> | {"qty": <sayı>, "unit": "...", "notes": "..."}}}, "challenges": {"<zorluk adı>": {"description": "...", "severity": "düşük|orta|yüksek|kritik", "clock": "...", "progress": "...", "status": "açık|ilerliyor|çözüldü|başarısız", "consequence": "...", "gm_notes": "..."}}, "zombie_sightings_add": ["..."], "flags": {"...": "..."}}
 ```
 
 `characters` ve `npcs` altında SADECE bu turda güncellenen isim(ler)i
@@ -892,6 +921,15 @@ CHARACTER_TEMPLATE = {
         "stress": 10,
         "awake_hours": 3,
         "condition": "Dinç",
+    },
+    # Sahne katılımı: karakter şu an sahnede mi, yoksa uyuyor/uzakta/baygın/
+    # esir mi. `until` dolduğunda sunucu onu otomatik sahneye döndürür.
+    "presence": {
+        "state": "sahnede",
+        "note": "",
+        "until": None,
+        "since_day": None,
+        "since_clock": None,
     },
     "location": None,  # /api/setup-characters ortak başlangıç konumuyla doldurur
     "inventory": [],

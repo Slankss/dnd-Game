@@ -11,6 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 
+import director
 from scenario import (
     SCENARIO_TEXT,
     INITIAL_WORLD_STATE,
@@ -301,6 +302,11 @@ VITALS_NUMERIC = ("fatigue", "hunger", "thirst", "stress")
 # hunger ~28 saatte tavan yapar — kıyamet temposu için gerçekçi aralıklar.
 VITALS_PER_HOUR = {"fatigue": 4.0, "hunger": 3.5, "thirst": 5.0, "stress": 0.8}
 
+# Uyuyan karakter için (presence.state == "uyuyor"): yorgunluk ve stres düşer,
+# açlık/susuzluk uykuda da birikmeye devam eder. ~8 saatlik uyku yorgunluğu
+# tavandan tabana indirir.
+VITALS_SLEEP_PER_HOUR = {"fatigue": -9.0, "hunger": 3.0, "thirst": 4.0, "stress": -3.0}
+
 DEFAULT_VITALS = {
     "fatigue": 15, "hunger": 20, "thirst": 20, "stress": 10,
     "awake_hours": 3, "condition": "Dinç",
@@ -377,7 +383,10 @@ def apply_vitals_drift(world_state: dict, minutes: int, skip: dict) -> None:
                 continue
             vitals = ensure_vitals(entry)
             touched = skip.get(name) or set()
-            for key, rate in VITALS_PER_HOUR.items():
+            # Uyuyan karakter dinlenir; ayakta olan yıpranır.
+            asleep = presence_state(entry) == "uyuyor"
+            rates = VITALS_SLEEP_PER_HOUR if asleep else VITALS_PER_HOUR
+            for key, rate in rates.items():
                 if key in touched:
                     continue
                 vitals[key] = _clamp_vital(vitals[key] + rate * hours)
@@ -386,7 +395,7 @@ def apply_vitals_drift(world_state: dict, minutes: int, skip: dict) -> None:
                     awake = float(vitals.get("awake_hours") or 0)
                 except (TypeError, ValueError):
                     awake = 0.0
-                vitals["awake_hours"] = round(awake + hours, 1)
+                vitals["awake_hours"] = 0 if asleep else round(awake + hours, 1)
 
 
 def _vital_label(vitals: dict) -> str:
@@ -642,6 +651,7 @@ def _merge_person_like(target: dict, name: str, fields: dict,
     if isinstance(fields.get("relationships"), dict):
         entry.setdefault("relationships", {}).update(fields["relationships"])
 
+    _merge_presence(entry, fields, day, clock)
     _merge_wounds(entry, fields, day, clock)
 
     inv = entry.setdefault("inventory", [])
@@ -789,6 +799,199 @@ def alive_players(world_state: dict) -> list:
     ]
 
 
+# --------------------------------------------------------- sahne katılımı
+# Her karakterin her turda sahnede olması gerekmez: biri uyuyor, biri erzak
+# aramaya gitmiş, biri esir düşmüş olabilir. Sahnede olmayan karakter için
+# anlatıcı replik/aksiyon UYDURMAZ, o karaktere zar yorumu yazmaz. Sahneye
+# dönüş koşulu (`until`) beat tetikleyicileriyle aynı motoru kullanır —
+# bkz. director.matches.
+PRESENCE_STATES = ("sahnede", "uyuyor", "uzakta", "baygın", "esir")
+
+PRESENCE_LABELS = {
+    "sahnede": "sahnede",
+    "uyuyor": "uyuyor",
+    "uzakta": "sahne dışında",
+    "baygın": "baygın",
+    "esir": "esir",
+}
+
+# Modelin aynı hal için kullanabileceği başka kelimeler (normalleştirilmiş).
+PRESENCE_ALIASES = {
+    "aktif": "sahnede", "uyanik": "sahnede", "burada": "sahnede", "sahnede": "sahnede",
+    "uykuda": "uyuyor", "uyuyor": "uyuyor",
+    "yok": "uzakta", "ayri": "uzakta", "uzak": "uzakta", "disarida": "uzakta",
+    "sahne disi": "uzakta", "sahne disinda": "uzakta", "gitti": "uzakta",
+    "bayilmis": "baygın", "bayildi": "baygın", "bilincsiz": "baygın",
+    "tutsak": "esir", "kacirildi": "esir", "esir": "esir",
+}
+
+
+def _canon_presence(value):
+    key = director.norm_tr(value)
+    if not key:
+        return None
+    for state in PRESENCE_STATES:
+        if director.norm_tr(state) == key:
+            return state
+    return PRESENCE_ALIASES.get(key)
+
+
+def ensure_presence(entry: dict) -> dict:
+    presence = entry.get("presence")
+    if not isinstance(presence, dict):
+        presence = {"state": "sahnede", "note": "", "until": None,
+                    "since_day": None, "since_clock": None}
+        entry["presence"] = presence
+    if presence.get("state") not in PRESENCE_STATES:
+        presence["state"] = _canon_presence(presence.get("state")) or "sahnede"
+    if not isinstance(presence.get("until"), dict):
+        presence["until"] = None
+    if not isinstance(presence.get("note"), str):
+        presence["note"] = ""
+    return presence
+
+
+def _set_present(presence: dict, day=None, clock=None) -> None:
+    presence["state"] = "sahnede"
+    presence["until"] = None
+    presence["note"] = ""
+    presence["since_day"] = day
+    presence["since_clock"] = clock
+
+
+def _merge_presence(entry: dict, fields: dict, day=None, clock=None) -> None:
+    """Anlatıcının yazdığı `presence` alanını uygular. Düz string de kabul
+    edilir ("presence": "uyuyor")."""
+    raw = fields.get("presence")
+    if isinstance(raw, str):
+        raw = {"state": raw}
+    if not isinstance(raw, dict):
+        return
+    presence = ensure_presence(entry)
+    state = _canon_presence(raw.get("state") or raw.get("durum"))
+    if state and state != presence["state"]:
+        presence["state"] = state
+        presence["since_day"] = day
+        presence["since_clock"] = clock
+        # yeni hal, eski randevu düşer
+        presence["until"] = None
+        if state == "sahnede":
+            presence["note"] = ""
+    if "until" in raw:
+        presence["until"] = raw["until"] if isinstance(raw["until"], dict) else None
+    if isinstance(raw.get("note"), str) and presence["state"] != "sahnede":
+        presence["note"] = raw["note"].strip()
+
+
+def presence_state(entry) -> str:
+    if not isinstance(entry, dict):
+        return "sahnede"
+    presence = entry.get("presence")
+    if not isinstance(presence, dict):
+        return "sahnede"
+    return presence.get("state") if presence.get("state") in PRESENCE_STATES else "sahnede"
+
+
+def present_players(world_state: dict) -> list:
+    """Bu turda sahnede olan, yaşayan oyuncu karakterleri."""
+    return [
+        name
+        for name, info in (world_state.get("characters") or {}).items()
+        if info.get("alive", True) and presence_state(info) == "sahnede"
+    ]
+
+
+def absent_players(world_state: dict) -> list:
+    """[(isim, presence)] — yaşayan ama sahnede olmayan karakterler."""
+    out = []
+    for name, info in (world_state.get("characters") or {}).items():
+        if not isinstance(info, dict) or not info.get("alive", True):
+            continue
+        if presence_state(info) != "sahnede":
+            out.append((name, ensure_presence(info)))
+    return out
+
+
+def resolve_presence(world_state: dict, world_entry: dict = None) -> list:
+    """Vadesi dolan sahne dışılıkları kapatır (uyandı / geri döndü).
+    Dönen liste prompt'a ve anlatıcı loguna gider."""
+    ctx = director.build_context(world_state, world_entry)
+    returned = []
+    for name, entry in (world_state.get("characters") or {}).items():
+        if not isinstance(entry, dict) or not entry.get("alive", True):
+            continue
+        presence = ensure_presence(entry)
+        if presence["state"] == "sahnede":
+            continue
+        if presence.get("until") and director.matches(presence["until"], ctx):
+            returned.append((name, presence["state"]))
+            _set_present(presence, world_state.get("day"), world_state.get("clock"))
+    return returned
+
+
+def bring_to_scene(world_state: dict, name: str) -> str:
+    """Oyuncu sahne dışındaki karakteriyle mesaj gönderdiyse, bu mesajın
+    kendisi 'uyandım / geri döndüm' demektir. Önceki hali döner (yoksa None)."""
+    entry = (world_state.get("characters") or {}).get(name)
+    if not isinstance(entry, dict) or not entry.get("alive", True):
+        return None
+    presence = ensure_presence(entry)
+    if presence["state"] == "sahnede":
+        return None
+    was = presence["state"]
+    _set_present(presence, world_state.get("day"), world_state.get("clock"))
+    return was
+
+
+def presence_note(world_state: dict, returned=None, rejoined=None) -> str:
+    """Her turda modele verilen sahne kadrosu — kimden hamle beklendiği,
+    kimin sahnede olmadığı."""
+    present = present_players(world_state)
+    absent = absent_players(world_state)
+    lines = [
+        "SAHNE KADROSU — bu turda SAHNEDE olanlar: "
+        + (", ".join(present) if present else "(kimse yok)")
+    ]
+    if absent:
+        for name, presence in absent:
+            bits = [PRESENCE_LABELS.get(presence["state"], presence["state"])]
+            if presence.get("note"):
+                bits.append(presence["note"])
+            if presence.get("until"):
+                bits.append("dönüş koşulu: " + director.describe_when(presence["until"]))
+            lines.append(f"- SAHNE DIŞINDA · {name} — " + "; ".join(bits))
+    for name, was in returned or []:
+        lines.append(
+            f"- GERİ DÖNDÜ · {name} ({PRESENCE_LABELS.get(was, was)} haliydi, koşulu "
+            "doldu): bu turda sahneye gerçekten sok, dönüşünü göster."
+        )
+    for name in rejoined or []:
+        lines.append(
+            f"- GERİ DÖNDÜ · {name}: oyuncusu bu turda onun adına hamle yazdı, "
+            "yani artık sahnede. Nasıl döndüğünü/uyandığını kısaca göster."
+        )
+    lines.append(
+        "KURAL: sahne dışındaki karakter için replik, aksiyon ya da karar UYDURMA; "
+        "ona zar yorumu yazma, ortak kararlara dahil etme. Sahnede olmadığı için "
+        "ondan bu turda hiçbir şey duyulmaması NORMALDİR — yokluğunu açıklamak "
+        "zorunda değilsin. Uzaktaki biri ancak sahnedekilerin gerçekten duyabileceği "
+        "bir şekilde (telsiz, bağırış, geri dönüş) görünebilir."
+    )
+    lines.append(
+        "KURAL: sahnede olan herkesin her turda konuşması ya da bir şey yapması da "
+        "ŞART DEĞİL. Sadece o anki aksiyona gerçekten karışanları yaz; kalanları "
+        "sırf sırayla söz vermek için sahneye sokma."
+    )
+    lines.append(
+        "Bir karakter bu turda uyursa, nöbete/keşfe giderse, ayrılırsa, bayılırsa ya "
+        'da esir düşerse state-update ile characters.<isim>.presence yaz — ör. '
+        '{"state": "uyuyor", "note": "revirde", "until": {"day_gte": 99, "clock_gte": "06:00"}}. '
+        "`until` koşulu dolduğunda sunucu onu otomatik sahneye döndürür; koşul "
+        "yazmazsan sahneye dönmesi senin elinde kalır."
+    )
+    return "\n".join(lines)
+
+
 # Her normal turda modele verilen "defter tutma" hatırlatması. Envanter ve
 # grup stoğu buraya eklenmeden önce model bunları çoğu turda atlıyordu —
 # hikayede ortaya çıkan bir bıçak arayüzdeki envanterde hiç görünmüyordu.
@@ -823,6 +1026,12 @@ UPKEEP_REMINDER = (
     "(tüketim, hayvan/tarım, iyileşme) `resources` ile birlikte işle. "
     "Hava değiştiyse `weather`/`temperature` alanlarını güncelle ve etkisini "
     "sahnede göster.\n"
+    "(8) SAHNE KATILIMI: bir karakter bu turda uyuduysa, nöbete/keşfe gittiyse, "
+    "gruptan ayrıldıysa, bayıldıysa ya da esir düştüyse "
+    "`characters.<isim>.presence` yaz (`state` + gerekiyorsa `note` ve dönüş "
+    "koşulu `until`); sahneye döndüyse `state`'i sahnede yap. SAHNE KADROSU "
+    "bölümünde sahne dışında görünen karakterlere bu turda replik/aksiyon/karar "
+    "YAZMA — susmaları normaldir, yokluklarını açıklama borcun yok.\n"
     "Ayrıca gerçekten değişen başka alanlar varsa (karakter durumu/ilişkisi, "
     "fraksiyon tavrı, gün, konum, yeni NPC, narrator.upcoming_events vb.) "
     "aynı bloğa ekle.\n"
@@ -1575,6 +1784,19 @@ def post_message():
 
         multi = detect_multi_character(text, valid_players)
 
+        # Sahne katılımı: vadesi dolan uyku/uzaklık halleri bu turda kapanır.
+        # Oyuncusu adına hamle yazılan karakter de tanım gereği sahneye dönmüş
+        # demektir (uyuyan biri mesaj yazdıysa uyanmıştır).
+        returned = [] if in_chargen else resolve_presence(state["world_state"], world_entry)
+        rejoined = []
+        if not in_chargen:
+            actors = ([n for n, _ in multi] if multi
+                      else ([] if player == GROUP_LABEL else [player]))
+            for name in actors:
+                if name and bring_to_scene(state["world_state"], name):
+                    rejoined.append(name)
+        scene_note = presence_note(state["world_state"], returned, rejoined)
+
         if multi:
             user_entries = []
             line_descs = []
@@ -1640,6 +1862,8 @@ def post_message():
                     + combined
                     + "\n\n"
                     + roster_note(state["world_state"])
+                    + "\n\n"
+                    + scene_note
                     + "\n\n"
                     + inventory_note(state["world_state"])
                     + "\n\n"
@@ -1726,6 +1950,8 @@ def post_message():
                     + UPKEEP_REMINDER
                     + "\n\n"
                     + roster_note(state["world_state"])
+                    + "\n\n"
+                    + scene_note
                     + "\n\n"
                     + inventory_note(state["world_state"])
                     + "\n\n"
@@ -2010,6 +2236,8 @@ def gm_note():
         ws = state["world_state"]
         common_tail = (
             roster_note(ws)
+            + "\n\n"
+            + presence_note(ws)
             + "\n\n"
             + inventory_note(ws)
             + "\n\n"

@@ -1267,6 +1267,28 @@ function healthClass(status) {
   return 'hp-ok';
 }
 
+// Sahne katılımı rozeti: uyuyan / uzaktaki karakter kartta belli olsun ki
+// oyuncu ondan neden ses çıkmadığını anlasın (anlatıcı da onun adına konuşmaz).
+const PRESENCE_BADGES = {
+  uyuyor: '😴 uyuyor',
+  uzakta: '🚶 sahne dışında',
+  'baygın': '💫 baygın',
+  esir: '⛓️ esir',
+};
+
+function presenceBadge(info) {
+  const label = PRESENCE_BADGES[((info.presence || {}).state) || 'sahnede'];
+  return label
+    ? ` <span class="tag" style="font-size:0.65rem; color:var(--text-dim);">${label}</span>`
+    : '';
+}
+
+function presenceLine(info) {
+  const presence = info.presence || {};
+  if (!PRESENCE_BADGES[presence.state] || !presence.note) return '';
+  return `<div class="field">🕳️ ${escapeHtml(presence.note)}</div>`;
+}
+
 function renderCharCard(container, name, info, isNpc) {
   const card = document.createElement('div');
   const isDead = info.alive === false;
@@ -1287,11 +1309,12 @@ function renderCharCard(container, name, info, isNpc) {
     info.strength ? '💪 ' + escapeHtml(info.strength) : '',
     info.weakness ? '🩹 ' + escapeHtml(info.weakness) : '',
   ].filter(Boolean).join('<br>') || `✨ ${escapeHtml(info.traits || '-')}`;
-  card.innerHTML = `<div class="name">${name}${tags}</div>
+  card.innerHTML = `<div class="name">${name}${tags}${presenceBadge(info)}</div>
     <div class="field">📜 ${escapeHtml(ident || info.background || 'karakter henüz oluşturulmadı')}</div>
     <div class="field">${traitLine}</div>
     <div class="field ${healthClass(info.status)}">❤️ ${info.status || '-'}</div>
     ${woundMiniHtml(info.wounds)}
+    ${presenceLine(info)}
     <div class="field">📍 ${info.location || '-'}</div>
     ${vitalMiniHtml(info.vitals)}
     ${chips}
@@ -1300,7 +1323,7 @@ function renderCharCard(container, name, info, isNpc) {
   const sig = JSON.stringify([info.status, info.location, info.background, info.traits,
                               info.profession, info.age, info.strength, info.weakness,
                               inv, info.relationships, info.alive, info.replaced_by,
-                              info.vitals, info.wounds]);
+                              info.vitals, info.wounds, info.presence]);
   const prev = cardSignatures.get(name);
   if (prev !== undefined && prev !== sig) card.classList.add('changed');
   cardSignatures.set(name, sig);
