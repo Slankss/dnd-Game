@@ -8,14 +8,17 @@ sadece metin üretimi için) çalıştırır.
 
 ## Nasıl çalışır
 
-1. **Karakter kurulumu** — ilk açılışta kaç karakter oynayacağı ve isimleri
-   sorulur (varsayılan öneri: Okan, Emir, Celil, Doğu — istediğiniz gibi
-   değiştirin/ekleyin/çıkarın).
+1. **Karakter oluşturma** — ilk açılışta her karakter için bir künye
+   doldurulur: **isim, meslek, yaş, güçlü yan, zayıf yan, sır ve başlangıç
+   eşyası**. Meslek/güçlü/zayıf yan anlatıcı için bağlayıcıdır: zar aynı
+   gelse bile güçlü yana giren işte sonuç daha iyi, zayıf yana denk gelen
+   işte bedel daha ağır olur. İsim dışındaki alanlar zorunlu değil.
 2. **Oyunu Başlat** butonuna basınca sunucu rastgele bir açılış olayı seçer
-   (`scenario.py` içindeki `OPENING_HOOKS` listesinden) ve anlatıcıya sahneyi
-   açtırır; ardından her karakter için kısa bir karakter oluşturma sorusu
-   (2-3 seçenek) sunulur. Bu aşamada zar atılmaz.
-3. Herkes karakterini kurduktan sonra normal oyun başlar: her oyuncu mesajı
+   (`scenario.py` içindeki `OPENING_HOOKS` listesinden) ve anlatıcı sahneyi
+   açar. Künyeler dolduysa oyun içi karakter oluşturma turu atlanır ve
+   hikaye doğrudan başlar; künye boş bırakıldıysa anlatıcı eskisi gibi her
+   karakter için 2-3 seçenekli soru sorar. Bu turda zar atılmaz.
+3. Karakterler hazır olduğunda normal oyun başlar: her oyuncu mesajı
    öncesi sunucu 1-100 arası **gerçek bir zar** atar (kriptografik RNG) ve
    `claude -p ...` komutunu bu zar sonucu + güncel dünya durumuyla birlikte
    çağırır.
@@ -29,9 +32,13 @@ sadece metin üretimi için) çalıştırır.
   kaydedilir — bu dosya asla üzerine yazılmaz, sadece eklenir. Web arayüzünde
   "Oyun Geçmişi" sekmesi bu geçmişin tamamını gösterir; kenar çubuğundaki
   "Son Olaylar" paneli ise son birkaç olayın kısa özetini verir.
-- Web arayüzü 2.5 saniyede bir `/api/state` uç noktasını yoklayarak (polling)
-  güncel günlüğü ve dünya durumunu gösterir — böylece tüm oyuncular aynı
-  sayfada birbirinin hamlelerini görebilir.
+- Oyun tek ekrandan oynandığı için **sürekli yoklama (polling) kapalıdır**.
+  Durum sadece sayfa açılışında, bir aksiyondan sonra (`/api/message` yanıtı
+  zaten güncel dünya durumunu döner) ve sekmeye geri dönüldüğünde çekilir.
+  Ana sekme bir tur işlediğinde `BroadcastChannel` ile anlatıcı sekmesine
+  haber verir — ek HTTP trafiği olmadan. Oyunu birden fazla cihazdan
+  oynatmak isterseniz `static/index.html` sonundaki `poll()` çağrısını bir
+  `setInterval(poll, 1200)` ile değiştirmeniz yeterli.
 
 ## Kurulum ve çalıştırma
 
@@ -70,10 +77,106 @@ CLAUDE_EFFORT=medium  # low = daha hızlı/hafif, xhigh/max = daha derin ama yav
 Bir tur genelde 20–90 saniye sürer (modelin "düşünme" derinliğine göre
 değişir) — bu play-by-post tarzı bir oyun için normal bir tempo.
 
+## Ortak stok yoktur (klan/topluluk/sayım olmadan)
+
+Oyun **boş bir `resources` ile başlar**. Ortada bir klan, topluluk ya da depo
+yokken stok da yoktur — grubun sahip olduğu tek şey karakterlerin sırtındaki
+kişisel eşyalardır. Anlatıcıya hem senaryo metninde hem her turun promptunda
+"ORTAK STOK: YOK, depodan söz etme, `resources`'a kalem yazma" denir.
+
+Stok ancak iki yolla doğar:
+1. Grup bir topluluk/klan kurar ya da bir topluluğa katılır (ortak depo
+   gerçekten var olur),
+2. Oyuncular açıkça sayım ister ("elimizde ne var, sayalım") ve sahnede
+   fiilen sayılan şeyler kaydedilir.
+
+Stok doğana kadar kenar çubuğundaki "📦 Grup Kaynakları" paneli hiç
+görünmez; ilk kalem girdiğinde kendiliğinden açılır.
+
+## Eşya sürekliliği
+
+Bir karakter bir eşyayı attığında/verdiğinde/kaybettiğinde o eşya
+`inventory`'den çıkar ve `lost_items` altına yazılır. Model sonraki bir turda
+hafızasından eski tam listeyi yeniden yazsa bile sunucu o eşyayı geri
+almaz ([server.py](server.py) → `_merge_person_like`) — daha önce atılan bir
+madalyon saatler sonra kendiliğinden cebe dönemez. Eşya ancak anlatıcı
+`inventory_add` ile açıkça geri verirse (karakter o yere dönüp fiilen
+alırsa) envantere geri girer. Karşılaştırma büyük/küçük harfe duyarsızdır.
+
+Ayrıca her turda modele "X ARTIK ŞUNLARA SAHİP DEĞİL" listesi verilir; o
+listedeki bir eşyayı sahnede kullandırmak hata sayılır.
+
+## Yaralar ve enfeksiyon
+
+Yaralar `characters.<isim>.wounds` altında **iyileşene kadar kalıcı** olarak
+tutulur — her yara için `desc`, `severity` (hafif/orta/ağır/kritik),
+`infection_risk` (0-100), `treated`, `notes` ve açıldığı gün/saat.
+
+Enfeksiyon da göstergeler gibi sunucunun sorumluluğunda
+([server.py](server.py) → `advance_infections`): tedavi edilmemiş bir yaranın
+riski saat başına ağırlığına göre yükselir (hafif +0.6 … kritik +3.0), tedavi
+edilmiş bir yara ise saatte −1.0 ile temizlenir. Anlatıcı unutsa bile yara
+ilerler. 60'ı geçince belirtiler başlar, 85'i geçince ölümcül bir `challenges`
+kaydına dönüşmesi istenir.
+
+Ayrıca `normalize_wound_status`, açık yarası olan bir karakterin `status`
+alanı "İyi" kalmışsa bunu otomatik düzeltir ("Yaralı" / "Ağır yaralı" /
+"Enfekte olabilir") — anlatıcı bu adımı sık atlıyor ve oyuncu kenar çubuğunda
+sapasağlam görünüyordu.
+
+Yaralar karakter kartında tek satırlık özet, popup'ta enfeksiyon çubuğuyla
+birlikte tam liste, anlatıcı ekranında ise hepsi ayrıntısıyla görünür.
+
+> Not: Türkçe metinlerde eşleştirme `_norm_tr()` ile yapılır. Düz
+> `casefold()` burada sessizce yanlış çalışıyor — `"İyi".casefold()`
+> `"i̇yi"` üretir ve `"iyi"` ile eşleşmez.
+
+## Hayatta kalma göstergeleri (yorgunluk / açlık / susuzluk / stres)
+
+Her karakterin `vitals` bloğu var — hepsinde **0 = gayet iyi, 100 =
+dayanılmaz**: `fatigue`, `hunger`, `thirst`, `stress`, `awake_hours`,
+`condition`.
+
+Bu sayılar zar gibi **sunucunun sorumluluğunda**. Anlatıcı saati ilerlettikçe
+sunucu geçen oyun-içi süreyi hesaplayıp göstergeleri kendiliğinden yükseltir
+([server.py](server.py) → `apply_vitals_drift`): uyanık geçen her saat
+yorgunluğa +4, açlığa +3.5, susuzluğa +5 ekler. Yani fatigue ~25 saatte,
+susuzluk ~20 saatte tavan yapar. Model unutsa bile göstergeler ilerler.
+
+Düşmesi için bir **sebep** gerekir. Bir karakter uyuduğunda/yediğinde/
+içtiğinde anlatıcı `vitals` alanını state-update ile yazar ve o değer
+sunucunun otomatik artışını ezer — ama yiyecek/su `resources` içinden
+gerçekten düşülmek zorundadır.
+
+En önemlisi: **bu sayılar zar yorumunu kaydırır.** 40+ belirgin etki, 65+
+bandı bir kademe aşağı, 85+ neredeyse kesin bedelli. Künyedeki zayıf yan bu
+eşikleri düşürür, güçlü yan yükseltir. Gece nöbetinden çıkmış uykusuz bir
+karakter aynı zarla dinç halinden çok daha kötü bir sonuç alır — elleri
+titrer, ses çıkarır, bir şeyi düşürür.
+
+Göstergeler kenar çubuğundaki karakter kartında (sadece 40'ı geçenler
+rozet olarak) ve karaktere tıklayınca açılan popup'ta çubuk olarak görünür;
+anlatıcı ekranında hepsi her karakter için listelenir. Gruba katılıp
+birlikte hareket eden NPC'ler için de takip edilir.
+
+## Karakter sırları
+
+Künyedeki **sır** alanı sadece anlatıcıya aittir. Sunucu bu alanı
+`public_world_state()` içinde ayıklar — oyuncu arayüzüne giden hiçbir
+yanıtta yer almaz, dolayısıyla aynı ekranı paylaşan diğer oyuncular göremez.
+`/secrets` ekranında ise her karakterin altında 🔒 SIR satırı olarak görünür.
+
+Anlatıcıya sırrı **asla açıklamaması**, bunun yerine hikayenin gizli motoru
+olarak kullanması söylenir: sırra dokunan sahneler, açığa çıkma riski,
+o karakteri zorlayan seçimler. Sır ancak oyuncusu kendi mesajında açıklarsa
+ya da hikayede inandırıcı biçimde ifşa olursa ortaya çıkar.
+
 ## NPC'ler ve ilişkiler
 
-Anlatıcı, hikaye boyunca önemli hale gelen isimli NPC'leri de "Karakterler"
-panelinde gösterir (küçük bir "NPC" etiketiyle ayırt edilir). Hem oyuncu
+"Karakterler" paneli **Oyuncular** ve **NPC'ler** olmak üzere iki sekmeye
+ayrılmıştır; her sekmenin başlığında o gruptaki kişi sayısı görünür. Anlatıcı,
+hikaye boyunca önemli hale gelen isimli NPC'leri NPC'ler sekmesine ekler
+(henüz kimseyle tanışılmadıysa sekme bunu söyler). Hem oyuncu
 karakterlerinin hem NPC'lerin **ilişkileri** (kiminle iyi/kötü, güvenilir/
 şüpheli) takip edilir ve anlatıcıya bunları sahnede **gerçekten
 kullanması** — iyi ilişkisi olan biri yardımsever, kötü ilişkisi olan biri

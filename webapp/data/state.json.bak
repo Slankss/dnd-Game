@@ -84,7 +84,7 @@
         "secret": "bir yaşlıyı katlettim",
         "background": "24 yaşında, Hemşire",
         "traits": "Güçlü yanı: Hızlı koşar · Zayıf yanı: Bir kulağı sağır",
-        "status": "Enfekte olabilir",
+        "status": "İyi",
         "alive": true,
         "vitals": {
           "fatigue": 33,
@@ -104,18 +104,7 @@
           "Okan": "Okan tarafından ayin alanına doğru itilip terk edildi — güven derinden sarsıldı."
         },
         "notes": "",
-        "lost_items": [],
-        "wounds": [
-          {
-            "desc": "sol kolda derin tırnak çiziği",
-            "severity": "orta",
-            "infection_risk": 70,
-            "treated": false,
-            "notes": "ısırılmış adamın kirli tırnağından açıldı — enfeksiyon riski yüksek",
-            "since_day": 97,
-            "since_clock": "03:50"
-          }
-        ]
+        "lost_items": []
       }
     },
     "npcs": {
@@ -372,5 +361,5 @@
   "session_id": "cbba847f-5f86-46f9-b034-9695aaa48a5b",
   "characters_confirmed": true,
   "started": true,
-  "version": 17
+  "version": 16
 }
