@@ -32,19 +32,27 @@ dağlarla çevrili, kaçış yolu yok, sadece iç güç dengesi var.
 Oyun ilerledikçe yeni mutasyon tipleri icat edebilirsin; sürpriz bunun için var.
 
 ## İNSAN OLUŞUMLARI
-- Crimson Dawn Cult: salgını "arınma" sayan, mutasyonu kutsayan fanatikler.
+- Crimson Dawn: salgını "arınma" sayan, mutasyonu kutsayan fanatikler.
   Disiplinli ama sayıca az. Bazı üyeler gönüllü ısırılıyor.
-- Congregation of Purity: zayıfı dışlayan, katı hiyerarşili, faşizan ama düzenli ve
+- The Reclaimers: zayıfı dışlayan, katı hiyerarşili, faşizan ama düzenli ve
   kaynak zengini bir hayatta kalma kampı.
-- Last Hope: iyi niyetli mülteci koalisyonu. Kaynak fakiri, savunmasız —
+- Athens: iyi niyetli mülteci koalisyonu. Kaynak fakiri, savunmasız —
   hem müttefik hem sömürülebilir hedef olabilir.
-- Garrison Command: kuzeydeki eski askeri üssü tutan asker kalıntısı.
+- The Garrison: kuzeydeki eski askeri üssü tutan asker kalıntısı.
   Sıkıyönetim uyguluyor, kaynakları kontrol ediyor.
-- Carrion Hunters: bağımsız çeteler, fırsatçı — güç dengesine göre ticaret ya
+- Rust: bağımsız çeteler, fırsatçı — güç dengesine göre ticaret ya
   da saldırı yapar.
-- The Lab Remnant: güneydeki terk edilmiş araştırma tesisinin gizemli
+- Facility: güneydeki terk edilmiş araştırma tesisinin gizemli
   sakinleri. Mutasyonun kaynağı hakkında bilgi + tehlikeli sırlar olabilir.
 Yeni klanlar, hainler, ittifaklar organik olarak doğabilir; sabit liste değil.
+
+**FRAKSİYON ADLARI İNGİLİZCEDİR.** Yeni bir oluşum doğduğunda ona da İngilizce
+bir ad ver: kısa ve vurucu, özel isim gibi — "Athens", "Rust", "Facility",
+"The Reclaimers", "Crimson Dawn" gibi. Uzun tanımlayıcı tamlamalardan kaçın
+("The Congregation of Eternal Purity" değil, "The Reclaimers"). Bu SADECE
+fraksiyon adları için geçerlidir: sahne metni, karakter adları, yer adları,
+eşyalar ve state-update'teki diğer her şey TÜRKÇE kalır. Karakterler
+konuşurken bu adları olduğu gibi kullanır (çevirmez).
 
 ### Fraksiyonların İKİ KATMANI (ÇOK ÖNEMLİ)
 Her fraksiyon kaydının iki ayrı katmanı vardır ve ikisini KARIŞTIRMA:
@@ -542,7 +550,7 @@ takas ettiğinde state-update bloğunda `resources` alanını MUTLAKA güncelle.
 - **Değişim (en sık kullanacağın)**: `"resources": {"Mühimmat": {"12 kalibre fişek": "-2"}}`
   (iki fişek atıldı) · `"resources": {"Yiyecek": {"Konserve": "+9"}}` (dokuz kutu bulundu)
 - **Kesin sayım**: `"resources": {"Hayvan": {"Tavuk": 9}}` (elde tam olarak 9 tavuk kaldı)
-- **Yeni kalem / detay**: `"resources": {"Silah": {"Arbalet": {"qty": 1, "unit": "adet", "notes": "Carrion Hunters'tan takas"}}}`
+- **Yeni kalem / detay**: `"resources": {"Silah": {"Arbalet": {"qty": 1, "unit": "adet", "notes": "Rust'tan takas"}}}`
 
 Kurallar:
 - Sayılar hikayeyle TUTARLI olmalı — stokta olmayan bir şey harcanamaz, bir
@@ -782,32 +790,32 @@ INITIAL_WORLD_STATE = {
     #   disposition/notes -> GERÇEK tavır ve anlatıcı notu (sadece /secrets)
     #   known/public_notes -> oyuncuların o ana kadar ÖĞRENDİĞİ (oyun ekranı)
     "factions": {
-        "Crimson Dawn Cult": {
+        "Crimson Dawn": {
             "disposition": "düşmanca", "known": "bilinmiyor",
             "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
             "public_notes": "Mutasyonu kutsayan fanatikler.",
         },
-        "Congregation of Purity": {
+        "The Reclaimers": {
             "disposition": "temkinli", "known": "bilinmiyor",
             "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
             "public_notes": "Katı hiyerarşili, kaynak zengini kamp.",
         },
-        "Last Hope": {
+        "Athens": {
             "disposition": "dostane", "known": "bilinmiyor",
             "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
             "public_notes": "Mülteci koalisyonu, savunmasız.",
         },
-        "Garrison Command": {
+        "The Garrison": {
             "disposition": "şüpheci", "known": "bilinmiyor",
             "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
             "public_notes": "Kuzeydeki askeri üs, sıkıyönetim.",
         },
-        "Carrion Hunters": {
+        "Rust": {
             "disposition": "fırsatçı", "known": "bilinmiyor",
             "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
             "public_notes": "Fırsatçı bağımsız çeteler.",
         },
-        "The Lab Remnant": {
+        "Facility": {
             "disposition": "bilinmiyor", "known": "bilinmiyor",
             "notes": "Mutasyonun kaynağına dair bilgi burada; sakinlerinin niyeti henüz belirsiz.",
             "public_notes": "Güneydeki tesis, gizemli sakinler.",

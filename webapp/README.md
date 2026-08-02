@@ -336,7 +336,47 @@ geçen süreye göre kendiliğinden **düşer** (açlık/susuzluk uykuda da arta
 Oyuncu ekranında kart üstünde rozet (😴/🚶/💫/⛓️), `/secrets` ekranında ayrıca
 dönüş koşulunun özeti görünür.
 
+## Senarist planı (data/plot.json)
+
+Anlatıcı her turu o anki duruma bakarak yazar; ileriye randevu koyamaz. Plan
+dosyası bunu çözer: koşullu olaylar (beat) yazarsın, koşulu sağlanan turda
+anlatıcıya **gizli direktif** olarak girer.
+
+```json
+{"version": 1,
+ "threads": {"tarik_kimlik": {"premise": "Tarık aslında Emir.", "status": "aktif"}},
+ "beats": [{
+   "id": "muhur_ipucu", "thread": "tarik_kimlik",
+   "when": {"day_gte": 101, "location_in": ["Athens kampı"], "flags_unset": ["muhur_gorulmus"]},
+   "directive": "Sevil'in çadırında mühür görünsün. Açık söyleme, sadece göster.",
+   "on_fire": {"flags": {"muhur_gorulmus": true}},
+   "expires_day": 106, "state": "pending"}],
+ "seeds": ["Okan'ın ıslak defteri henüz okunmadı"]}
+```
+
+Koşul alanları sahne katılımıyla aynı motoru kullanır: `day_gte`/`day_lte`,
+`clock_gte`/`clock_lte`, `location_in`, `tension_gte`, `flags_set`/
+`flags_unset`, `world_roll_lte`/`world_roll_gte` — hepsi VE ile bağlanır.
+
+Kurallar:
+- **Tur başına en fazla bir beat** ateşlenir (en yakın vadeli önce). Üç
+  direktif aynı sahneye girerse sahne okunmaz olur.
+- `expires_day` yazılmazsa sunucu 8 gün ömür verir. Vadesi geçen beat çürür
+  (`expired`) — yoksa kuyrukta bekleyip çok sonra alakasız bir sahnede patlar.
+- Direktif **koşul tarif eder, sonuç dayatmaz**. Oyuncular fark etmezse
+  anlatıcı zorlamaz; o turdaki hamleleri direktiften önceliklidir.
+- Model yanıt vermezse beat ateşlenmiş sayılmaz, kuyrukta kalır.
+- Plan oyuncuya asla gitmez: yalnız `/secrets` ekranındaki plan panelinde ve
+  anlatıcı günlüğünde (`ateşlendi` / `çürüdü`) görünür.
+
+Beat ekleme/veto arayüzü henüz yok; dosya elle yazılır (bkz.
+`docs/senarist-yetenegi.md`, Faz 3).
+
 ## Fraksiyonların iki katmanı
+
+Fraksiyon adları İngilizcedir (Crimson Dawn, The Reclaimers, Athens,
+The Garrison, Rust, Facility); anlatıcı yeni bir oluşum yarattığında ona da
+aynı üslupta kısa bir İngilizce ad verir. Metnin geri kalanı Türkçedir.
 
 Her fraksiyon kaydı iki katman tutar:
 
