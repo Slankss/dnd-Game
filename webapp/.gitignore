@@ -2,3 +2,20 @@
 #data/state.json
 #.env
 __pycache__/
+
+# --- Vue/Vite arayüzü ---------------------------------------------------
+# Bağımlılıklar ve yerel araç çıktıları depoya girmez.
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/*.local
+frontend/.env.local
+frontend/.env.*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build çıktısı (static/dist) BİLEREK depoya girer: oyun npm/Node kurulu
+# olmayan bir makinede de açılabilmeli. Aşağıdaki satırları silme.
+!static/dist/
+!static/dist/**

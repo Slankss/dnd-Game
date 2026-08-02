@@ -1,0 +1,88 @@
+/* ---------------------------------------------------------------------------
+ * Tasarım tokenları — docs/tasarim-sistemi.md ile birebir.
+ * Tailwind v4 CSS-first yapılandırma: buradaki her token doğrudan utility
+ * üretir (`--color-accent` → `bg-accent`, `text-accent`, `border-accent`).
+ * Karanlık tema TEK temadır; açık tema yok.
+ * ------------------------------------------------------------------------- */
+
+@theme {
+  /* --- Renk: kıyamet paleti (soğuk kömür zemin, tek sıcak vurgu) --------- */
+  --color-bg: #0b0d0f; /* sayfa */
+  --color-surface: #14181c; /* panel */
+  --color-surface-2: #1c2228; /* kart, hover */
+  --color-surface-3: #232b33; /* aktif / seçili */
+  --color-border: #262e36;
+  --color-border-strong: #38424c;
+  --color-text: #e6e9ec;
+  --color-muted: #8b959f;
+  --color-faint: #5c6670; /* ikincil ipuçları, ayraçlar */
+
+  --color-accent: #d4703a; /* tek sıcak vurgu — kızıl turuncu */
+  --color-accent-strong: #e5844c;
+  --color-danger: #d64545;
+  --color-warn: #d9a441;
+  --color-ok: #4f9d69;
+  --color-gm: #8b6bd4; /* anlatıcı ekranına özel mor */
+
+  /* Durum renklerinin yumuşak zeminleri (rozet/şerit için) */
+  --color-accent-soft: color-mix(in oklab, #d4703a 16%, transparent);
+  --color-danger-soft: color-mix(in oklab, #d64545 16%, transparent);
+  --color-warn-soft: color-mix(in oklab, #d9a441 16%, transparent);
+  --color-ok-soft: color-mix(in oklab, #4f9d69 16%, transparent);
+  --color-gm-soft: color-mix(in oklab, #8b6bd4 16%, transparent);
+
+  /* Karakter paleti — isim → sabit renk (src/utils/characterColors.js) */
+  --color-char-1: #4a7c59;
+  --color-char-2: #4a6c9c;
+  --color-char-3: #9c6c4a;
+  --color-char-4: #8a4a9c;
+  --color-char-5: #c9a227;
+  --color-char-6: #4a9c8f;
+  --color-char-7: #c05a4a;
+  --color-char-8: #5a5ac0;
+  --color-group: #7a8590; /* grup/ortak girdiler */
+
+  /* --- Tipografi -------------------------------------------------------- */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'JetBrains Mono', Consolas, monospace;
+  --font-icon: 'Material Symbols Rounded';
+
+  /* Rol bazlı ölçek (docs §2). Utility adları: text-scene, text-panel … */
+  --text-scene: 1rem; /* sahne metni — ana okuma */
+  --text-scene--line-height: 1.7;
+  --text-panel: 0.75rem; /* panel başlığı: 12px/600/uppercase */
+  --text-panel--line-height: 1.2;
+  --text-panel--letter-spacing: 0.06em;
+  --text-panel--font-weight: 600;
+  --text-card: 0.875rem; /* kart başlığı: 14px/600 */
+  --text-card--line-height: 1.35;
+  --text-card--font-weight: 600;
+  --text-label: 0.6875rem; /* etiket / rozet: 11px/500 */
+  --text-label--line-height: 1.3;
+  --text-label--font-weight: 500;
+  --text-meta: 0.8125rem; /* ikincil satır metni: 13px */
+  --text-meta--line-height: 1.5;
+
+  /* --- Ölçü / yuvarlaklık ---------------------------------------------- */
+  --radius-panel: 0.625rem;
+  --radius-card: 0.5rem;
+  --radius-chip: 999px;
+
+  /* Okuma ölçüsü: 65-75 karakter */
+  --container-scene: 68ch;
+
+  /* --- Hareket: yalnız 120-180 ms ------------------------------------- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 150ms;
+  --duration-slow: 180ms;
+
+  /* --- Kabuk ölçüleri --------------------------------------------------- */
+  --spacing-topbar: 3.25rem; /* üst bar yüksekliği */
+  --spacing-sidebar: 16.5rem; /* açık sidebar genişliği */
+  --spacing-rail: 3rem; /* kapalı sidebar ikon şeridi: 48px */
+
+  --shadow-panel: 0 1px 0 0 rgb(255 255 255 / 0.03) inset;
+  --shadow-float: 0 12px 32px -12px rgb(0 0 0 / 0.7);
+}
