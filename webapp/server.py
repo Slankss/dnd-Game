@@ -5,6 +5,7 @@ import secrets
 import subprocess
 import threading
 import time
+import unicodedata
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -265,16 +266,373 @@ def _as_str_list(value) -> list:
     return []
 
 
-def _merge_person_like(target: dict, name: str, fields: dict) -> None:
+# Kurulum ekranındaki künye alanları. `secret` oyuncu arayüzüne ASLA gitmez.
+SHEET_FIELDS = ("profession", "age", "strength", "weakness", "secret")
+SECRET_FIELD = "secret"
+
+
+def build_background(char: dict) -> str:
+    """Künyeden okunabilir bir `background` cümlesi kurar — anlatıcı ve
+    kenar çubuğu bu alanı kullanıyor."""
+    age, profession = char.get("age"), char.get("profession")
+    parts = []
+    if age:
+        parts.append(f"{age} yaşında")
+    if profession:
+        parts.append(profession)
+    return ", ".join(parts)
+
+
+def build_traits(char: dict) -> str:
+    parts = []
+    if char.get("strength"):
+        parts.append(f"Güçlü yanı: {char['strength']}")
+    if char.get("weakness"):
+        parts.append(f"Zayıf yanı: {char['weakness']}")
+    return " · ".join(parts)
+
+
+# --------------------------------------------- hayatta kalma göstergeleri
+# Hepsinde 0 = gayet iyi, 100 = dayanılmaz. Zar gibi bunlar da sunucunun
+# sorumluluğunda: model unutsa bile akan zamana göre kendiliğinden artarlar.
+VITALS_NUMERIC = ("fatigue", "hunger", "thirst", "stress")
+
+# Uyanık geçen her SAAT için artış. fatigue ~25 saatte, thirst ~20 saatte,
+# hunger ~28 saatte tavan yapar — kıyamet temposu için gerçekçi aralıklar.
+VITALS_PER_HOUR = {"fatigue": 4.0, "hunger": 3.5, "thirst": 5.0, "stress": 0.8}
+
+DEFAULT_VITALS = {
+    "fatigue": 15, "hunger": 20, "thirst": 20, "stress": 10,
+    "awake_hours": 3, "condition": "Dinç",
+}
+
+
+def _clamp_vital(value, default=0):
+    try:
+        return max(0, min(100, int(round(float(value)))))
+    except (TypeError, ValueError):
+        return default
+
+
+def ensure_vitals(entry: dict) -> dict:
+    vitals = entry.get("vitals")
+    if not isinstance(vitals, dict):
+        vitals = dict(DEFAULT_VITALS)
+        entry["vitals"] = vitals
+    for key in VITALS_NUMERIC:
+        vitals[key] = _clamp_vital(vitals.get(key), DEFAULT_VITALS[key])
+    return vitals
+
+
+CLOCK_RE = re.compile(r"^\s*(\d{1,2})\s*[:.]\s*(\d{2})")
+
+
+def _clock_minutes(clock) -> int:
+    """'HH:MM' -> gün içindeki dakika. Okunamazsa None."""
+    if not isinstance(clock, str):
+        return None
+    m = CLOCK_RE.match(clock)
+    if not m:
+        return None
+    hour, minute = int(m.group(1)), int(m.group(2))
+    if hour > 23 or minute > 59:
+        return None
+    return hour * 60 + minute
+
+
+def elapsed_minutes(before: dict, after: dict) -> int:
+    """İki tur arasında geçen oyun-içi dakika. Anlatıcı saati ilerletmediyse
+    turun kendi ağırlığı kadar (varsayılan) bir süre sayılır."""
+    day_delta = (after.get("day") or 0) - (before.get("day") or 0)
+    start, end = _clock_minutes(before.get("clock")), _clock_minutes(after.get("clock"))
+    if start is None or end is None:
+        # saat okunamıyorsa: gün değiştiyse tam gün, yoksa turun taban süresi
+        return max(0, day_delta) * 24 * 60 or DEFAULT_TURN_MINUTES
+    minutes = day_delta * 24 * 60 + (end - start)
+    if minutes < 0:
+        # gün alanı güncellenmemiş ama saat gece yarısını dönmüş
+        minutes += 24 * 60
+    if minutes == 0:
+        minutes = DEFAULT_TURN_MINUTES
+    # tek turda 24 saatten fazla geçmesi anlatı hatasıdır; makul tut
+    return min(minutes, 24 * 60)
+
+
+DEFAULT_TURN_MINUTES = 20
+
+
+def apply_vitals_drift(world_state: dict, minutes: int, skip: dict) -> None:
+    """Geçen süre kadar yorgunluk/açlık/susuzluk biriktirir. Anlatıcının bu
+    turda AÇIKÇA yazdığı alanlara (uyudu/yedi/içti) dokunmaz — `skip`
+    {isim: {alan, ...}} biçiminde o alanları taşır."""
+    if minutes <= 0:
+        return
+    hours = minutes / 60.0
+    for section in ("characters", "npcs"):
+        for name, entry in (world_state.get(section) or {}).items():
+            if not isinstance(entry, dict) or entry.get("alive") is False:
+                continue
+            # NPC'lerde sadece anlatıcı bir kez vitals açtıysa takip edilir
+            if section == "npcs" and not isinstance(entry.get("vitals"), dict):
+                continue
+            vitals = ensure_vitals(entry)
+            touched = skip.get(name) or set()
+            for key, rate in VITALS_PER_HOUR.items():
+                if key in touched:
+                    continue
+                vitals[key] = _clamp_vital(vitals[key] + rate * hours)
+            if "awake_hours" not in touched:
+                try:
+                    awake = float(vitals.get("awake_hours") or 0)
+                except (TypeError, ValueError):
+                    awake = 0.0
+                vitals["awake_hours"] = round(awake + hours, 1)
+
+
+def _vital_label(vitals: dict) -> str:
+    worst_key, worst = None, -1
+    for key in VITALS_NUMERIC:
+        if vitals.get(key, 0) > worst:
+            worst_key, worst = key, vitals.get(key, 0)
+    names = {"fatigue": "yorgunluk", "hunger": "açlık",
+             "thirst": "susuzluk", "stress": "stres"}
+    if worst >= 85:
+        return f"kritik {names[worst_key]}"
+    if worst >= 65:
+        return f"ağır {names[worst_key]}"
+    if worst >= 40:
+        return f"belirgin {names[worst_key]}"
+    return "formda"
+
+
+def vitals_note(world_state: dict) -> str:
+    """Her turda modele verilen güncel gösterge tablosu — zar yorumunu
+    bunlara göre kaydırması için."""
+    lines = []
+    for section in ("characters", "npcs"):
+        for name, entry in (world_state.get(section) or {}).items():
+            if not isinstance(entry, dict) or entry.get("alive") is False:
+                continue
+            vitals = entry.get("vitals")
+            if not isinstance(vitals, dict):
+                continue
+            awake = vitals.get("awake_hours")
+            lines.append(
+                f"- {name}: yorgunluk {vitals.get('fatigue', 0)}, "
+                f"açlık {vitals.get('hunger', 0)}, susuzluk {vitals.get('thirst', 0)}, "
+                f"stres {vitals.get('stress', 0)}"
+                + (f", {awake} saattir uyanık" if awake not in (None, "") else "")
+                + f" → {_vital_label(vitals)}"
+            )
+    if not lines:
+        return ""
+    return (
+        "HAYATTA KALMA GÖSTERGELERİ (0 = iyi, 100 = dayanılmaz — sunucu akan "
+        "zamana göre otomatik artırdı, GÜNCEL değerler bunlar):\n"
+        + "\n".join(lines)
+        + "\nBu değerleri bu turun anlatısında FİİLEN kullan: zar bandını "
+        "yorgunluk/açlık/susuzluk seviyesine göre kaydır (40+ belirgin, 65+ "
+        "bir kademe aşağı, 85+ neredeyse kesin bedelli), ve sonucu bir "
+        "cümleyle değil yapılan işin SONUCUYLA göster. Bir karakter bu turda "
+        "uyuduysa/yediyse/içtiyse `vitals` alanını state-update ile GÜNCELLE; "
+        "aksi halde yazma, sunucu kendisi ilerletir."
+    )
+
+
+def _norm_tr(text) -> str:
+    """Türkçe'ye güvenli normalleştirme. Düz `casefold()` burada sessizce
+    yanlış çalışıyor: "İyi".casefold() -> "i̇yi" (nokta ayrı bir birleşen
+    olarak kalır, "iyi" ile eşleşmez), "I".casefold() -> "i" ama "ı" olduğu
+    gibi kalır. Dört i varyantını da tek bir "i"ye indirger."""
+    if not isinstance(text, str):
+        return ""
+    for src in ("ı", "I", "İ"):
+        text = text.replace(src, "i")
+    text = unicodedata.normalize("NFKD", text.casefold())
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", text).strip()
+
+
+# ------------------------------------------------------------------ yaralar
+WOUND_SEVERITIES = ("hafif", "orta", "ağır", "kritik")
+
+# Tedavi edilmemiş yaranın saat başına enfeksiyon riski artışı. Tedavi
+# edilmiş yara yavaşça temizlenir (negatif).
+INFECTION_PER_HOUR = {"hafif": 0.6, "orta": 1.2, "ağır": 2.0, "kritik": 3.0}
+INFECTION_TREATED_PER_HOUR = -1.0
+
+
+def _wound_key(desc: str) -> str:
+    return _norm_tr(desc)
+
+
+def _normalize_wound(raw, day=None, clock=None) -> dict:
+    """Model yarayı düz string ya da sözlük olarak yazabiliyor; ikisini de
+    aynı yapıya çevirir."""
+    if isinstance(raw, str):
+        raw = {"desc": raw}
+    if not isinstance(raw, dict):
+        return None
+    desc = str(raw.get("desc") or raw.get("description") or "").strip()
+    if not desc:
+        return None
+    severity = str(raw.get("severity") or "orta").strip().casefold()
+    if severity not in WOUND_SEVERITIES:
+        severity = "orta"
+    return {
+        "desc": desc,
+        "severity": severity,
+        "infection_risk": _clamp_vital(raw.get("infection_risk"), 15),
+        "treated": bool(raw.get("treated")),
+        "notes": str(raw.get("notes") or "").strip(),
+        "since_day": raw.get("since_day", day),
+        "since_clock": raw.get("since_clock", clock),
+    }
+
+
+def _merge_wounds(entry: dict, fields: dict, day=None, clock=None) -> None:
+    wounds = entry.setdefault("wounds", [])
+    if not isinstance(wounds, list):
+        wounds = entry["wounds"] = []
+
+    def _find(fragment):
+        key = _wound_key(fragment)
+        if not key:
+            return None
+        for w in wounds:
+            wk = _wound_key(w.get("desc"))
+            if key == wk or key in wk or wk in key:
+                return w
+        return None
+
+    raw_add = fields.get("wounds_add")
+    if isinstance(raw_add, (str, dict)):
+        raw_add = [raw_add]
+    for raw in raw_add or []:
+        wound = _normalize_wound(raw, day, clock)
+        if wound and not _find(wound["desc"]):
+            wounds.append(wound)
+
+    updates = fields.get("wounds_update")
+    if isinstance(updates, dict):
+        for fragment, changes in updates.items():
+            wound = _find(fragment)
+            if wound is None or not isinstance(changes, dict):
+                continue
+            if "severity" in changes:
+                sev = str(changes["severity"]).strip().casefold()
+                if sev in WOUND_SEVERITIES:
+                    wound["severity"] = sev
+            if "infection_risk" in changes:
+                wound["infection_risk"] = _clamp_vital(
+                    changes["infection_risk"], wound["infection_risk"])
+            if "treated" in changes:
+                wound["treated"] = bool(changes["treated"])
+            if isinstance(changes.get("notes"), str):
+                wound["notes"] = changes["notes"].strip()
+            if isinstance(changes.get("desc"), str) and changes["desc"].strip():
+                wound["desc"] = changes["desc"].strip()
+
+    healed = fields.get("wounds_heal")
+    if isinstance(healed, str):
+        healed = [healed]
+    for fragment in healed or []:
+        wound = _find(fragment)
+        if wound is not None:
+            wounds.remove(wound)
+
+
+def advance_infections(world_state: dict, minutes: int) -> None:
+    """Tedavi edilmemiş yaraların enfeksiyon riski zamanla yükselir; tedavi
+    edilmişler yavaşça temizlenir. Göstergeler gibi bu da sunucunun işi —
+    anlatıcı unutsa bile yara ilerler."""
+    if minutes <= 0:
+        return
+    hours = minutes / 60.0
+    for section in ("characters", "npcs"):
+        for entry in (world_state.get(section) or {}).values():
+            if not isinstance(entry, dict) or entry.get("alive") is False:
+                continue
+            for wound in entry.get("wounds") or []:
+                if not isinstance(wound, dict):
+                    continue
+                rate = (INFECTION_TREATED_PER_HOUR if wound.get("treated")
+                        else INFECTION_PER_HOUR.get(wound.get("severity"), 1.2))
+                wound["infection_risk"] = _clamp_vital(
+                    (wound.get("infection_risk") or 0) + rate * hours)
+
+
+def normalize_wound_status(world_state: dict) -> None:
+    """Kolunda kanayan yara varken `status: "İyi"` kalmasın — anlatıcı bunu
+    sık sık atlıyor ve oyuncu kenar çubuğunda sağlıklı görünüyordu."""
+    healthy = {_norm_tr(w) for w in ("iyi", "sağlıklı", "normal", "formda", "")}
+    for section in ("characters", "npcs"):
+        for entry in (world_state.get(section) or {}).values():
+            if not isinstance(entry, dict) or entry.get("alive") is False:
+                continue
+            wounds = [w for w in (entry.get("wounds") or []) if isinstance(w, dict)]
+            if not wounds:
+                continue
+            if _norm_tr(entry.get("status")) not in healthy:
+                continue
+            worst = max(WOUND_SEVERITIES.index(w.get("severity", "orta"))
+                        if w.get("severity") in WOUND_SEVERITIES else 1
+                        for w in wounds)
+            infected = any((w.get("infection_risk") or 0) >= 60 for w in wounds)
+            if infected:
+                entry["status"] = "Enfekte olabilir"
+            elif worst >= WOUND_SEVERITIES.index("ağır"):
+                entry["status"] = "Ağır yaralı"
+            else:
+                entry["status"] = "Yaralı"
+
+
+def wounds_note(world_state: dict) -> str:
+    lines = []
+    for section in ("characters", "npcs"):
+        for name, entry in (world_state.get(section) or {}).items():
+            if not isinstance(entry, dict) or entry.get("alive") is False:
+                continue
+            for wound in entry.get("wounds") or []:
+                if not isinstance(wound, dict):
+                    continue
+                risk = wound.get("infection_risk") or 0
+                flag = ("  ⚠️ ENFEKSİYON BELİRTİLERİ BAŞLADI" if risk >= 85
+                        else "  ⚠️ enfeksiyon kapıda" if risk >= 60 else "")
+                lines.append(
+                    f"- {name}: {wound.get('desc')} ({wound.get('severity')}, "
+                    f"enfeksiyon riski {risk}, "
+                    + ("tedavi edildi" if wound.get("treated") else "TEDAVİ EDİLMEDİ")
+                    + (f", not: {wound['notes']}" if wound.get("notes") else "")
+                    + ")"
+                    + flag
+                )
+    if not lines:
+        return ""
+    return (
+        "AÇIK YARALAR (iyileşene kadar kayıtlı kalır — bu turda da FİİLEN "
+        "hissedilsinler: ağrı, kanama, o uzvu kullanamama):\n"
+        + "\n".join(lines)
+        + "\nEnfeksiyon riski tedavi edilmedikçe zamanla kendiliğinden "
+        "yükselir. 60'ı geçince belirtiler (ateş, titreme, kızarma) başlasın, "
+        "85'i geçince bunu ölümcül bir `challenges` kaydına dönüştür. Tedavi "
+        "edildiyse `wounds_update` ile `treated: true` yaz ve harcanan "
+        "malzemeyi envanterden/`resources`'tan DÜŞ."
+    )
+
+
+def _merge_person_like(target: dict, name: str, fields: dict,
+                       day=None, clock=None) -> set:
     """`characters` ve `npcs` için ortak birleştirme mantığı (background/
     traits/status/location/notes üzerine yazar; inventory ekler/çıkarır;
-    relationships iç içe günceller)."""
+    relationships ve vitals iç içe günceller). Anlatıcının bu turda elle
+    yazdığı `vitals` alanlarını döndürür — otomatik artıştan muaf tutulurlar."""
     entry = target.setdefault(
         name,
         {"background": None, "traits": None, "status": "İyi", "alive": True,
          "location": None, "inventory": [], "relationships": {}, "notes": ""},
     )
-    for scalar_key in ("background", "traits", "status", "location", "notes"):
+    for scalar_key in ("background", "traits", "status", "location", "notes") + SHEET_FIELDS:
         if scalar_key in fields:
             entry[scalar_key] = fields[scalar_key]
 
@@ -284,18 +642,65 @@ def _merge_person_like(target: dict, name: str, fields: dict) -> None:
     if isinstance(fields.get("relationships"), dict):
         entry.setdefault("relationships", {}).update(fields["relationships"])
 
+    _merge_wounds(entry, fields, day, clock)
+
     inv = entry.setdefault("inventory", [])
+    # Elden çıkmış eşyaların kaydı. Model sonraki turlarda hafızasından TAM
+    # listeyi tekrar yazınca (atılan madalyonu içeren eski liste gibi) eşya
+    # sessizce cebe geri dönüyordu — hikaye tutarsızlaşıyordu. Bir eşya ancak
+    # sahnede FİİLEN geri alınırsa (`inventory_add`) bu listeden çıkar.
+    lost = entry.setdefault("lost_items", [])
+    lost_keys = {_norm_tr(i) for i in lost}
+
+    added = _as_str_list(fields.get("inventory_add"))
+    bulk = _as_str_list(fields.get("inventory"))
+    removed = _as_str_list(fields.get("inventory_remove"))
+
+    # açık geri alma: eşya tekrar sahiplenildi
+    for item in added:
+        key = _norm_tr(item)
+        if key in lost_keys:
+            lost_keys.discard(key)
+            lost[:] = [i for i in lost if _norm_tr(i) != key]
+
     # Model bazen `inventory_add` yerine doğrudan tam listeyi (`inventory`)
-    # ya da tek bir eşyayı düz string olarak yazıyor. Eskiden ikisi de sessizce
-    # yok sayılıyordu — hikayede ortaya çıkan bir bıçak envantere hiç
-    # girmiyordu. Artık üçü de kabul ediliyor. `inventory` üzerine YAZMAZ,
-    # birleştirir: model listeyi eksik yazarsa mevcut eşyalar kaybolmasın.
-    for item in _as_str_list(fields.get("inventory")) + _as_str_list(fields.get("inventory_add")):
-        if item and item not in inv:
-            inv.append(item)
-    for item in _as_str_list(fields.get("inventory_remove")):
-        if item in inv:
-            inv.remove(item)
+    # ya da tek bir eşyayı düz string olarak yazıyor; üçü de kabul ediliyor.
+    # `inventory` üzerine YAZMAZ, birleştirir (model listeyi eksik yazarsa
+    # mevcut eşyalar kaybolmasın) — ama elden çıkmış eşyayı geri getiremez.
+    added_keys = {_norm_tr(i) for i in added}
+    for item in bulk + added:
+        if not item or item in inv:
+            continue
+        key = _norm_tr(item)
+        if key in lost_keys and key not in added_keys:
+            continue
+        inv.append(item)
+
+    for item in removed:
+        key = _norm_tr(item)
+        inv[:] = [i for i in inv if _norm_tr(i) != key]
+        if key not in lost_keys:
+            lost.append(item)
+            lost_keys.add(key)
+
+    # Anlatıcının yazdığı gösterge değerleri sunucunun otomatik artışını EZER
+    # (uyudu / yedi / içti). Dokunulan alanlar çağırana döner.
+    touched = set()
+    if isinstance(fields.get("vitals"), dict):
+        vitals = ensure_vitals(entry)
+        for key, value in fields["vitals"].items():
+            if key in VITALS_NUMERIC:
+                vitals[key] = _clamp_vital(value, vitals.get(key, 0))
+                touched.add(key)
+            elif key == "awake_hours":
+                try:
+                    vitals["awake_hours"] = max(0.0, round(float(value), 1))
+                    touched.add("awake_hours")
+                except (TypeError, ValueError):
+                    pass
+            elif key == "condition" and isinstance(value, str):
+                vitals["condition"] = value.strip()
+    return touched
 
 
 TENSION_LEVELS = ("düşük", "orta", "yüksek")
@@ -369,9 +774,9 @@ def canonical_name(target: dict, name: str):
         return None
     if name in target:
         return name
-    lowered = name.strip().lower()
+    lowered = _norm_tr(name)
     for key in target:
-        if key.lower() == lowered:
+        if _norm_tr(key) == lowered:
             return key
     return None
 
@@ -391,12 +796,17 @@ UPKEEP_REMINDER = (
     "(3) ENVANTER KONTROLÜ (her tur, atlama): bu turun anlatısında bir "
     "karakterin elinde/üzerinde/cebinde bir eşya geçtiyse ve o eşya GÜNCEL "
     "DÜNYA DURUMU'nda o karakterin `inventory` listesinde YOKSA, aynı bloğa "
-    "`inventory_add` ile ekle; tükenen/kırılan/verilen/düşürülen eşyayı "
-    "`inventory_remove` ile çıkar. Anlatıda var olup envanterde görünmeyen "
-    "eşya kalmasın — oyuncular envanteri arayüzden canlı izliyor.\n"
-    "(4) GRUP STOĞU: bu turda ortak stoktan bir şey harcandıysa/eklendiyse "
-    "(mermi, yiyecek, su, ilaç, yakıt, hayvan, mahsul, takas malı...) "
-    '`resources` alanını güncelle — ör. {"Mühimmat": {"9mm mermi": "-3"}, '
+    "`inventory_add` ile ekle. Bir karakter bu turda bir eşyayı ATTIYSA, "
+    "verdiyse, kaybettiyse, tükettiyse ya da kırdıysa AYNI TURDA "
+    "`inventory_remove` ile çıkarmak ZORUNDASIN — yazmazsan eşya cebinde "
+    "kalır ve hikaye tutarsızlaşır (atılan bir madalyon saatler sonra tekrar "
+    "cepte çıkar). Anlatıda var olup envanterde görünmeyen ya da anlatıda "
+    "elden çıkıp envanterde duran eşya kalmasın — oyuncular envanteri "
+    "arayüzden canlı izliyor.\n"
+    "(4) GRUP STOĞU: SADECE ortak bir depo/klan gerçekten varsa geçerlidir. "
+    "Yoksa `resources`'a hiçbir şey yazma. Varsa ve bu turda bir şey "
+    "harcandıysa/eklendiyse (mermi, yiyecek, su, ilaç, yakıt, hayvan, mahsul, "
+    'takas malı...) güncelle — ör. {"Mühimmat": {"9mm mermi": "-3"}, '
     '"Yiyecek": {"Konserve": "+4"}}.\n'
     "(5) ZORLUKLAR: sahnedeki aktif `challenges` kayıtlarının `clock` ve "
     "`progress` alanlarını bu turda GÜNCELLE (oyuncu zarı ne kadar ilerletti, "
@@ -464,6 +874,25 @@ def inventory_note(world_state: dict) -> str:
             continue
         inv = info.get("inventory") or []
         lines.append(f"- {name}: {', '.join(inv) if inv else '(üzerinde hiçbir eşya yok)'}")
+        lost = info.get("lost_items") or []
+        if lost:
+            lines.append(
+                f"  · {name} ARTIK ŞUNLARA SAHİP DEĞİL (attı/verdi/kaybetti/"
+                f"tüketti — hikayede fiilen geri almadıkça bir daha elinde "
+                f"OLAMAZ): {', '.join(lost)}"
+            )
+    has_stock = any(
+        isinstance(cat, dict) and cat
+        for cat in (world_state.get("resources") or {}).values()
+    )
+    if not has_stock:
+        lines.append(
+            "ORTAK STOK: YOK. Grubun bir klanı, topluluğu ya da deposu henüz "
+            "yok — elde SADECE yukarıdaki kişisel eşyalar var. Depodan, "
+            "erzaktan, 'stoğumuzdan' söz ETME ve `resources` altına kendiliğinden "
+            "kalem YAZMA. Stok ancak grup bir topluluk kurarsa/katılırsa ya da "
+            "oyuncular açıkça sayım isterse doğar."
+        )
     lines.append(
         "KURAL: bir karakter SADECE bu listedeki eşyaları, grubun `resources` "
         "stoğundan sahnede fiilen aldığı bir şeyi, ya da bulunduğu ortamda "
@@ -473,6 +902,13 @@ def inventory_note(world_state: dict) -> str:
         "durumda sahnede gerçekçi biçimde düzelt (eli boşa gider, cebinde "
         "olmadığını fark eder, eldeki başka bir şeyle idare etmek zorunda "
         "kalır) ve bunu kuru bir ret değil, küçük bir gerilim anına çevir."
+    )
+    lines.append(
+        "SÜREKLİLİK: elden çıkmış bir eşya kendiliğinden geri GELMEZ. Bir "
+        "karakter bir şeyi attıysa/verdiyse/kaybettiyse o şey artık bulunduğu "
+        "yerdedir; ancak o yere geri dönüp FİİLEN alırlarsa envantere geri "
+        "girer (o zaman `inventory_add` yaz). Aradan saatler geçmesi eşyayı "
+        "cebe geri koymaz."
     )
     return "\n".join(lines)
 
@@ -507,6 +943,35 @@ def starting_items_note(world_state: dict) -> str:
     return "\n".join(lines) if lines else "(karakter yok)"
 
 
+def character_sheets_note(world_state: dict) -> str:
+    """Kurulum ekranından gelen karakter künyeleri — sırlar dahil. Sadece
+    modele gider, oyuncu arayüzüne asla."""
+    lines = []
+    for name, info in (world_state.get("characters") or {}).items():
+        bits = []
+        if info.get("age"):
+            bits.append(f"yaş {info['age']}")
+        if info.get("profession"):
+            bits.append(f"meslek: {info['profession']}")
+        if info.get("strength"):
+            bits.append(f"güçlü yanı: {info['strength']}")
+        if info.get("weakness"):
+            bits.append(f"zayıf yanı: {info['weakness']}")
+        inv = info.get("inventory") or []
+        bits.append(f"başlangıç eşyası: {', '.join(inv) if inv else '(seçmedi)'}")
+        lines.append(f"- {name} — " + "; ".join(bits))
+        if info.get(SECRET_FIELD):
+            lines.append(
+                f"  · GİZLİ SIR (sadece sen bilirsin, asla açıklama): {info[SECRET_FIELD]}"
+            )
+    return "\n".join(lines) if lines else "(karakter yok)"
+
+
+def sheets_complete(world_state: dict) -> bool:
+    characters = world_state.get("characters") or {}
+    return bool(characters) and all(c.get("background") for c in characters.values())
+
+
 def roster_note(world_state: dict) -> str:
     """Her turda modele verilen sabit oyuncu kadrosu hatırlatması — model
     hikayenin ortasında isim uydurmasın/karıştırmasın diye."""
@@ -527,12 +992,30 @@ def roster_note(world_state: dict) -> str:
         "UYDURMA, mevcut birini başka isimle anma. Hikayedeki diğer herkes NPC'dir "
         "ve state-update'te `npcs` altına yazılır."
     )
+    if any((characters.get(n) or {}).get(SECRET_FIELD) for n in alive):
+        lines.append(
+            "KÜNYE HATIRLATMASI: her karakterin `profession`/`age`/`strength`/"
+            "`weakness` alanları BAĞLAYICIDIR — sahnede ve zar yorumunda "
+            "kullan. `secret` alanı SADECE SANA aittir: asla açıklama, "
+            "listeleme ya da başka bir karaktere söyletme; sadece gerilim "
+            "kaynağı olarak, ima ve baskı yoluyla kullan."
+        )
     return "\n".join(lines)
 
 
-def deep_merge_world_state(world_state: dict, patch: dict) -> None:
-    if "day" in patch and isinstance(patch["day"], int):
-        world_state["day"] = patch["day"]
+def deep_merge_world_state(world_state: dict, patch: dict,
+                           vitals_touched: dict = None) -> None:
+    """`vitals_touched` verilirse, anlatıcının bu turda elle yazdığı
+    gösterge alanları {isim: {alan}} olarak oraya biriktirilir."""
+    # Model gün sayısını bazen "98" diye string yazıyor; eskiden bu sessizce
+    # yok sayılıp başlıktaki gün sayacı hiç ilerlemiyordu.
+    day = patch.get("day")
+    if isinstance(day, bool):
+        day = None
+    if isinstance(day, str) and day.strip().isdigit():
+        day = int(day.strip())
+    if isinstance(day, (int, float)):
+        world_state["day"] = int(day)
 
     # Zaman ve hava: anlatıcı her turda ilerletir (saat akar, gün döner, hava
     # değişir). Boş string gönderilirse mevcut değer korunur — model alanı
@@ -572,11 +1055,16 @@ def deep_merge_world_state(world_state: dict, patch: dict) -> None:
         for name, fields in patch[section].items():
             if not isinstance(fields, dict):
                 continue
+            day, clock = world_state.get("day"), world_state.get("clock")
             pc_key = canonical_name(characters, name)
             if pc_key:
-                _merge_person_like(characters, pc_key, fields)
+                touched = _merge_person_like(characters, pc_key, fields, day, clock)
+                key = pc_key
             else:
-                _merge_person_like(npcs, canonical_name(npcs, name) or name, fields)
+                key = canonical_name(npcs, name) or name
+                touched = _merge_person_like(npcs, key, fields, day, clock)
+            if touched and vitals_touched is not None:
+                vitals_touched.setdefault(key, set()).update(touched)
 
     if isinstance(patch.get("resources"), dict):
         _merge_resources(world_state.setdefault("resources", {}), patch["resources"])
@@ -631,6 +1119,15 @@ GM_ONLY_FIELDS = ("narrator", "world_roll", "world_roll_history")
 def public_world_state(world_state: dict) -> dict:
     """Oyuncu arayüzüne gidecek, gizli alanları ayıklanmış kopya."""
     public = {k: v for k, v in world_state.items() if k not in GM_ONLY_FIELDS}
+    # Karakter künyesindeki `secret` sadece anlatıcıya aittir — diğer
+    # oyuncular aynı ekranı paylaştığı için buradan tamamen çıkarılır.
+    for section in ("characters", "npcs"):
+        people = public.get(section)
+        if isinstance(people, dict):
+            public[section] = {
+                name: {k: v for k, v in (info or {}).items() if k != SECRET_FIELD}
+                for name, info in people.items()
+            }
     challenges = public.get("challenges")
     if isinstance(challenges, dict):
         # zorluklar oyunculara görünür ama her zorluğun gm_notes'u görünmez
@@ -712,6 +1209,27 @@ LEFTOVER_FENCE_RE = re.compile(
 )
 EMPTY_FENCE_RE = re.compile(r"```\s*```", re.DOTALL)
 
+# Model bloğu sık sık {"state-update": {...}} diye sarmalıyor. Sarmalanmış
+# hali deep_merge'de hiçbir bilinen alana denk gelmediği için sessizce
+# yutuluyordu — bu yüzden birleştirmeden önce daima soyuyoruz.
+PATCH_WRAPPER_KEYS = {"state-update", "state_update", "stateupdate", "world_state", "patch"}
+
+
+def _normalize_patch(obj):
+    """Sarmalayıcı anahtarı varsa içindeki gerçek yamayı döndürür."""
+    while isinstance(obj, dict) and len(obj) == 1:
+        key, inner = next(iter(obj.items()))
+        if key.strip().lower().replace(" ", "") not in PATCH_WRAPPER_KEYS:
+            break
+        if not isinstance(inner, dict):
+            break
+        obj = inner
+    return obj
+
+
+def _looks_like_patch(obj) -> bool:
+    return isinstance(obj, dict) and bool(set(_normalize_patch(obj)) & STATE_KEYS)
+
 
 def _strip_bare_json_objects(text: str):
     """Model ``` fence'ini unuttuğunda ham JSON metnin içinde kalıyor ve
@@ -751,8 +1269,8 @@ def _strip_bare_json_objects(text: str):
                 parsed = json.loads(text[i:j + 1])
             except json.JSONDecodeError:
                 parsed = None
-        if isinstance(parsed, dict) and (set(parsed) & STATE_KEYS):
-            patches.append(parsed)
+        if _looks_like_patch(parsed):
+            patches.append(_normalize_patch(parsed))
             i = j + 1
         else:
             out.append(text[i])
@@ -769,7 +1287,7 @@ def extract_state_update(text: str):
 
     def _collect(match):
         try:
-            patches.append(json.loads(match.group(1)))
+            patches.append(_normalize_patch(json.loads(match.group(1))))
         except json.JSONDecodeError:
             pass  # parse edilemedi ama yine de gösterilmez
         return ""
@@ -885,20 +1403,23 @@ def get_state():
 def setup_characters():
     body = request.get_json(force=True) or {}
     # `players` iki biçimde gelebilir: düz isim listesi (eski istemciler) ya da
-    # {"name": "...", "item": "seçtiği başlangıç eşyası"} sözlükleri.
+    # karakter künyesi sözlükleri (isim + meslek/yaş/güçlü/zayıf/sır/eşya).
     picks = []
     for raw in body.get("players") or []:
         if isinstance(raw, str):
-            picks.append((raw.strip(), ""))
+            picks.append({"name": raw.strip()})
         elif isinstance(raw, dict):
-            picks.append(
-                (str(raw.get("name") or "").strip(), str(raw.get("item") or "").strip())
-            )
-    picks = [(n, item) for n, item in picks if n]
+            sheet = {
+                key: str(raw.get(key) or "").strip()
+                for key in ("name", "item", "profession", "age",
+                            "strength", "weakness", "secret")
+            }
+            picks.append(sheet)
+    picks = [p for p in picks if p.get("name")]
     # tekrarları kaldır, sırayı koru
     seen = set()
-    picks = [(n, item) for n, item in picks if not (n in seen or seen.add(n))]
-    names = [n for n, _ in picks]
+    picks = [p for p in picks if not (p["name"] in seen or seen.add(p["name"]))]
+    names = [p["name"] for p in picks]
 
     if not (1 <= len(picks) <= 8):
         return jsonify({"error": "1 ile 8 arasında karakter ismi girin."}), 400
@@ -912,14 +1433,27 @@ def setup_characters():
 
         start_location = state["world_state"].get("location")
         characters = {}
-        for name, item in picks:
+        for sheet in picks:
+            name = sheet["name"]
             char = json.loads(json.dumps(CHARACTER_TEMPLATE))
             char["location"] = start_location
+            for key in ("profession", "age", "strength", "weakness", "secret"):
+                char[key] = sheet.get(key) or None
+            char["background"] = build_background(char)
+            char["traits"] = build_traits(char)
+            if char["background"]:
+                char["notes"] = ""
             # oyuncunun kurulum ekranında seçtiği tek başlangıç eşyası
+            item = sheet.get("item")
             char["inventory"] = [item] if item else []
             characters[name] = char
         state["world_state"]["characters"] = characters
         state["characters_confirmed"] = True
+        # Künyeler ekrandan dolduysa oyun içi karakter oluşturma turuna gerek
+        # yok — anlatıcı doğrudan hikayeye girer, zar ilk turdan itibaren atılır.
+        state["world_state"].setdefault("flags", {})["chargen_done"] = all(
+            c.get("background") for c in characters.values()
+        )
         save_state(state)
 
     return jsonify(
@@ -942,24 +1476,44 @@ def start_game():
         scenario = load_scenario()
         players = list(state["world_state"]["characters"].keys())
         hook = secrets.choice(scenario["opening_hooks"])
+        sheets_done = sheets_complete(state["world_state"])
+        if sheets_done:
+            chargen_note = (
+                "KÜNYELER TAMAMLANDI — oyuncular karakter oluşturma ekranını "
+                "doldurdu. Karakter oluşturma sorusu SORMA, seçenek sunma. "
+                "Açılış sahnesinde herkesi künyesine uygun biçimde tanıt ve "
+                "doğrudan asıl hikayeye geç: açılış olayını somut bir ZORLUĞA "
+                "dönüştürüp `challenges` altına kaydet ve DURUM/SEÇENEKLER "
+                "bloğuyla bitir. Durum güncelleme bloğunda `flags.chargen_done` "
+                "alanını true yap ve her karaktere mesleğine uyan 1-2 mütevazı "
+                "eşyayı `inventory_add` ile ekle. Bu turda zar mekaniği YOK."
+            )
+        else:
+            chargen_note = (
+                "Yukarıdaki SCENARIO talimatlarındaki 'OYUN BAŞLANGICI VE "
+                "KARAKTER OLUŞTURMA' bölümüne göre davran: bu olayı sahne "
+                "olarak anlat, ardından yukarıdaki karakter listesindeki "
+                "HERKES için karakter oluşturma seçeneklerini sun. Bu turda "
+                "zar mekaniği YOK."
+            )
         extra_system = (
             "OYUN BAŞLANGICI.\n"
             f"Bu oyundaki karakterler (SABİT, TAM LİSTE — başka oyuncu karakteri "
             f"YOK, isim uydurma): {', '.join(players)}.\n"
             f"Rastgele açılış olayı (sunucu tarafından seçildi): {hook}\n\n"
-            "Yukarıdaki SCENARIO talimatlarındaki 'OYUN BAŞLANGICI VE KARAKTER "
-            "OLUŞTURMA' bölümüne göre davran: bu olayı sahne olarak anlat, "
-            "ardından yukarıdaki karakter listesindeki HERKES için karakter "
-            "oluşturma seçeneklerini sun. Bu turda zar mekaniği YOK.\n\n"
-            "OYUNCULARIN KURULUM EKRANINDA SEÇTİĞİ BAŞLANGIÇ EŞYALARI (zaten "
-            "envanterlerine işlendi — tekrar eklemene gerek yok, ama sahnede "
-            "bunları biliyormuş gibi davran ve karakter oluşturmayı bunlarla "
-            "tutarlı kur):\n"
-            + starting_items_note(state["world_state"])
-            + "\n\nGrubun ortak stoğu (klan envanter sayımı) GÜNCEL DÜNYA "
-            "DURUMU'ndaki `resources` altındadır — açılış sahnesinde gerekirse "
-            "buna atıfta bulun, ve oyun boyunca SCENARIO'daki 'GRUP KAYNAKLARI' "
-            "kurallarına göre güncel tut.\n\n"
+            + chargen_note
+            + "\n\nKARAKTER KÜNYELERİ (kurulum ekranından geldi; meslek/yaş/"
+            "güçlü-zayıf yan BAĞLAYICIDIR, eşyalar zaten envanterde — tekrar "
+            "ekleme. SIRLAR sadece sana aittir, hiçbir koşulda metinde "
+            "açıklama, sadece hikayenin gizli motoru olarak kullan):\n"
+            + character_sheets_note(state["world_state"])
+            + "\n\nORTAK STOK YOK: `resources` bilerek BOŞ başlar. Ortada bir "
+            "klan, topluluk ya da depo yok — grubun sahip olduğu tek şey "
+            "yukarıdaki kişisel envanterlerdir. Açılış sahnesinde bir depodan, "
+            "stoktan, 'elimizdeki erzaktan' söz ETME ve `resources` altına "
+            "hiçbir başlangıç kalemi YAZMA. Stok ancak grup ilerideki turlarda "
+            "bir topluluk kurar/katılır ya da oyuncular açıkça sayım isterse "
+            "doğar (bkz. SCENARIO → 'GRUP KAYNAKLARI').\n\n"
             "GÜNCEL DÜNYA DURUMU (JSON):\n"
             + json.dumps(state["world_state"], ensure_ascii=False)
         )
@@ -1062,6 +1616,10 @@ def post_message():
                     + "\n\n"
                     + inventory_note(state["world_state"])
                     + "\n\n"
+                    + wounds_note(state["world_state"])
+                    + "\n\n"
+                    + vitals_note(state["world_state"])
+                    + "\n\n"
                     + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
@@ -1084,6 +1642,10 @@ def post_message():
                     + roster_note(state["world_state"])
                     + "\n\n"
                     + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + wounds_note(state["world_state"])
+                    + "\n\n"
+                    + vitals_note(state["world_state"])
                     + "\n\n"
                     + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
@@ -1131,6 +1693,10 @@ def post_message():
                     + "\n\n"
                     + inventory_note(state["world_state"])
                     + "\n\n"
+                    + wounds_note(state["world_state"])
+                    + "\n\n"
+                    + vitals_note(state["world_state"])
+                    + "\n\n"
                     + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
                     + json.dumps(state["world_state"], ensure_ascii=False)
@@ -1162,6 +1728,10 @@ def post_message():
                     + roster_note(state["world_state"])
                     + "\n\n"
                     + inventory_note(state["world_state"])
+                    + "\n\n"
+                    + wounds_note(state["world_state"])
+                    + "\n\n"
+                    + vitals_note(state["world_state"])
                     + "\n\n"
                     + visible_timeline_note(read_log())
                     + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
@@ -1198,8 +1768,18 @@ def post_message():
 
         raw_text = result.get("result", "")
         gm_text, patches = extract_state_update(raw_text)
+        # Göstergeler zar gibi sunucunun sorumluluğunda: anlatıcının elle
+        # yazdığı değerler (uyudu/yedi/içti) korunur, geri kalanı bu turda
+        # geçen oyun-içi süreye göre kendiliğinden yükselir.
+        clock_before = {"day": state["world_state"].get("day"),
+                        "clock": state["world_state"].get("clock")}
+        vitals_touched = {}
         for patch in patches:
-            deep_merge_world_state(state["world_state"], patch)
+            deep_merge_world_state(state["world_state"], patch, vitals_touched)
+        turn_minutes = elapsed_minutes(clock_before, state["world_state"])
+        apply_vitals_drift(state["world_state"], turn_minutes, vitals_touched)
+        advance_infections(state["world_state"], turn_minutes)
+        normalize_wound_status(state["world_state"])
 
         gm_entry = {
             "id": next_id(state),

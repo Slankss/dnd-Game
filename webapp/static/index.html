@@ -64,21 +64,45 @@
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
     padding: 28px 32px; max-width: 480px; width: 100%;
   }
+  #setup-screen .setup-card { max-width: 760px; max-height: 92vh; overflow-y: auto; }
   .setup-card h2 { margin-top: 0; color: var(--red-bright); font-size: 1.1rem; }
   .setup-card p.hint { color: var(--text-dim); font-size: 0.85rem; margin-top: -6px; }
-  .char-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+  /* ---- karakter oluşturma künyesi ---- */
+  .char-row {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px 12px; margin-bottom: 14px; position: relative;
+  }
+  .char-row .sheet-index {
+    position: absolute; top: 12px; right: 44px; font-size: 0.68rem;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim);
+  }
+  .sheet-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px; margin-top: 10px;
+  }
+  .sheet-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .sheet-field.wide { grid-column: 1 / -1; }
+  .sheet-field label {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+  .sheet-field .lock { color: var(--warn, #c9a227); text-transform: none; letter-spacing: 0; }
   .char-row input {
-    flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
-    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.95rem;
-    min-width: 0;
+    background: #0f0c0c; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.9rem;
+    min-width: 0; width: 100%;
   }
-  .char-row input.char-item { flex: 1.35; }
-  .setup-head {
-    display: flex; gap: 8px; font-size: 0.68rem; text-transform: uppercase;
-    letter-spacing: 1px; color: var(--text-dim); margin-bottom: 5px; padding: 0 2px;
+  .char-row input:focus, .char-row select:focus { outline: none; border-color: var(--red); }
+  .char-row select.sheet-select {
+    background: #0f0c0c; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 0.9rem;
+    width: 100%; min-width: 0; cursor: pointer;
   }
-  .setup-head span:first-child { flex: 1; }
-  .setup-head span:last-child { flex: 1.35; }
+  .char-row input.sheet-custom { margin-top: 6px; border-color: var(--red); }
+  .char-row input.char-name { font-size: 1rem; font-weight: bold; }
+  .char-row input.char-secret { border-color: #4a3a1a; background: #17130a; }
+  @media (max-width: 620px) { .sheet-grid { grid-template-columns: minmax(0, 1fr); } }
 
   /* ---- aktif zorluklar (problem-çözüm omurgası) ---- */
   .chal {
@@ -115,11 +139,12 @@
   .res-item .res-name { color: var(--text); }
   .res-item .res-note { color: var(--text-dim); font-size: 0.72rem; display: block; }
   #start-resources .res-cat { margin-bottom: 8px; }
-  .char-row button {
+  .char-row button.remove-char {
+    position: absolute; top: 10px; right: 12px;
     background: transparent; border: 1px solid var(--border); color: var(--text-dim);
-    border-radius: 6px; padding: 0 12px; cursor: pointer;
+    border-radius: 6px; padding: 3px 9px; cursor: pointer; font-size: 0.8rem;
   }
-  .char-row button:hover { border-color: var(--red); color: var(--red-bright); }
+  .char-row button.remove-char:hover { border-color: var(--red); color: var(--red-bright); }
   #add-char-btn {
     background: transparent; border: 1px dashed var(--border); color: var(--text-dim);
     border-radius: 6px; padding: 8px 12px; cursor: pointer; width: 100%; margin: 6px 0 18px;
@@ -176,6 +201,23 @@
   #sidebar h2:first-child { margin-top: 0; }
   .recent-item { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 6px; line-height: 1.4; }
   .recent-item b { color: var(--text); }
+  /* ---- Karakterler paneli: Oyuncular / NPC'ler sekmeleri ---- */
+  .char-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .char-tabs .char-tab {
+    flex: 1; background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 6px; padding: 5px 8px; cursor: pointer;
+    font-family: inherit; font-size: 0.75rem; display: flex; align-items: center;
+    justify-content: center; gap: 5px;
+  }
+  .char-tabs .char-tab:hover { color: var(--text); }
+  .char-tabs .char-tab.active {
+    background: var(--red); border-color: var(--red); color: #fff; font-weight: bold;
+  }
+  .char-tabs .tab-count {
+    background: rgba(0,0,0,0.35); border-radius: 8px; padding: 0 6px;
+    font-size: 0.68rem; font-variant-numeric: tabular-nums;
+  }
+
   .char-card, .faction-row { margin-bottom: 10px; padding: 8px 10px; background: var(--panel-2); border-radius: 6px; }
   .char-card { cursor: pointer; transition: background 0.15s; }
   .char-card:hover { background: #262b2b; }
@@ -297,6 +339,38 @@
   #char-modal .rel-list li { margin-bottom: 6px; font-size: 0.88rem; }
   #char-modal .rel-list b { color: var(--text); }
   #char-modal .empty-hint { color: var(--text-dim); font-size: 0.85rem; font-style: italic; }
+
+  /* ---- hayatta kalma göstergeleri (0 = iyi, 100 = dayanılmaz) ---- */
+  .vital-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
+  .vital-row .v-label { width: 92px; flex-shrink: 0; color: var(--text-dim); }
+  .vital-row .v-bar { flex: 1; height: 7px; background: #2a2222; border-radius: 4px; overflow: hidden; }
+  .vital-row .v-bar > span { display: block; height: 100%; background: #6b8f6b; transition: width 0.3s; }
+  .vital-row .v-num { width: 30px; text-align: right; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .vital-row.warn .v-bar > span { background: #c9a227; }
+  .vital-row.bad  .v-bar > span { background: #c9622a; }
+  .vital-row.crit .v-bar > span { background: var(--red-bright); }
+  .vital-cond { font-size: 0.82rem; color: var(--text-dim); margin-top: 8px; font-style: italic; }
+  .wound {
+    background: var(--panel-2); border-left: 3px solid var(--text-dim);
+    border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;
+  }
+  .wound.warn { border-left-color: #c9a227; }
+  .wound.bad  { border-left-color: #c9622a; }
+  .wound.crit { border-left-color: var(--red-bright); }
+  .wound .w-desc { font-size: 0.88rem; margin-bottom: 5px; }
+  .wound .w-sev {
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-dim); margin-left: 4px;
+  }
+  .wound .w-meta { font-size: 0.76rem; color: var(--text-dim); margin-top: 4px; }
+  /* kenar çubuğu kartındaki tek satırlık özet */
+  .char-card .vital-mini { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+  .char-card .vital-mini span {
+    font-size: 0.7rem; padding: 1px 6px; border-radius: 3px; background: #2a2222; color: #b9a9a9;
+  }
+  .char-card .vital-mini span.warn { background: #3a3116; color: #e0cf9a; }
+  .char-card .vital-mini span.bad  { background: #3d2515; color: #edb98d; }
+  .char-card .vital-mini span.crit { background: #4a1616; color: #ff9d9d; }
   #char-modal-close {
     float: right; background: transparent; border: 1px solid var(--border); color: var(--text-dim);
     border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: inherit;
@@ -331,10 +405,12 @@
   <!-- 1) karakter kurulum ekranı -->
   <div class="center-screen" id="setup-screen">
     <div class="setup-card">
-      <h2>Karakterleri Belirle</h2>
-      <p class="hint">Kaç kişi oynayacak, isimleri ne olsun ve her biri yanında hangi
-      eşyayı getirsin? Eşya isteğe bağlı — listeden seçebilir ya da kendin yazabilirsin.</p>
-      <div class="setup-head"><span>Karakter ismi</span><span>Başlangıç eşyası (1 adet)</span></div>
+      <h2>Karakter Oluşturma</h2>
+      <p class="hint">Her karakter için künyeyi doldurun. Meslek, güçlü ve zayıf yan
+      hikayede gerçekten kullanılır — zar aynı gelse bile güçlü yanınıza giren bir işte
+      sonuç daha iyi, zayıf yanınıza denk gelen bir işte bedel daha ağır olur.
+      <b>Sır</b> alanını sadece anlatıcı görür; diğer oyuncuların ekranında hiçbir
+      yerde görünmez. Boş bıraktığınız alanları anlatıcı oyun içinde sorar.</p>
       <div id="char-rows"></div>
       <datalist id="item-suggestions"></datalist>
       <button id="add-char-btn" type="button">+ Karakter Ekle</button>
@@ -348,10 +424,10 @@
     <div class="setup-card">
       <h2>Karakterler Hazır</h2>
       <p class="hint" id="start-char-list"></p>
-      <h2 style="font-size:0.95rem;">Grubun Başlangıç Stoğu</h2>
-      <p class="hint">Klanın deposundaki ortak kaynaklar. Oyun boyunca harcandıkça/
-      bulundukça anlatıcı bu sayıları günceller.</p>
-      <div id="start-resources" style="max-height:280px; overflow-y:auto; margin-bottom:14px;"></div>
+      <p class="hint">Ortada henüz bir klan, topluluk ya da depo yok — grubun sahip
+      olduğu tek şey yukarıdaki kişisel eşyalar. Ortak stok ancak bir topluluk
+      kurduğunuzda/katıldığınızda ya da açıkça sayım yaptığınızda oluşmaya başlar.</p>
+      <div id="start-resources" class="hidden" style="max-height:280px; overflow-y:auto; margin-bottom:14px;"></div>
       <button id="start-game-btn" class="primary-btn" type="button">🎲 Oyunu Başlat</button>
       <div class="setup-error" id="start-error"></div>
     </div>
@@ -375,7 +451,16 @@
       <h2>Son Olaylar</h2>
       <div id="recent"></div>
       <h2>Karakterler</h2>
+      <div class="char-tabs" id="char-tabs">
+        <button type="button" class="char-tab active" data-group="players">
+          Oyuncular <span class="tab-count" id="count-players">0</span>
+        </button>
+        <button type="button" class="char-tab" data-group="npcs">
+          NPC'ler <span class="tab-count" id="count-npcs">0</span>
+        </button>
+      </div>
       <div id="characters"></div>
+      <div class="hidden" id="npcs-list"></div>
       <h2 id="resources-head" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
         <span>📦 Grup Kaynakları</span><span id="resources-caret">▸</span>
       </h2>
@@ -425,6 +510,12 @@
     <h3>Sağlık Durumu</h3>
     <p id="modal-status"></p>
 
+    <h3>Yaralar</h3>
+    <div id="modal-wounds"></div>
+
+    <h3>Hayatta Kalma</h3>
+    <div id="modal-vitals"></div>
+
     <h3>Envanter</h3>
     <ul class="inv-list" id="modal-inventory"></ul>
 
@@ -472,6 +563,10 @@ const tabLive = document.getElementById('tab-live');
 const historyList = document.getElementById('history-list');
 const recentEl = document.getElementById('recent');
 const charactersEl = document.getElementById('characters');
+const npcsListEl = document.getElementById('npcs-list');
+const charTabsEl = document.getElementById('char-tabs');
+const countPlayersEl = document.getElementById('count-players');
+const countNpcsEl = document.getElementById('count-npcs');
 const factionsEl = document.getElementById('factions');
 const resourcesEl = document.getElementById('resources');
 const challengesEl = document.getElementById('challenges');
@@ -499,6 +594,8 @@ const modalLocation = document.getElementById('modal-location');
 const modalBackground = document.getElementById('modal-background');
 const modalTraits = document.getElementById('modal-traits');
 const modalStatus = document.getElementById('modal-status');
+const modalVitals = document.getElementById('modal-vitals');
+const modalWounds = document.getElementById('modal-wounds');
 const modalInventory = document.getElementById('modal-inventory');
 const modalRelationships = document.getElementById('modal-relationships');
 const charModalClose = document.getElementById('char-modal-close');
@@ -530,9 +627,19 @@ function openCharModal(name) {
   modalName.textContent = name;
   modalName.style.color = colorFor(name, roster);
   modalLocation.textContent = '📍 ' + (info.location || 'konum bilinmiyor');
-  modalBackground.textContent = info.background || 'Karakter henüz oluşturulmadı.';
-  modalTraits.textContent = info.traits || '-';
+  // Künye: meslek/yaş -> geçmiş, güçlü/zayıf yan -> özellikler. `secret`
+  // sunucuda ayıklanır, oyuncu arayüzüne hiç gelmez.
+  const ident = [info.age ? info.age + ' yaşında' : '', info.profession]
+    .filter(Boolean).join(' · ');
+  modalBackground.textContent = ident || info.background || 'Karakter henüz oluşturulmadı.';
+  const traitBits = [
+    info.strength ? '💪 ' + info.strength : '',
+    info.weakness ? '🩹 ' + info.weakness : '',
+  ].filter(Boolean);
+  modalTraits.textContent = traitBits.length ? traitBits.join('   ') : (info.traits || '-');
   modalStatus.textContent = info.status || '-';
+  renderWounds(modalWounds, info.wounds);
+  renderVitals(modalVitals, info.vitals);
 
   modalInventory.innerHTML = '';
   const inv = info.inventory || [];
@@ -572,16 +679,122 @@ charModalOverlay.addEventListener('click', (e) => {
 });
 
 // ---------------- character setup screen ----------------
+// Meslek / güçlü yan / zayıf yan: hazır seçenekler + "kendim yazayım".
+// Seçenekler bir dayatma değil; son madde serbest metin alanını açar.
+const CUSTOM_OPT = '__custom__';
+const SHEET_OPTIONS = {
+  profession: {
+    'Sağlık': ['Doktor', 'Hemşire', 'Paramedik', 'Eczacı', 'Veteriner', 'Psikolog'],
+    'Teknik': ['Tamirci', 'Elektrikçi', 'Marangoz', 'Kaynakçı', 'Mühendis',
+               'Yazılımcı', 'Kimyager', 'Telsiz operatörü'],
+    'Güvenlik': ['Polis', 'Asker', 'İtfaiyeci', 'Güvenlik görevlisi', 'Avcı',
+                 'Dövüş hocası', 'Korucu'],
+    'Saha': ['Kamyon şoförü', 'Çiftçi', 'Dağ rehberi', 'Denizci', 'Madenci',
+             'İnşaat işçisi', 'Balıkçı'],
+    'Diğer': ['Öğretmen', 'Aşçı', 'Gazeteci', 'Hırsız', 'Öğrenci',
+              'Din görevlisi', 'Avukat', 'Berber', 'Müzisyen'],
+  },
+  strength: {
+    'Beden': ['Güçlü ve dayanıklı', 'Hızlı koşar', 'Tırmanma ve parkur',
+              'Açlığa dayanıklı', 'Uzun süre uyanık kalabilir'],
+    'Savaş': ['İyi nişancı', 'Bıçak ustası', 'Soğukkanlı', 'Sessiz hareket eder',
+              'Soğukkanlı sürücü'],
+    'Zihin': ['Pratik zekalı', 'Her şeyi tamir eder', 'Yara sarmayı bilir',
+              'Kilit açar', 'Yön duygusu kuvvetli', 'Keskin göz ve kulak'],
+    'Sosyal': ['Doğal lider', 'İyi bir yalancı', 'İnsanları okur',
+               'İyi pazarlıkçı', 'Hayvanlarla arası iyi'],
+  },
+  weakness: {
+    'Bedensel': ['Astım', 'Kalp rahatsızlığı', 'Diyabet (insülin gerekli)',
+                 'Bir bacağı sakat', 'Gözlüksüz göremiyor', 'Bir kulağı sağır',
+                 'Zayıf ve çelimsiz'],
+    'Ruhsal': ['Panik atak', 'Kan görünce donuyor', 'Karanlıktan korkuyor',
+               'Yüksekten korkar', 'Kapalı alan korkusu', 'Kabuslar yüzünden uyuyamıyor'],
+    'Karakter': ['Çabuk sinirlenir', 'Kimseye güvenemiyor', 'Fazla güveniyor',
+                 'Ağzından laf kaçırır', 'Riske tapıyor', 'İnatçı, emir dinlemez'],
+    'Beceri': ['Silah kullanamıyor', 'Bağımlılık (ilaç/alkol)',
+               'Uykusuz kalamıyor', 'Yüzme bilmiyor'],
+  },
+};
+
+function sheetSelectHtml(key, placeholder) {
+  const groups = Object.entries(SHEET_OPTIONS[key])
+    .map(([group, opts]) => `<optgroup label="${escapeHtml(group)}">`
+      + opts.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')
+      + '</optgroup>').join('');
+  return `<select class="sheet-select sel-${key}">
+      <option value="">— seç —</option>
+      ${groups}
+      <option value="${CUSTOM_OPT}">✏️ Kendim yazayım…</option>
+    </select>
+    <input type="text" class="sheet-custom txt-${key} hidden" placeholder="${escapeHtml(placeholder)}">`;
+}
+
+// "Kendim yazayım" seçilince serbest metin alanını açar.
+function wireSheetSelect(row, key) {
+  const sel = row.querySelector('.sel-' + key);
+  const txt = row.querySelector('.txt-' + key);
+  sel.addEventListener('change', () => {
+    const custom = sel.value === CUSTOM_OPT;
+    txt.classList.toggle('hidden', !custom);
+    if (custom) txt.focus();
+  });
+}
+
+// Alanın son değeri: hazır seçenek ya da serbest yazılan metin.
+function sheetValue(row, key) {
+  const sel = row.querySelector('.sel-' + key);
+  const txt = row.querySelector('.txt-' + key);
+  return (sel.value === CUSTOM_OPT ? txt.value : sel.value).trim();
+}
+
+function renumberCharRows() {
+  [...charRowsEl.querySelectorAll('.char-row .sheet-index')]
+    .forEach((el, i) => { el.textContent = 'Karakter ' + (i + 1); });
+}
+
 function addCharRow(value) {
   const row = document.createElement('div');
   row.className = 'char-row';
-  row.innerHTML = `<input type="text" class="char-name" value="${value || ''}" placeholder="Karakter ismi">
-    <input type="text" class="char-item" list="item-suggestions" placeholder="Başlangıç eşyası (opsiyonel)">
-    <button type="button" title="Kaldır">✕</button>`;
-  row.querySelector('button').addEventListener('click', () => {
-    if (charRowsEl.children.length > 1) row.remove();
+  row.innerHTML = `
+    <span class="sheet-index"></span>
+    <button type="button" class="remove-char" title="Bu karakteri kaldır">✕</button>
+    <div class="sheet-field wide">
+      <label>İsim</label>
+      <input type="text" class="char-name" value="${escapeHtml(value || '')}" placeholder="Karakter ismi">
+    </div>
+    <div class="sheet-grid">
+      <div class="sheet-field">
+        <label>Meslek</label>
+        ${sheetSelectHtml('profession', 'Mesleğini kendin yaz')}
+      </div>
+      <div class="sheet-field">
+        <label>Yaş</label>
+        <input type="text" class="char-age" inputmode="numeric" placeholder="Örn: 34">
+      </div>
+      <div class="sheet-field">
+        <label>Güçlü Yan</label>
+        ${sheetSelectHtml('strength', 'Güçlü yanını kendin yaz')}
+      </div>
+      <div class="sheet-field">
+        <label>Zayıf Yan</label>
+        ${sheetSelectHtml('weakness', 'Zayıf yanını kendin yaz')}
+      </div>
+      <div class="sheet-field wide">
+        <label>Sır <span class="lock">🔒 sadece anlatıcı görür</span></label>
+        <input type="text" class="char-secret" placeholder="Örn: ısırıldığını kimseye söylemedi">
+      </div>
+      <div class="sheet-field wide">
+        <label>Başlangıç Eşyası</label>
+        <input type="text" class="char-item" list="item-suggestions" placeholder="Listeden seç ya da kendin yaz">
+      </div>
+    </div>`;
+  row.querySelector('.remove-char').addEventListener('click', () => {
+    if (charRowsEl.children.length > 1) { row.remove(); renumberCharRows(); }
   });
+  ['profession', 'strength', 'weakness'].forEach(key => wireSheetSelect(row, key));
   charRowsEl.appendChild(row);
+  renumberCharRows();
 }
 
 addCharBtn.addEventListener('click', () => addCharRow(''));
@@ -600,10 +813,16 @@ function fillItemSuggestions(items) {
 }
 
 confirmCharsBtn.addEventListener('click', async () => {
+  const val = (row, cls) => row.querySelector(cls).value.trim();
   const players = [...charRowsEl.querySelectorAll('.char-row')]
     .map(row => ({
-      name: row.querySelector('.char-name').value.trim(),
-      item: row.querySelector('.char-item').value.trim(),
+      name: val(row, '.char-name'),
+      profession: sheetValue(row, 'profession'),
+      age: val(row, '.char-age'),
+      strength: sheetValue(row, 'strength'),
+      weakness: sheetValue(row, 'weakness'),
+      secret: val(row, '.char-secret'),
+      item: val(row, '.char-item'),
     }))
     .filter(p => p.name);
   const names = players.map(p => p.name);
@@ -637,11 +856,23 @@ function showStartScreen(names, worldState) {
   setupScreen.classList.add('hidden');
   startScreen.classList.remove('hidden');
   const chars = (worldState || {}).characters || {};
-  startCharList.innerHTML = 'Karakterler: ' + names.map(n => {
-    const inv = (chars[n] || {}).inventory || [];
-    return inv.length ? `<b>${n}</b> (${inv.join(', ')})` : `<b>${n}</b>`;
-  }).join(' · ');
-  if (worldState) renderResources(startResourcesEl, worldState.resources);
+  startCharList.innerHTML = names.map(n => {
+    const c = chars[n] || {};
+    const bits = [
+      c.age ? c.age + ' yaşında' : '',
+      c.profession,
+      c.strength ? '💪 ' + c.strength : '',
+      c.weakness ? '🩹 ' + c.weakness : '',
+      (c.inventory || []).join(', '),
+    ].filter(Boolean).map(escapeHtml).join(' · ');
+    return `<b>${escapeHtml(n)}</b>${bits ? ' — ' + bits : ''}`;
+  }).join('<br>');
+  // Ortak stok başlangıçta yok; sadece gerçekten bir şey varsa göster.
+  const startRes = (worldState || {}).resources || {};
+  const hasStock = Object.values(startRes).some(
+    cat => cat && Object.keys(cat).length > 0);
+  startResourcesEl.classList.toggle('hidden', !hasStock);
+  if (hasStock) renderResources(startResourcesEl, startRes);
 }
 
 startGameBtn.addEventListener('click', async () => {
@@ -660,6 +891,7 @@ startGameBtn.addEventListener('click', async () => {
       enterGame(data.world_state);
       appendLive(data.gm_entry);
       appendHistory(data.gm_entry);
+      notifyStateChanged();
     }
   } catch (e) {
     startError.textContent = 'İstek başarısız oldu.';
@@ -762,6 +994,140 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // ---------------- rendering ----------------
 const GROUP_COLOR = '#c9a227';
 
+// Hayatta kalma göstergeleri: 0 = gayet iyi, 100 = dayanılmaz.
+const VITAL_LABELS = {
+  fatigue: 'Yorgunluk', hunger: 'Açlık', thirst: 'Susuzluk', stress: 'Stres',
+};
+const VITAL_SHORT = { fatigue: '😴', hunger: '🍖', thirst: '💧', stress: '🧠' };
+
+function vitalClass(v) {
+  if (v >= 85) return 'crit';
+  if (v >= 65) return 'bad';
+  if (v >= 40) return 'warn';
+  return '';
+}
+
+function renderVitals(container, vitals) {
+  container.innerHTML = '';
+  if (!vitals) {
+    container.innerHTML = '<p class="empty-hint">Bu karakter için gösterge tutulmuyor.</p>';
+    return;
+  }
+  for (const [key, label] of Object.entries(VITAL_LABELS)) {
+    const v = Math.max(0, Math.min(100, Number(vitals[key]) || 0));
+    const row = document.createElement('div');
+    row.className = 'vital-row ' + vitalClass(v);
+    row.innerHTML = `<span class="v-label">${label}</span>
+      <span class="v-bar"><span style="width:${v}%"></span></span>
+      <span class="v-num">${v}</span>`;
+    container.appendChild(row);
+  }
+  const bits = [];
+  if (vitals.awake_hours != null && vitals.awake_hours !== '') {
+    bits.push(`${vitals.awake_hours} saattir uyanık`);
+  }
+  if (vitals.condition) bits.push(vitals.condition);
+  if (bits.length) {
+    const cond = document.createElement('div');
+    cond.className = 'vital-cond';
+    cond.textContent = bits.join(' · ');
+    container.appendChild(cond);
+  }
+}
+
+// Açık yaralar. `vitals.condition` her tur üzerine yazıldığı için kalıcı
+// değildi; yaralar iyileşene kadar burada durur.
+const WOUND_SEV_CLASS = { hafif: '', orta: 'warn', 'ağır': 'bad', kritik: 'crit' };
+
+function woundRiskClass(r) {
+  if (r >= 85) return 'crit';
+  if (r >= 60) return 'bad';
+  if (r >= 35) return 'warn';
+  return '';
+}
+
+function renderWounds(container, wounds) {
+  container.innerHTML = '';
+  const list = (wounds || []).filter(w => w && w.desc);
+  if (list.length === 0) {
+    container.innerHTML = '<p class="empty-hint">Açık yara yok.</p>';
+    return;
+  }
+  for (const w of list) {
+    const risk = Math.max(0, Math.min(100, Number(w.infection_risk) || 0));
+    const div = document.createElement('div');
+    div.className = 'wound ' + (WOUND_SEV_CLASS[w.severity] || '');
+    div.innerHTML = `<div class="w-desc">🩸 ${escapeHtml(w.desc)}
+        <span class="w-sev">${escapeHtml(w.severity || 'orta')}</span></div>
+      <div class="vital-row ${woundRiskClass(risk)}">
+        <span class="v-label">Enfeksiyon</span>
+        <span class="v-bar"><span style="width:${risk}%"></span></span>
+        <span class="v-num">${risk}</span>
+      </div>
+      <div class="w-meta">${w.treated ? '✅ tedavi edildi' : '⚠️ tedavi edilmedi'}${
+        w.notes ? ' · ' + escapeHtml(w.notes) : ''}</div>`;
+    container.appendChild(div);
+  }
+}
+
+// Kenar çubuğu kartındaki tek satırlık yara özeti.
+function woundMiniHtml(wounds) {
+  const list = (wounds || []).filter(w => w && w.desc);
+  if (list.length === 0) return '';
+  const worst = Math.max(...list.map(w => Number(w.infection_risk) || 0));
+  const cls = woundRiskClass(worst);
+  return `<div class="field ${cls === 'crit' || cls === 'bad' ? 'hp-bad' : cls === 'warn' ? 'hp-warn' : ''}">`
+    + `🩸 ${list.length} açık yara${worst >= 60 ? ` · enfeksiyon ${worst}` : ''}</div>`;
+}
+
+// Karakterler panelindeki Oyuncular / NPC'ler sekmesi. Seçim yeniden
+// çizimler arasında korunur.
+let charTab = 'players';
+
+function applyCharTab() {
+  charactersEl.classList.toggle('hidden', charTab !== 'players');
+  npcsListEl.classList.toggle('hidden', charTab !== 'npcs');
+  for (const btn of charTabsEl.querySelectorAll('.char-tab')) {
+    btn.classList.toggle('active', btn.dataset.group === charTab);
+  }
+}
+
+charTabsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.char-tab');
+  if (!btn) return;
+  charTab = btn.dataset.group;
+  applyCharTab();
+});
+
+// Kenar çubuğu kartındaki tek satırlık özet — sadece dikkat çeken göstergeler.
+function vitalMiniHtml(vitals) {
+  if (!vitals) return '';
+  const chips = Object.keys(VITAL_LABELS)
+    .map(key => [key, Math.max(0, Math.min(100, Number(vitals[key]) || 0))])
+    .filter(([, v]) => v >= 40)
+    .map(([key, v]) => `<span class="${vitalClass(v)}">${VITAL_SHORT[key]} ${v}</span>`);
+  return chips.length ? `<div class="vital-mini">${chips.join('')}</div>` : '';
+}
+
+// Anlatıcı metni markdown yazıyor (**kalın**, *eğik*). Önce HTML kaçışı
+// yapılır, sonra sadece bu iki işaret etikete çevrilir — model çıktısından
+// gelen hiçbir HTML çalıştırılmaz.
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*\*(?!\s)([\s\S]+?)\*\*\*/g, '<b><i>$1</i></b>')
+    .replace(/\*\*(?!\s)([\s\S]+?)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)\*(?![*\w])/g, '$1<i>$2</i>');
+}
+
+function stripMarkdown(text) {
+  return String(text == null ? '' : text).replace(/\*{1,3}/g, '');
+}
+
 function entryLabel(entry) {
   if (entry.role === 'system') return 'Sistem';
   if (entry.role !== 'user') return entry.kind === 'opening' ? 'Anlatıcı (Açılış)' : 'Anlatıcı';
@@ -789,7 +1155,7 @@ function appendLive(entry) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.style.color = 'var(--text)';
-  bubble.textContent = entry.text;
+  bubble.innerHTML = renderMarkdown(entry.text);
   div.appendChild(who);
   div.appendChild(bubble);
   tabLive.appendChild(div);
@@ -811,7 +1177,7 @@ function appendHistory(entry) {
   div.appendChild(who);
   const textSpan = document.createElement('span');
   textSpan.className = 'hist-text';
-  textSpan.textContent = rollTxt + '\n' + entry.text;
+  textSpan.innerHTML = escapeHtml(rollTxt + '\n') + renderMarkdown(entry.text);
   div.appendChild(textSpan);
   historyList.appendChild(div);
 }
@@ -823,8 +1189,9 @@ function renderRecent(log) {
     const item = document.createElement('div');
     item.className = 'recent-item';
     const who = entryLabel(e);
-    const snippet = e.text.length > 90 ? e.text.slice(0, 90) + '…' : e.text;
-    item.innerHTML = `<b>${who}:</b> ${snippet}`;
+    const plain = stripMarkdown(e.text);
+    const snippet = plain.length > 90 ? plain.slice(0, 90) + '…' : plain;
+    item.innerHTML = `<b>${escapeHtml(who)}:</b> ${escapeHtml(snippet)}`;
     recentEl.appendChild(item);
   }
 }
@@ -907,23 +1274,33 @@ function renderCharCard(container, name, info, isNpc) {
   card.style.borderLeft = '3px solid ' + (isNpc ? 'var(--text-dim)' : colorFor(name, roster));
   const inv = info.inventory || [];
   const relCount = Object.keys(info.relationships || {}).length;
-  const tags = (isNpc ? ' <span class="tag" style="font-size:0.65rem;">NPC</span>' : '')
-    + (isDead ? ' <span class="tag" style="font-size:0.65rem; color:var(--red-bright);">💀 ÖLÜ</span>' : '');
+  const tags = isDead
+    ? ' <span class="tag" style="font-size:0.65rem; color:var(--red-bright);">💀 ÖLÜ</span>' : '';
   const replaced = info.replaced_by
     ? `<div class="field">🔁 yerine ${info.replaced_by} oynanıyor</div>` : '';
   const chips = inv.length
     ? `<div class="inv-chips">${inv.map(i => `<span class="inv-chip">${i}</span>`).join('')}</div>`
     : '<div class="field">🎒 envanter boş</div>';
+  const ident = [info.age ? info.age + ' yaşında' : '', info.profession]
+    .filter(Boolean).join(' · ');
+  const traitLine = [
+    info.strength ? '💪 ' + escapeHtml(info.strength) : '',
+    info.weakness ? '🩹 ' + escapeHtml(info.weakness) : '',
+  ].filter(Boolean).join('<br>') || `✨ ${escapeHtml(info.traits || '-')}`;
   card.innerHTML = `<div class="name">${name}${tags}</div>
-    <div class="field">📜 ${info.background || 'karakter henüz oluşturulmadı'}</div>
-    <div class="field">✨ ${info.traits || '-'}</div>
+    <div class="field">📜 ${escapeHtml(ident || info.background || 'karakter henüz oluşturulmadı')}</div>
+    <div class="field">${traitLine}</div>
     <div class="field ${healthClass(info.status)}">❤️ ${info.status || '-'}</div>
+    ${woundMiniHtml(info.wounds)}
     <div class="field">📍 ${info.location || '-'}</div>
+    ${vitalMiniHtml(info.vitals)}
     ${chips}
     <div class="field">🤝 ${relCount} ilişki</div>${replaced}`;
 
   const sig = JSON.stringify([info.status, info.location, info.background, info.traits,
-                              inv, info.relationships, info.alive, info.replaced_by]);
+                              info.profession, info.age, info.strength, info.weakness,
+                              inv, info.relationships, info.alive, info.replaced_by,
+                              info.vitals, info.wounds]);
   const prev = cardSignatures.get(name);
   if (prev !== undefined && prev !== sig) card.classList.add('changed');
   cardSignatures.set(name, sig);
@@ -1026,6 +1403,7 @@ takeoverConfirm.addEventListener('click', async () => {
     }
     ingestLog([data.system_entry, data.gm_entry]);
     renderWorldState(data.world_state);
+    notifyStateChanged();
     closeTakeoverModal();
   } catch (e) {
     takeoverError.textContent = 'İstek başarısız oldu.';
@@ -1055,13 +1433,24 @@ function renderWorldState(ws) {
 
   latestCharacters = { ...(ws.characters || {}), ...(ws.npcs || {}) };
   latestNpcs = { ...(ws.npcs || {}) };
+  // Oyuncular ve NPC'ler ayrı sekmelerde — kalabalık bir kadroda kimin
+  // oyuncu kimin NPC olduğu tek listede kaybolabiliyordu.
   charactersEl.innerHTML = '';
-  for (const [name, info] of Object.entries(ws.characters || {})) {
+  const playerEntries = Object.entries(ws.characters || {});
+  for (const [name, info] of playerEntries) {
     renderCharCard(charactersEl, name, info, false);
   }
-  for (const [name, info] of Object.entries(ws.npcs || {})) {
-    renderCharCard(charactersEl, name, info, true);
+  npcsListEl.innerHTML = '';
+  const npcEntries = Object.entries(ws.npcs || {});
+  for (const [name, info] of npcEntries) {
+    renderCharCard(npcsListEl, name, info, true);
   }
+  if (npcEntries.length === 0) {
+    npcsListEl.innerHTML = '<div class="recent-item">Henüz kimseyle tanışılmadı.</div>';
+  }
+  countPlayersEl.textContent = playerEntries.length;
+  countNpcsEl.textContent = npcEntries.length;
+  applyCharTab();
   // popup açıksa içeriğini de tazele (isim hâlâ listede varsa)
   if (!charModalOverlay.classList.contains('hidden') && latestCharacters[modalName.textContent]) {
     openCharModal(modalName.textContent);
@@ -1072,9 +1461,17 @@ function renderWorldState(ws) {
   // Kaynak paneli normalde kapalı; stok gerçekten değiştiğinde ya da sayım
   // istendiğinde kendiliğinden açılır (sürekli açık stok tablosu sahnenin
   // içinde doğal durmuyordu).
+  // Ortak stok başlangıçta yoktur (klan/topluluk/sayım olmadan). Panel de
+  // stok gerçekten doğana kadar hiç görünmesin.
   const resSig = JSON.stringify(ws.resources || {});
+  const hasStock = Object.values(ws.resources || {})
+    .some(cat => cat && Object.keys(cat).length > 0);
+  resourcesHead.classList.toggle('hidden', !hasStock);
+  resourcesHint.classList.toggle('hidden', !hasStock || !resourcesEl.classList.contains('hidden'));
+  if (!hasStock) resourcesEl.classList.add('hidden');
   renderResources(resourcesEl, ws.resources);
-  if (lastResourceSig !== null && lastResourceSig !== resSig) setResourcesOpen(true);
+  // stok ilk kez doğduğunda ya da değiştiğinde paneli kendiliğinden aç
+  if (hasStock && lastResourceSig !== null && lastResourceSig !== resSig) setResourcesOpen(true);
   lastResourceSig = resSig;
 
   factionsEl.innerHTML = '';
@@ -1108,7 +1505,16 @@ function ingestLog(log) {
   renderRecent(log);
 }
 
-// ---------------- polling / bootstrap ----------------
+// ---------------- durum tazeleme ----------------
+// Sürekli yoklama kapalı olduğu için, bir tur işlendiğinde açık olan diğer
+// sekmeye (anlatıcı ekranı) haber veriyoruz — HTTP trafiği olmadan.
+const stateChannel = ('BroadcastChannel' in window)
+  ? new BroadcastChannel('kizil-cokus-state') : null;
+
+function notifyStateChanged() {
+  if (stateChannel) stateChannel.postMessage({ t: Date.now() });
+}
+
 let stateVersion = null;
 let polling = false;
 async function poll() {
@@ -1167,6 +1573,7 @@ async function send() {
       if (typeof data.version === 'number') stateVersion = data.version;
       ingestLog([...data.user_entries, data.gm_entry]);
       renderWorldState(data.world_state);
+      notifyStateChanged();
       if (data.inventory_report) setResourcesOpen(true);
       textInput.value = '';
       statusEl.textContent = '';
@@ -1189,6 +1596,7 @@ finishChargenBtn.addEventListener('click', async () => {
     } else {
       lastRosterKey = null; // seçiciyi yeniden kur
       renderWorldState(data.world_state);
+      notifyStateChanged();
     }
   } catch (e) {
     statusEl.textContent = 'İstek başarısız oldu.';
@@ -1546,8 +1954,12 @@ fileImportGame.addEventListener('change', async () => {
   }
 });
 
+// Oyun tek ekrandan oynandığı için sürekli yoklama (polling) kapalı: durum
+// sadece açılışta, bir aksiyondan sonra ve sekmeye geri dönüldüğünde çekilir.
+// Aksiyon sonrası zaten /api/message yanıtıyla render ediliyor; buradaki
+// yoklama sadece bootstrap ve tazeleme içindir.
 poll();
-setInterval(poll, 1200);   // sürüm kontrolü sayesinde ucuz — değişmediyse gövde yok
+window.addEventListener('focus', () => { if (appState === 'playing') poll(); });
 </script>
 </body>
 </html>
