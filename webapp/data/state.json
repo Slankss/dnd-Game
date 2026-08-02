@@ -1,30 +1,98 @@
 {
   "world_state": {
-    "day": 97,
-    "time_of_day": "gece",
-    "clock": "03:50",
-    "season": "geç sonbahar",
-    "weather": "ince yağmur, rüzgârlı",
-    "temperature": "7°C",
-    "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-    "factions": {
-      "Kızıl Şafak Tarikatı": {
-        "disposition": "düşmanca",
-        "known": "bilinmiyor",
-        "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
-        "public_notes": "Mutasyonu kutsayan fanatikler."
+    "challenges": {
+      "Turuncu Alev": {
+        "description": "Güneydeki normalde karanlık sırtlarda görülen kontrollü, sabit alev — kaynağı ve niyeti bilinmiyor.",
+        "severity": "orta",
+        "clock": "~6 saat (şafağa kadar görünür)",
+        "progress": "Henüz araştırılmadı, sadece uzaktan görüldü.",
+        "status": "açık",
+        "consequence": "Şafaktan sonra alev sönebilir/kaynak taşınabilir, ipucu kaybolur; ya da alevi fark eden başka bir grup (Kızıl Şafak, Leş Avcıları) bölgeye önce ulaşır.",
+        "gm_notes": "Alev aslında Laboratuvar Kalıntısı'na ait bir işaret ateşi - deneysel bir sinyal sistemi; tesadüfen ya da bilerek yakılmış olabilir, henüz karar verilmedi. İlerleyen turlarda ipucu bırak."
+      }
+    },
+    "characters": {
+      "Okan": {
+        "profession": "Hemşire",
+        "age": "43",
+        "strength": "Soğukkanlı sürücü",
+        "weakness": "Bir bacağı sakat",
+        "secret": null,
+        "background": "43 yaşında, Hemşire",
+        "traits": "Güçlü yanı: Soğukkanlı sürücü · Zayıf yanı: Bir bacağı sakat",
+        "status": "İyi",
+        "alive": true,
+        "wounds": [],
+        "vitals": {
+          "fatigue": 15,
+          "hunger": 20,
+          "thirst": 20,
+          "stress": 10,
+          "awake_hours": 3,
+          "condition": "Dinç"
+        },
+        "presence": {
+          "state": "sahnede",
+          "note": "",
+          "until": null,
+          "since_day": null,
+          "since_clock": null
+        },
+        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+        "inventory": [
+          "Tabanca (2 mermi)",
+          "Küçük ilk yardım çantası",
+          "Birkaç ağrı kesici tablet"
+        ],
+        "relationships": {},
+        "notes": "",
+        "lost_items": []
       },
+      "Emir": {
+        "profession": "Polis",
+        "age": "52",
+        "strength": "Keskin göz ve kulak",
+        "weakness": "Ağzından laf kaçırır",
+        "secret": null,
+        "background": "52 yaşında, Polis",
+        "traits": "Güçlü yanı: Keskin göz ve kulak · Zayıf yanı: Ağzından laf kaçırır",
+        "status": "İyi",
+        "alive": true,
+        "wounds": [],
+        "vitals": {
+          "fatigue": 15,
+          "hunger": 20,
+          "thirst": 20,
+          "stress": 10,
+          "awake_hours": 3,
+          "condition": "Dinç"
+        },
+        "presence": {
+          "state": "sahnede",
+          "note": "",
+          "until": null,
+          "since_day": null,
+          "since_clock": null
+        },
+        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+        "inventory": [
+          "Kevlar yelek",
+          "El feneri",
+          "Kelepçe"
+        ],
+        "relationships": {},
+        "notes": "",
+        "lost_items": []
+      }
+    },
+    "clock": "02:30",
+    "day": 97,
+    "factions": {
       "Arınma Cemaati": {
         "disposition": "temkinli",
         "known": "bilinmiyor",
         "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
         "public_notes": "Katı hiyerarşili, kaynak zengini kamp."
-      },
-      "Kalan Umut": {
-        "disposition": "dostane",
-        "known": "bilinmiyor",
-        "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
-        "public_notes": "Mülteci koalisyonu, savunmasız."
       },
       "Garnizon Komutanlığı": {
         "disposition": "şüpheci",
@@ -32,345 +100,206 @@
         "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
         "public_notes": "Kuzeydeki askeri üs, sıkıyönetim."
       },
-      "Leş Avcıları": {
-        "disposition": "fırsatçı",
+      "Kalan Umut": {
+        "disposition": "dostane",
         "known": "bilinmiyor",
-        "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
-        "public_notes": "Fırsatçı bağımsız çeteler."
+        "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
+        "public_notes": "Mülteci koalisyonu, savunmasız."
+      },
+      "Kızıl Şafak Tarikatı": {
+        "disposition": "düşmanca",
+        "known": "bilinmiyor",
+        "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
+        "public_notes": "Mutasyonu kutsayan fanatikler."
       },
       "Laboratuvar Kalıntısı": {
         "disposition": "bilinmiyor",
         "known": "bilinmiyor",
         "notes": "Mutasyonun kaynağına dair bilgi burada; sakinlerinin niyeti henüz belirsiz.",
         "public_notes": "Güneydeki tesis, gizemli sakinler."
+      },
+      "Leş Avcıları": {
+        "disposition": "fırsatçı",
+        "known": "bilinmiyor",
+        "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
+        "public_notes": "Fırsatçı bağımsız çeteler."
       }
     },
-    "characters": {
-      "Okan": {
-        "profession": "Yazılımcı",
-        "age": "32",
-        "strength": "Soğukkanlı",
-        "weakness": "Yüzme bilmiyor",
-        "secret": "bir günde tam 12 adam öldürdüm",
-        "background": "32 yaşında, Yazılımcı",
-        "traits": "Güçlü yanı: Soğukkanlı · Zayıf yanı: Yüzme bilmiyor",
-        "status": "İyi",
-        "alive": true,
-        "vitals": {
-          "fatigue": 33,
-          "hunger": 24,
-          "thirst": 25,
-          "stress": 58,
-          "awake_hours": 4.3,
-          "condition": "Kuşatılmış, güvenini tamamen kaybetti, zorla dışarı çıkarıldı"
-        },
-        "location": "Sığınaktan çıkmış, silahlı 3 kişiyle birlikte Emir'i bıraktığı yöne doğru yürütülüyor",
-        "inventory": [
-          "Çok amaçlı çakı",
-          "Küçük el feneri (pilli)",
-          "Su geçirmez defter ve kalem"
-        ],
-        "relationships": {
-          "Emir": "Emir'i ayin çemberinin kenarına iterek terk etti — bilinçli, soğukkanlı bir tercih."
-        },
-        "notes": "",
-        "lost_items": []
-      },
-      "Emir": {
-        "profession": "Hemşire",
-        "age": "24",
-        "strength": "Hızlı koşar",
-        "weakness": "Bir kulağı sağır",
-        "secret": "bir yaşlıyı katlettim",
-        "background": "24 yaşında, Hemşire",
-        "traits": "Güçlü yanı: Hızlı koşar · Zayıf yanı: Bir kulağı sağır",
-        "status": "Enfekte olabilir",
-        "alive": true,
-        "vitals": {
-          "fatigue": 33,
-          "hunger": 24,
-          "thirst": 25,
-          "stress": 62,
-          "awake_hours": 4.3,
-          "condition": "Kolundaki çizik hâlâ kanıyor, tehlikeli bölgede tek başına"
-        },
-        "location": "Ayin çemberinden uzaklaşıyor, sığınağa giden karanlık yolda",
-        "inventory": [
-          "İlk yardım çantası",
-          "Lateks eldiven (kutu)",
-          "Küçük el feneri (pilli)"
-        ],
-        "relationships": {
-          "Okan": "Okan tarafından ayin alanına doğru itilip terk edildi — güven derinden sarsıldı."
-        },
-        "notes": "",
-        "lost_items": [],
-        "wounds": [
-          {
-            "desc": "sol kolda derin tırnak çiziği",
-            "severity": "orta",
-            "infection_risk": 70,
-            "treated": false,
-            "notes": "ısırılmış adamın kirli tırnağından açıldı — enfeksiyon riski yüksek",
-            "since_day": 97,
-            "since_clock": "03:50"
-          }
-        ]
-      }
-    },
-    "npcs": {
-      "Sendeleyen Figür": {
-        "background": null,
-        "traits": null,
-        "status": "Öldü",
-        "alive": false,
-        "location": "Ayin çemberinin kenarı, Emir'in altında",
-        "inventory": [],
-        "relationships": {},
-        "notes": "Emir tarafından öldürüldü ve gizlendi; kaftanlılar cesedi bulamadı ama izleri fark etti, alanı tedirginlikle arıyorlar.",
-        "lost_items": []
-      },
-      "Sığınak Nöbetçisi": {
-        "background": null,
-        "traits": null,
-        "status": "İyi",
-        "alive": true,
-        "location": "Sığınak güney girişi",
-        "inventory": [],
-        "relationships": {},
-        "notes": "Okan'ın ikinci yalanını da çürüttü; artık ona güvenmiyor, silahını indirmeden onu tekrar dışarı, Emir'i bıraktığı yöne götürüyor. Yanında 2-3 kişi daha var.",
-        "lost_items": []
-      }
-    },
-    "resources": {
-      "Yiyecek": {
-        "Konserve": {
-          "qty": 42,
-          "unit": "kutu",
-          "notes": "Yağmalanan marketten kalan"
-        },
-        "Kuru bakliyat": {
-          "qty": 18,
-          "unit": "kg",
-          "notes": ""
-        },
-        "Un": {
-          "qty": 25,
-          "unit": "kg",
-          "notes": ""
-        }
-      },
-      "Su": {
-        "İçme suyu": {
-          "qty": 160,
-          "unit": "litre",
-          "notes": "Depo + bidonlar"
-        },
-        "Arıtma tableti": {
-          "qty": 30,
-          "unit": "adet",
-          "notes": ""
-        }
-      },
-      "Tarım": {
-        "Patates ekili alan": {
-          "qty": 40,
-          "unit": "m²",
-          "notes": "Peron üstü ışıklıkta"
-        },
-        "Domates fidesi": {
-          "qty": 24,
-          "unit": "adet",
-          "notes": ""
-        },
-        "Tohum paketi": {
-          "qty": 9,
-          "unit": "paket",
-          "notes": "Karışık sebze"
-        }
-      },
-      "Hayvan": {
-        "Tavuk": {
-          "qty": 11,
-          "unit": "adet",
-          "notes": "Günde ~6 yumurta"
-        },
-        "Keçi": {
-          "qty": 2,
-          "unit": "adet",
-          "notes": "Biri sağmal"
-        },
-        "Köpek": {
-          "qty": 1,
-          "unit": "adet",
-          "notes": "Nöbetçi"
-        }
-      },
-      "Silah": {
-        "Av tüfeği": {
-          "qty": 2,
-          "unit": "adet",
-          "notes": ""
-        },
-        "Tabanca": {
-          "qty": 1,
-          "unit": "adet",
-          "notes": ""
-        },
-        "Balta / levye": {
-          "qty": 4,
-          "unit": "adet",
-          "notes": "Sessiz, yakın dövüş"
-        }
-      },
-      "Mühimmat": {
-        "12 kalibre fişek": {
-          "qty": 23,
-          "unit": "adet",
-          "notes": ""
-        },
-        "9mm mermi": {
-          "qty": 14,
-          "unit": "adet",
-          "notes": ""
-        }
-      },
-      "Tıbbi": {
-        "Antibiyotik": {
-          "qty": 6,
-          "unit": "kür",
-          "notes": "Enfeksiyon için kritik"
-        },
-        "Sargı / gazlı bez": {
-          "qty": 20,
-          "unit": "adet",
-          "notes": ""
-        },
-        "Ağrı kesici": {
-          "qty": 30,
-          "unit": "tablet",
-          "notes": ""
-        }
-      },
-      "Yakıt ve enerji": {
-        "Benzin": {
-          "qty": 35,
-          "unit": "litre",
-          "notes": "Jeneratör için"
-        },
-        "Akü": {
-          "qty": 2,
-          "unit": "adet",
-          "notes": ""
-        },
-        "Pil": {
-          "qty": 12,
-          "unit": "adet",
-          "notes": ""
-        }
-      },
-      "Takas": {
-        "Sigara": {
-          "qty": 8,
-          "unit": "paket",
-          "notes": "Bölgede para yerine geçiyor"
-        },
-        "Alkol": {
-          "qty": 5,
-          "unit": "şişe",
-          "notes": "Dezenfektan + takas"
-        }
-      }
-    },
-    "challenges": {
-      "Ufuktaki Alev": {
-        "description": "Kuzeybatı 'ölü sektör'de bir yangın: kaftanlı figürler ateşi bilerek besliyor. Emir izlerini gizleyip kaçtı ama tehlikeli bölgede tek başına. Okan, şüpheci ve silahlı bir grupla birlikte aynı bölgeye zorla geri götürülüyor.",
-        "severity": "kriz",
-        "clock": "Şafağa ~1.7 saat (05:30 civarı)",
-        "progress": "Kaftanlılar Emir'i bulamadı ama alanda arama yapıyor; sığınaktan gelen silahlı grup da aynı bölgeye yaklaşıyor — üç taraf da aynı karanlık alanda buluşmak üzere.",
-        "status": "açık",
-        "consequence": "Sığınaktan gelen grup kaftanlılarla ya da Emir'le karşılaşabilir; kontrolsüz bir karşılaşma çatışmaya dönüşebilir.",
-        "gm_notes": "Üç grup (kaftanlılar, sığınak arama ekibi, Emir) aynı karanlık bölgede yakınlaşıyor — bir sonraki turda fiziksel bir karşılaşma çok olası. Okan'ın gerçeği söyleyip söylememesi grubun tepkisini ve Emir'in kaderini belirleyecek."
-      }
-    },
-    "zombie_sightings": [
-      "Taze Ölü",
-      "Koşucu"
-    ],
     "flags": {
       "chargen_done": true
     },
+    "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
     "narrator": {
-      "plot_summary": "Emir cesedi gizleyip ayin çemberinden sessizce uzaklaştı, kaftanlılar onu bulamadı ama alanı aramaya devam ediyor. Okan'ın ikinci yalanı da çürütüldü; sığınaktaki şüpheci bir grup onu silah zoruyla Emir'i bıraktığı yöne geri götürüyor. Üç farklı grup — kaftanlılar, sığınak arama ekibi ve tek başına kaçan Emir — aynı karanlık bölgede yakınlaşıyor.",
+      "plot_summary": "Okan ve Emir eski metro istasyonunda ikili halde hayatta kalıyor. Güneyde beklenmedik bir sinyal ateşi belirdi; kaynağı Laboratuvar Kalıntısı'na bağlı olabilir. Oyuncular gidip gitmeme kararıyla karşı karşıya.",
       "puzzles": {
-        "Kuzeybatı Alevi": {
-          "description": "Terk edilmiş sektörde bir ayin ateşi; kaftanlı figürler sarılı bedenleri bilerek yakıyor.",
+        "Turuncu Alev'in Kaynağı": {
+          "description": "Normalde ıssız güney sırtlarında beliren kontrollü ateşin kim/ne tarafından yakıldığı bilinmiyor.",
           "status": "çözülmedi",
-          "progress": 85,
-          "clues_found": [
-            "Alevin ışığında hareket eden gölgeler var, insan olabilir",
-            "Yanık plastik ve tatlımsı, rahatsız edici bir koku hissediliyor",
-            "5-6 kaftanlı figür ateşi söndürmeye değil, bilerek beslemeye çalışıyor — bu bir ayin",
-            "Koku netleşti: yanan et var, içeride biri/bir şey yakılıyor",
-            "Gruptan kopan figür ısırılmış ama hâlâ canlı, ateşler içinde bir tarikat üyesi — kaftan giyiyor",
-            "Yakından bakıldığında: ateşte 2-3 beden var, aynı koyu kumaşa sarılı, kaftanlılar tarafından tek tek ateşe atılıyor",
-            "Kaftanlılar alçak, ritmik, tanıdık olmayan sözler söylüyor — dini/törensel bir dil ya da ilahi",
-            "Isırılmış üyeler tarikat tarafından kasten geride bırakılıyor gibi görünüyor",
-            "Sorgulama fırsatı kayboldu — adam öldü, ama çığlığı iki kaftanlıyı sesin kaynağına çekti",
-            "Emir izlerini gizlemeyi başardı, kaftanlılar cesedi bulamadı"
-          ],
-          "next_step": "Sığınaktan gelen arama ekibi ile kaftanlıların ya da Emir'in karşılaşıp karşılaşmayacağı belirleyici olacak.",
-          "solution": "Kızıl Şafak Tarikatı'ndan kopan küçük bir hizip, terk edilmiş bir depo binasını 'arınma ayini' için ateşe verdi; birkaç gönüllü ısırılmış üye içeride, tarikat onları kasten geride bıraktı.",
+          "progress": 0,
+          "clues_found": [],
+          "next_step": "Alevin bulunduğu bölgeye yaklaşmak ya da uzaktan gözlemleyip desen aramak.",
+          "solution": "Laboratuvar Kalıntısı sakinleri periyodik olarak bölgeyi 'işaretlemek' için sinyal ateşleri yakıyor - amaçları hâlâ belirsiz, dost mu tuzak mı olduğu ilerleyen keşiflerle ortaya çıkacak.",
           "notes": ""
         }
       },
       "upcoming_events": {
-        "yakında": "Üç grup aynı karanlık bölgede yakınlaşıyor; bir karşılaşma neredeyse kaçınılmaz."
+        "yakında": "Alevi fark eden başka bir fraksiyon (Leş Avcıları ya da Kızıl Şafak devriyesi) bölgeye yaklaşabilir."
       }
     },
-    "tension": "yüksek",
-    "world_roll": {
-      "roll": 69,
-      "band": "Baskı",
-      "hint": "aktif zorluk belirgin ilerler (süre kısalır, sayı artar, mesafe kapanır) ya da yeni zorluk doğar",
-      "ts": "2026-08-02 16:42:26"
-    },
-    "world_roll_history": [
-      {
-        "roll": 9,
-        "band": "Lehte Kırılma",
-        "ts": "2026-08-02 16:16:56"
+    "npcs": {},
+    "resources": {
+      "Hayvan": {
+        "Keçi": {
+          "notes": "Biri sağmal",
+          "qty": 2,
+          "unit": "adet"
+        },
+        "Köpek": {
+          "notes": "Nöbetçi",
+          "qty": 1,
+          "unit": "adet"
+        },
+        "Tavuk": {
+          "notes": "Günde ~6 yumurta",
+          "qty": 11,
+          "unit": "adet"
+        }
       },
-      {
-        "roll": 78,
-        "band": "Baskı",
-        "ts": "2026-08-02 16:21:31"
+      "Mühimmat": {
+        "12 kalibre fişek": {
+          "notes": "",
+          "qty": 23,
+          "unit": "adet"
+        },
+        "9mm mermi": {
+          "notes": "",
+          "qty": 14,
+          "unit": "adet"
+        }
       },
-      {
-        "roll": 51,
-        "band": "Sızıntı",
-        "ts": "2026-08-02 16:31:40"
+      "Silah": {
+        "Av tüfeği": {
+          "notes": "",
+          "qty": 2,
+          "unit": "adet"
+        },
+        "Balta / levye": {
+          "notes": "Sessiz, yakın dövüş",
+          "qty": 4,
+          "unit": "adet"
+        },
+        "Tabanca": {
+          "notes": "",
+          "qty": 1,
+          "unit": "adet"
+        }
       },
-      {
-        "roll": 93,
-        "band": "Kriz",
-        "ts": "2026-08-02 16:35:39"
+      "Su": {
+        "Arıtma tableti": {
+          "notes": "",
+          "qty": 30,
+          "unit": "adet"
+        },
+        "İçme suyu": {
+          "notes": "Depo + bidonlar",
+          "qty": 160,
+          "unit": "litre"
+        }
       },
-      {
-        "roll": 51,
-        "band": "Sızıntı",
-        "ts": "2026-08-02 16:38:47"
+      "Takas": {
+        "Alkol": {
+          "notes": "Dezenfektan + takas",
+          "qty": 5,
+          "unit": "şişe"
+        },
+        "Sigara": {
+          "notes": "Bölgede para yerine geçiyor",
+          "qty": 8,
+          "unit": "paket"
+        }
       },
-      {
-        "roll": 69,
-        "band": "Baskı",
-        "ts": "2026-08-02 16:42:26"
+      "Tarım": {
+        "Domates fidesi": {
+          "notes": "",
+          "qty": 24,
+          "unit": "adet"
+        },
+        "Patates ekili alan": {
+          "notes": "Peron üstü ışıklıkta",
+          "qty": 40,
+          "unit": "m²"
+        },
+        "Tohum paketi": {
+          "notes": "Karışık sebze",
+          "qty": 9,
+          "unit": "paket"
+        }
+      },
+      "Tıbbi": {
+        "Antibiyotik": {
+          "notes": "Enfeksiyon için kritik",
+          "qty": 6,
+          "unit": "kür"
+        },
+        "Ağrı kesici": {
+          "notes": "",
+          "qty": 30,
+          "unit": "tablet"
+        },
+        "Sargı / gazlı bez": {
+          "notes": "",
+          "qty": 20,
+          "unit": "adet"
+        }
+      },
+      "Yakıt ve enerji": {
+        "Akü": {
+          "notes": "",
+          "qty": 2,
+          "unit": "adet"
+        },
+        "Benzin": {
+          "notes": "Jeneratör için",
+          "qty": 35,
+          "unit": "litre"
+        },
+        "Pil": {
+          "notes": "",
+          "qty": 12,
+          "unit": "adet"
+        }
+      },
+      "Yiyecek": {
+        "Konserve": {
+          "notes": "Yağmalanan marketten kalan",
+          "qty": 42,
+          "unit": "kutu"
+        },
+        "Kuru bakliyat": {
+          "notes": "",
+          "qty": 18,
+          "unit": "kg"
+        },
+        "Un": {
+          "notes": "",
+          "qty": 25,
+          "unit": "kg"
+        }
       }
-    ]
+    },
+    "season": "geç sonbahar",
+    "temperature": "7°C",
+    "time_of_day": "gece",
+    "weather": "ince yağmur, rüzgârlı",
+    "zombie_sightings": [
+      "Taze Ölü",
+      "Koşucu"
+    ],
+    "tension": "orta"
   },
-  "next_id": 18,
-  "session_id": "cbba847f-5f86-46f9-b034-9695aaa48a5b",
+  "next_id": 2,
+  "session_id": "677bed3d-89e6-4d7a-8c84-c2c75653bb0b",
   "characters_confirmed": true,
   "started": true,
-  "version": 26
+  "version": 3
 }
