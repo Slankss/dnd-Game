@@ -33,12 +33,12 @@ ama oyuncu ajansını öldürmeyen bir yetenek.
 ## 2. Ortak makine: koşul motoru
 
 Planın kalbi tek bir fikir: **koşullu randevu**. İki ayrı ihtiyaç aynı motoru
-kullanır, bu yüzden `director.py` tek yerde durur:
+kullanır, bu yüzden koşul motoru `app/models/conditions.py`'da tek yerde durur:
 
 - **Sahne katılımı** — "Okan 06:00'da uyanır" (`presence.until`)
 - **Olay örgüsü** — "gün 101'den sonra kampta mühür görünür" (`beat.when`)
 
-`director.matches(when, ctx)` — desteklenen alanlar (hepsi VE ile bağlanır,
+`conditions.matches(when, ctx)` — desteklenen alanlar (hepsi VE ile bağlanır,
 bilinmeyen alan yok sayılır):
 
 | Alan | Örnek |
@@ -58,12 +58,13 @@ kadar sağlanmaz olurdu — uyuyan karakter hiç uyanmazdı).
 
 ## 3. ✅ Faz 0 — İskelet
 
-`webapp/director.py` eklendi: koşul motoru (`build_context`, `matches`,
-`describe_when`), Türkçe normalleştirme (`norm_tr`) ve plan dosyası
-yardımcıları (`load_plot`, `save_plot`, `DEFAULT_PLOT` → `data/plot.json`).
+Koşul motoru `app/models/conditions.py`'da: `build_context`, `matches`,
+`describe_when`. Plan veri sınıfları `app/models/plot.py`'da (`Plot`, `Beat`,
+`DEFAULT_PLOT`), plan dosyası `app/repositories/plot_repo.py` üzerinden
+`data/plot.json`'a yazılır.
 
-`server`'ı import ETMEZ (döngüsel import olurdu); bu yüzden `norm_tr`
-`server._norm_tr`'nin bilinçli kopyasıdır.
+(Mimari geçişinden önce bunlar kök dizindeki `director.py`'daydı; o dosya
+kaldırıldı — bkz. docs/mimari.md.)
 
 ---
 
@@ -85,31 +86,32 @@ ve sahnede olan biri de her turda konuşmak zorunda değildir.
 Model başka kelime yazarsa (`uykuda`, `tutsak`, `sahne dışı`…) `PRESENCE_ALIASES`
 ile eşlenir; tanınmayan değer `sahnede`'ye düşer. Ölüm ayrı eksendir (`alive`).
 
-**Sunucu** (`server.py`):
+**Alan katmanı** (`app/models/presence.py`, `app/models/person.py`,
+`app/models/world.py`):
 
-- `ensure_presence` / `presence_state` / `present_players` / `absent_players`
-- `_merge_presence` — `_merge_person_like` içinden çağrılır, yani `presence`
-  normal state-update yolundan gelir. Düz string de kabul edilir
+- `Presence` + `PRESENCE_STATES`/`PRESENCE_ALIASES`; `Person.merge_presence()`
+  normal state-update yolundan çağrılır, düz string de kabul edilir
   (`"presence": "uyuyor"`). Hal değişince eski `until` düşer.
-- `resolve_presence(ws, world_entry)` — turun başında çalışır; `until` koşulu
-  dolan herkesi sahneye döndürür ve listesini prompt'a verir.
-- `bring_to_scene(ws, isim)` — oyuncu sahne dışındaki karakteriyle mesaj
-  yazdıysa, mesajın kendisi "uyandım/döndüm" demektir.
-- `presence_note(ws, returned, rejoined)` — her turda prompt'a giren SAHNE
-  KADROSU bloğu: kim sahnede, kim değil, kim döndü + iki kural (sahne
-  dışındakine replik yazma; sahnedekilerin hepsine sırayla söz verme).
-  `post_message`'ın iki normal dalına ve `gm_note`'un ortak kuyruğuna eklendi
-  (karakter oluşturma dalları hariç — orada herkes sahnededir).
-- `UPKEEP_REMINDER` madde (8) — `presence` yazma sorumluluğu.
-- `apply_vitals_drift` — uyuyan karakter için `VITALS_SLEEP_PER_HOUR`:
-  yorgunluk/stres düşer, `awake_hours` sıfırlanır, açlık/susuzluk uykuda da
-  artmaya devam eder.
+- `WorldState.resolve_presence(world_entry)` — turun başında çalışır; `until`
+  koşulu dolan herkesi sahneye döndürür ve listesini prompt'a verir.
+- `WorldState.bring_to_scene(isim)` — oyuncu sahne dışındaki karakteriyle
+  mesaj yazdıysa, mesajın kendisi "uyandım/döndüm" demektir.
+- `prompt_builder.presence_note(ws, returned, rejoined)` — her turda prompt'a
+  giren SAHNE KADROSU bloğu: kim sahnede, kim değil, kim döndü + iki kural
+  (sahne dışındakine replik yazma; sahnedekilerin hepsine sırayla söz verme).
+  `TurnService.play`'in iki normal dalına ve `GmService.note`'un ortak
+  kuyruğuna girer (karakter oluşturma dalları hariç — orada herkes sahnededir).
+- `prompt_builder.UPKEEP_REMINDER` madde (8) — `presence` yazma sorumluluğu.
+- `WorldState.apply_vitals_drift` — uyuyan karakter için
+  `VITALS_SLEEP_PER_HOUR`: yorgunluk/stres düşer, `awake_hours` sıfırlanır,
+  açlık/susuzluk uykuda da artmaya devam eder.
 
 **Senaryo** (`scenario.py`): "SAHNE KATILIMI" bölümü (7 kural),
 `state-update` şemasına `presence`, `CHARACTER_TEMPLATE`'e varsayılan alan.
 
-**Arayüz**: oyuncu kartında rozet (😴 uyuyor / 🚶 sahne dışında / 💫 baygın /
-⛓️ esir) + not satırı; `/secrets`'ta ayrıca dönüş koşulunun özeti.
+**Arayüz**: oyuncu kartında katılım rozeti (Material Symbols ikonlarıyla:
+uyuyor / sahne dışında / baygın / esir) + not satırı; `/secrets`'ta ayrıca
+dönüş koşulunun okunur özeti.
 
 **Test**: `scratchpad/t_presence.py` — koşul motoru (randevu, gün dönümü,
 konum, bayrak, zar), presence birleştirme, otomatik uyandırma, oyuncu
@@ -135,11 +137,11 @@ Plan `data/plot.json`'da; bu fazda beat'ler **elle** yazılır (senarist yok).
 
 Yapılacak:
 
-- `director.evaluate(plot, ctx)` — ateşleyecek beat'i seçer; `director.expire(plot, day)`
+- `Plot.due_beats(ctx)` üzerine: ateşlenecek beat seçimi + `expire(day)`
 - Tur başına **en fazla bir** beat (öncelik: en yakın `expires_day`). Üç
   direktif aynı sahneye girerse okunmaz olur.
 - `directive_note(beat)` prompt bloğu, `presence_note` deseninde
-- `post_message`: zar atıldıktan sonra değerlendir; model cevabı işlendikten
+- `TurnService.play`: zar atıldıktan sonra değerlendir; model cevabı işlendikten
   sonra `fired` işaretle, `on_fire.flags`'i uygula, `save_plot`
 - `state`: `pending` | `fired` | `expired` | `vetoed`; `expires_day` zorunlu
 - `plot`'u `GM_ONLY_FIELDS`'a ekle (ileride `world_state`'e özet yansırsa sızmasın)
@@ -158,12 +160,12 @@ listesi; sahne dışındaki karakterleri elle döndürme düğmesi de buraya.
 - `.claude/skills/senarist/SKILL.md` — **zanaat bilgisi**: iyi beat nasıl
   yazılır, ekim-hasat aralığı, foreshadow dozu, "sonuç dayatma" yasağı.
   Mekanik kural buraya girmez (o kodda).
-- **Kısıt**: `call_claude` `--tools ""` ile çalışıyor, yani Claude Code
+- **Kısıt**: `NarratorClient.ask` `--tools ""` ile çalışıyor, yani Claude Code
   skill'leri otomatik yüklenmez. SKILL.md diskten okunup `--system-prompt`
   olarak verilecek.
 - **Kısıt**: anlatıcının oturumu `--resume` ile sürüyor; senarist oraya
   girmemeli (planlama gevezeliği hikâye bağlamına bulaşır). Ayrı,
-  oturumsuz `call_scenarist()`.
+  oturumsuz ikinci bir `NarratorClient`.
 - Çıktı doğrulanmadan yazılmaz: bilinmeyen alan at, `expires_day` yoksa
   varsayılan koy, `id` çakışmasını çöz.
 - Önce `/secrets`'ta "Plan üret" düğmesi; otomatik vade (her N tur) sonra ve
@@ -190,12 +192,12 @@ Test altyapısı yok; pratik, sunucuyu import edip fonksiyonu doğrudan çağır
 ```python
 import sys
 sys.path.insert(0, r"C:\GITHUB\dnd-Game\webapp")
-import director, server
-ctx = director.build_context({"day": 101, "location": "Kalan Umut kampı"})
-print(director.matches({"day_gte": 101}, ctx))
+from app.models import conditions
+ctx = conditions.build_context({"day": 101, "location": "Kalan Umut kampı"})
+print(conditions.matches({"day_gte": 101}, ctx))
 ```
 
-Her fazdan sonra `python -m py_compile server.py director.py scenario.py`,
+Her fazdan sonra `python -m py_compile server.py scenario.py app/**/*.py`,
 sonra bir tur oyna. Canlı `data/state.json` üstünde deneme yapmadan önce
 kopyala — içinde devam eden gerçek bir oyun var.
 

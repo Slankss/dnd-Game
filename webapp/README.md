@@ -32,13 +32,10 @@ sadece metin üretimi için) çalıştırır.
   kaydedilir — bu dosya asla üzerine yazılmaz, sadece eklenir. Web arayüzünde
   "Oyun Geçmişi" sekmesi bu geçmişin tamamını gösterir; kenar çubuğundaki
   "Son Olaylar" paneli ise son birkaç olayın kısa özetini verir.
-- Oyun tek ekrandan oynandığı için **sürekli yoklama (polling) kapalıdır**.
-  Durum sadece sayfa açılışında, bir aksiyondan sonra (`/api/message` yanıtı
-  zaten güncel dünya durumunu döner) ve sekmeye geri dönüldüğünde çekilir.
-  Ana sekme bir tur işlediğinde `BroadcastChannel` ile anlatıcı sekmesine
-  haber verir — ek HTTP trafiği olmadan. Oyunu birden fazla cihazdan
-  oynatmak isterseniz `static/index.html` sonundaki `poll()` çağrısını bir
-  `setInterval(poll, 1200)` ile değiştirmeniz yeterli.
+- Arayüz durumu **sürüm bazlı yoklamayla** tazeler: her istek `?since=<sürüm>`
+  gönderir, durum değişmediyse sunucu ağır gövdeyi hiç kurmaz. Sunucu
+  yanıt vermezse yoklama durmaz, aralığı kademeli açılır (tavan 30 sn) ve
+  arayüzde bağlantı durumu görünür. Sekme arkadayken yoklama askıya alınır.
 
 ## Kurulum ve çalıştırma
 
@@ -59,6 +56,18 @@ claude auth login
 Sunucu ayağa kalktıktan sonra tarayıcıda **http://localhost:5050** adresini
 açın. Celil ve Emir aynı bilgisayardan/ağdan bu adrese girip kendi isimlerini
 seçerek oynayabilir.
+
+### Arayüzü değiştirmek
+
+Oynamak için gerekmez — `static/dist` depoda hazır gelir. Arayüz kaynağını
+değiştirdiyseniz:
+
+```bash
+cd frontend
+npm install
+npm run build        # çıktı: ../static/dist
+npm run dev          # geliştirme sunucusu, /api istekleri :5050'ye proxy'lenir
+```
 
 ## Önemli: kullanım kotası
 
@@ -90,7 +99,7 @@ Stok ancak iki yolla doğar:
 2. Oyuncular açıkça sayım ister ("elimizde ne var, sayalım") ve sahnede
    fiilen sayılan şeyler kaydedilir.
 
-Stok doğana kadar kenar çubuğundaki "📦 Grup Kaynakları" paneli hiç
+Stok doğana kadar kenar çubuğundaki "Grup Kaynakları" paneli hiç
 görünmez; ilk kalem girdiğinde kendiliğinden açılır.
 
 ## Eşya sürekliliği
@@ -98,7 +107,7 @@ görünmez; ilk kalem girdiğinde kendiliğinden açılır.
 Bir karakter bir eşyayı attığında/verdiğinde/kaybettiğinde o eşya
 `inventory`'den çıkar ve `lost_items` altına yazılır. Model sonraki bir turda
 hafızasından eski tam listeyi yeniden yazsa bile sunucu o eşyayı geri
-almaz ([server.py](server.py) → `_merge_person_like`) — daha önce atılan bir
+almaz ([app/models/person.py](app/models/person.py) → `Person.merge_inventory`) — daha önce atılan bir
 madalyon saatler sonra kendiliğinden cebe dönemez. Eşya ancak anlatıcı
 `inventory_add` ile açıkça geri verirse (karakter o yere dönüp fiilen
 alırsa) envantere geri girer. Karşılaştırma büyük/küçük harfe duyarsızdır.
@@ -113,7 +122,7 @@ tutulur — her yara için `desc`, `severity` (hafif/orta/ağır/kritik),
 `infection_risk` (0-100), `treated`, `notes` ve açıldığı gün/saat.
 
 Enfeksiyon da göstergeler gibi sunucunun sorumluluğunda
-([server.py](server.py) → `advance_infections`): tedavi edilmemiş bir yaranın
+([app/models/wounds.py](app/models/wounds.py) → `WorldState.advance_infections`): tedavi edilmemiş bir yaranın
 riski saat başına ağırlığına göre yükselir (hafif +0.6 … kritik +3.0), tedavi
 edilmiş bir yara ise saatte −1.0 ile temizlenir. Anlatıcı unutsa bile yara
 ilerler. 60'ı geçince belirtiler başlar, 85'i geçince ölümcül bir `challenges`
@@ -139,7 +148,7 @@ dayanılmaz**: `fatigue`, `hunger`, `thirst`, `stress`, `awake_hours`,
 
 Bu sayılar zar gibi **sunucunun sorumluluğunda**. Anlatıcı saati ilerlettikçe
 sunucu geçen oyun-içi süreyi hesaplayıp göstergeleri kendiliğinden yükseltir
-([server.py](server.py) → `apply_vitals_drift`): uyanık geçen her saat
+([app/models/vitals.py](app/models/vitals.py) → `WorldState.apply_vitals_drift`): uyanık geçen her saat
 yorgunluğa +4, açlığa +3.5, susuzluğa +5 ekler. Yani fatigue ~25 saatte,
 susuzluk ~20 saatte tavan yapar. Model unutsa bile göstergeler ilerler.
 
@@ -454,15 +463,17 @@ otomatik olarak onu kullanır.
 
 ## Dosyalar
 
-- `server.py` — Flask backend, `claude` CLI çağrıları, zar mantığı, durum yönetimi, dışa/içe aktarma uç noktaları
+- `server.py` — giriş noktası (uygulamayı `app/` paketinden kurup çalıştırır)
+- `app/` — katmanlı backend: `models/` (saf alan modelleri), `repositories/` (dosya kalıcılığı), `services/` (tur akışı, kurulum, anlatıcı, senaryo), `api/` (Flask blueprint'leri), `serializers.py` (oyuncuya giden görünüm). Ayrıntı: `docs/mimari.md`
+- `frontend/` — Vue 3 + Vite + Tailwind arayüz kaynağı (`npm install && npm run build` → `static/dist`)
+- `static/dist/` — derlenmiş arayüz; **depoya dahildir**, oyun Node kurulu olmayan makinede de çalışır
+- `docs/` — mimari, tasarım sistemi ve senarist katmanı planı
 - `director.py` — koşul motoru (`matches`: gün/saat randevusu, konum, gerilim, bayrak, dünya zarı) + olay örgüsü planı (`data/plot.json`) yardımcıları. Sahne katılımının `until` koşulunu ve ileride beat tetikleyicilerini bu modül çözer
 - `docs/senarist-yetenegi.md` — senarist katmanının faz planı (hangi faz uygulandı, sırada ne var)
 - `scenario.py` — senaryo metni (system prompt), başlangıç dünya durumu, varsayılan karakter önerileri ve rastgele açılış olayları listesi — **oyunun içeriğini değiştirmek için bu dosyayı düzenleyin** (ya da arayüzden bir senaryo JSON'u içe aktarın)
-- `static/index.html` — tek sayfalık arayüz (karakter kurulumu → oyunu başlat → canlı oyun/geçmiş sekmeleri + durum paneli + müzik/ayarlar)
 - `static/audio/` — buraya kendi ambiyans/müzik dosyanızı (`ambient.mp3`) koyabilirsiniz
 - `data/state.json` — güncel dünya durumu + Claude Code oturum ID'si — silerseniz oyun sıfırlanır
 - `data/game_log.jsonl` — tüm oyun geçmişi, satır satır JSON (append-only) — asla üzerine yazılmaz
 - `data/scenario_override.json` — içe aktarılmış özel senaryo varsa burada tutulur (yoksa `scenario.py`'deki varsayılan kullanılır)
 - `data/gm_log.jsonl` — anlatıcının `/secrets` ekranından gönderdiği gizli notlar + yanıtları — oyunculara asla gösterilmez
-- `static/secrets.html` — anlatıcı-only ekranın arayüzü
 - `/api/reset` — arayüzdeki "Sıfırla" butonu bu uç noktayı çağırır, `data/state.json`, `data/game_log.jsonl` ve `data/gm_log.jsonl`'ı temizleyip karakter kurulum ekranına döner (Claude Code'un kendi oturum geçmişini silmez, sadece yeni bir oturum başlatılır)
