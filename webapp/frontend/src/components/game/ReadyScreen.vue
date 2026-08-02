@@ -108,7 +108,7 @@ onUnmounted(() => clearInterval(sayac))
 
     <!-- Bekleme durumu -->
     <Panel v-if="mesgul" tone="default" title="Açılış sahnesi yazılıyor" icon="auto_stories">
-      <p class="measure-scene text-meta text-muted">
+      <p class="text-meta text-muted">
         Anlatıcı dünyayı kuruyor, açılış olayını seçiyor ve herkesi künyesine göre sahneye sokuyor.
         Bu adım <b class="text-text">30-60 saniye</b> sürebilir — sayfayı kapatma.
       </p>

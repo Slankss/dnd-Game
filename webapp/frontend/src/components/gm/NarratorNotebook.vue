@@ -46,7 +46,7 @@ const CUBUK = { ok: 'bg-ok', warn: 'bg-warn', danger: 'bg-danger', neutral: 'bg-
         <Icon name="menu_book" :size="14" />
         Olay örgüsü özeti
       </h3>
-      <p v-if="ozet" class="measure-scene text-scene text-text">{{ ozet }}</p>
+      <p v-if="ozet" class="text-scene text-text">{{ ozet }}</p>
       <p v-else class="text-meta text-faint">
         Anlatıcı henüz özet yazmadı — ilk turlardan sonra kendisi doldurur.
       </p>

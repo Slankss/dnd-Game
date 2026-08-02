@@ -35,6 +35,15 @@
     min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* Gövde asla yatay kaymaz; geniş içerik (JSON, tablo) kendi kabında kayar. */
+    overflow-x: hidden;
+  }
+
+  /* Uzun kesintisiz dizeler (JSON yaması, URL, uzun eşya adı) satırı
+     taşırmasın — taşan tek bir kelime tüm sayfayı yatay kaydırıyordu. */
+  body,
+  p, li, td, th, dd, dt, pre, code, textarea, input {
+    overflow-wrap: anywhere;
   }
 
   /* Odak halkası her yerde görünür (docs §7 erişilebilirlik). */
@@ -53,20 +62,24 @@
     width: 10px;
     height: 10px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
     background: var(--color-border-strong);
     border: 2px solid var(--color-bg);
     border-radius: 999px;
   }
+
   ::-webkit-scrollbar-thumb:hover {
     background: var(--color-faint);
   }
 }
 
 @layer components {
+
   /* Material Symbols temel sınıfı — Icon.vue bunu kullanır. */
   .ms-icon {
     font-family: var(--font-icon);
@@ -88,19 +101,16 @@
 }
 
 @layer utilities {
+
   /* Sayaçlar zıplamasın (docs §2). */
   .nums-tabular {
     font-variant-numeric: tabular-nums;
-  }
-
-  /* Sahne metni ölçüsü: 65-75 karakter. */
-  .measure-scene {
-    max-width: var(--container-scene);
   }
 }
 
 /* Hareket kısıtlaması: sistem "az hareket" derse tüm geçişler susar. */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

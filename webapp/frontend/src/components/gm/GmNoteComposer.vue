@@ -243,7 +243,7 @@ function tusla(e) {
           {{ sonuc.published ? 'oyunculara yayınlandı' : 'sadece sende kaldı' }}
         </Badge>
       </div>
-      <div class="measure-scene whitespace-pre-wrap text-meta text-text" v-html="metinBicimle(sonuc.text)" />
+      <div class="whitespace-pre-wrap text-meta text-text" v-html="metinBicimle(sonuc.text)" />
     </div>
   </div>
 </template>

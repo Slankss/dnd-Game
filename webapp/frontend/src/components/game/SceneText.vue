@@ -45,7 +45,7 @@ function bicim(tur) {
 </script>
 
 <template>
-  <div class="measure-scene flex flex-col gap-3 text-scene text-text">
+  <div class="flex flex-col gap-3 text-scene text-text">
     <template v-for="(bolum, bi) in bolumler" :key="bi">
       <!-- Başlıksız gövde: düz sahne anlatısı -->
       <div v-if="bolum.tur === 'gövde'" class="flex flex-col gap-3">

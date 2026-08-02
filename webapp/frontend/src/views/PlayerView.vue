@@ -386,7 +386,7 @@ function yeniSahneyeGit() {
 
         <!-- Karakter oluşturma turu sürüyor -->
         <Panel v-if="!oyun.chargenDone" title="Karakter oluşturma" icon="badge">
-          <p class="measure-scene text-meta text-muted">
+          <p class="text-meta text-muted">
             Anlatıcı hâlâ karakter oluşturma turunda. Bu turlarda zar atılmaz. Herkes künyesini
             anlattıysa (ya da biri hiç yazmayacaksa) turu elle kapatabilirsin.
           </p>

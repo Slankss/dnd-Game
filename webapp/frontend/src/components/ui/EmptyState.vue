@@ -38,7 +38,7 @@ const TON = {
   >
     <Icon :name="icon" :size="compact ? 20 : 28" :class="TON[tone]" />
     <p v-if="title" class="text-card text-text">{{ title }}</p>
-    <p v-if="text" class="measure-scene text-meta text-muted">{{ text }}</p>
+    <p v-if="text" class="text-meta text-muted">{{ text }}</p>
     <slot />
     <div v-if="$slots.action" class="mt-2">
       <slot name="action" />

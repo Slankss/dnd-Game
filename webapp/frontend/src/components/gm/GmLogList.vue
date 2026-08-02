@@ -100,7 +100,7 @@ const gorunen = computed(() =>
       </div>
       <div
         class="mt-1 whitespace-pre-wrap text-meta text-text"
-        :class="compact ? 'line-clamp-4' : 'measure-scene'"
+        :class="compact ? 'line-clamp-4' : ''"
         v-html="metinBicimle(yayinOnEkiniAt(g.ham.text))"
       />
     </li>

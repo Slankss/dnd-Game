@@ -54,7 +54,7 @@ function onayla() {
     :kapatilabilir="!mesgul"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <p class="mb-3 measure-scene text-meta text-muted">
+    <p class="mb-3 text-meta text-muted">
       Yeni bir isim uyduramazsın: hikayede zaten tanıştığınız birini devralırsın. Seçtiğin kişi bu
       andan itibaren senin oyuncu karakterin olur, geçmişi ve envanteriyle birlikte.
     </p>

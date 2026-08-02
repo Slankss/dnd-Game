@@ -134,7 +134,7 @@ function onayla() {
         <Badge tone="muted" size="sm">{{ doluIsimler.length }}/{{ EN_COK_KARAKTER }}</Badge>
       </template>
 
-      <p class="measure-scene text-meta text-muted">
+      <p class="text-meta text-muted">
         Oyuna girecek herkes için bir künye doldur. Meslek, yaş, güçlü ve zayıf yan anlatıcı için
         bağlayıcıdır — hikaye bunların üzerine kurulur. En az bir, en çok
         {{ EN_COK_KARAKTER }} karakter olabilir.

@@ -56,7 +56,7 @@ const renkDegiskenleri = computed(() => ({
   >
     <Icon name="info" :size="16" class="mt-0.5 shrink-0 text-faint" label="Sistem bildirimi" />
     <div class="min-w-0">
-      <p class="measure-scene text-meta text-muted">{{ sistemMetni }}</p>
+      <p class="text-meta text-muted">{{ sistemMetni }}</p>
       <p v-if="saat" class="mt-0.5 text-label text-faint nums-tabular">{{ saat }}</p>
     </div>
   </article>
@@ -91,7 +91,7 @@ const renkDegiskenleri = computed(() => ({
 
       <span v-if="saat" class="ml-auto text-label text-faint nums-tabular">{{ saat }}</span>
     </header>
-    <p class="measure-scene whitespace-pre-line text-meta text-text">{{ girdi.text }}</p>
+    <p class="whitespace-pre-line text-meta text-text">{{ girdi.text }}</p>
   </article>
 
   <!-- -------------------------------------------------------- anlatıcı -->
