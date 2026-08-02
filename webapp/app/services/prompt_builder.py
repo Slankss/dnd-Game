@@ -416,3 +416,24 @@ UPKEEP_REMINDER = (
     "bloğuyla bitir. Bu blok state-update'in DIŞINDA, oyuncuya görünen metnin "
     "son parçası olsun."
 )
+
+
+def directive_note(beat: dict) -> str:
+    """Senarist planından bu turda ateşlenen direktif.
+
+    Oyuncular bu metni ASLA görmez. Direktif bir KOŞUL tarif eder, sonucu
+    dayatmaz — aksi halde oyuncu ne yaparsa yapsın aynı sahneye çıkar ve
+    oyunun anlamı ölür.
+    """
+    metin = str((beat or {}).get("directive") or "").strip()
+    if not metin:
+        return ""
+    return (
+        "YÖNETMEN DİREKTİFİ (gizli, planlanmış olay — oyunculara ASLA gösterme, "
+        "sahnede plandan/direktiften söz etme):\n"
+        + metin
+        + "\nBunu sahnenin İÇİNE yedir: koşulu kur, ortamı hazırla, sonucu "
+        "DAYATMA. Oyuncuların kararını onların yerine verme. Fark etmezlerse "
+        "ZORLAMA — bu turda hayata geçmezse sorun değil, ipucu sahnede durur. "
+        "Direktif oyuncuların bu turdaki hamlesiyle çelişiyorsa hamle önceliklidir."
+    )

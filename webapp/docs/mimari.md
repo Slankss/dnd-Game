@@ -109,7 +109,7 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/finish-chargen` | — | `{ok, world_state}` |
 | POST | `/api/reset` | — | `{ok}` |
 | POST | `/api/gm/unlock` | `{pin}` | `{ok}` / 403 |
-| GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started}` |
+| GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started, plot}` |
 | POST | `/api/gm/note` | `{pin, text, mode: gizli\|sahne\|surpriz}` | `{note_entry, reply_entry, gm_entry, published, world_state}` — `note_entry`/`reply_entry` anlatıcı günlüğüne, `gm_entry` oyuncu akışına gider (gizli modda `null`) |
 | POST | `/api/gm/patch` | `{pin, patch}` | `{ok, version, world_state}` |
 | GET | `/api/scenario/export` | — | senaryo JSON |

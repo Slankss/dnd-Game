@@ -12,6 +12,7 @@ import time
 from app import config
 from app.errors import AuthError, ValidationError
 from app.repositories import log_repo
+from app.repositories.plot_repo import PlotRepository
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
 from app.services import prompt_builder, state_update
@@ -27,10 +28,11 @@ class GmService:
     """`/api/gm/unlock`, `/api/gm/state`, `/api/gm/note`, `/api/gm/patch`."""
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
-                 game_log=None, gm_log=None, pin=None):
+                 game_log=None, gm_log=None, pin=None, plot_repo=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
+        self.plot_repo = plot_repo or PlotRepository()
         self.game_log = game_log or log_repo.game_log()
         self.gm_log = gm_log or log_repo.gm_log()
         self.pin = pin if pin is not None else config.GM_PIN
@@ -54,6 +56,8 @@ class GmService:
                 return {"version": version, "changed": False}
             gm_log = self.gm_log.read()
             log = self.game_log.read()
+            # Senarist planı SADECE bu ekrana gider — /api/state'te izi yok.
+            plot = self.plot_repo.load_raw()
         return {
             "version": version,
             "changed": True,
@@ -62,6 +66,7 @@ class GmService:
             # anlatıcı, oyuncuların turlarını da bu ekrandan canlı izleyebilsin
             "log": log[-GM_LOG_TAIL:],
             "started": state["started"],
+            "plot": plot,
         }
 
     # ------------------------------------------------------------ /api/gm/note

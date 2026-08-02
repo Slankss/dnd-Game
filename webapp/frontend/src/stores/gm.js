@@ -39,6 +39,8 @@ export const useGmStore = defineStore('gm', () => {
   const worldState = shallowRef(null)
   /** Anlatıcı notları günlüğü */
   const gmLog = ref([])
+  // Senarist planı (data/plot.json) — SADECE bu ekrana gelir.
+  const plot = shallowRef(null)
   /** Oyuncu akışının son 40 girdisi (anlatıcı canlı izlesin) */
   const log = ref([])
   const started = ref(false)
@@ -106,6 +108,7 @@ export const useGmStore = defineStore('gm', () => {
     pinYaz('')
     version.value = null
     worldState.value = null
+    plot.value = null
     gmLog.value = []
     log.value = []
     error.value = null
@@ -125,6 +128,7 @@ export const useGmStore = defineStore('gm', () => {
       if (data.changed !== false) {
         worldState.value = data.world_state ?? worldState.value
         if (Array.isArray(data.gm_log)) gmLog.value = data.gm_log
+        if (data.plot !== undefined) plot.value = data.plot
         if (Array.isArray(data.log)) log.value = data.log
         started.value = !!data.started
       }
@@ -232,6 +236,7 @@ export const useGmStore = defineStore('gm', () => {
     unlocked,
     version,
     worldState,
+    plot,
     gmLog,
     log,
     started,

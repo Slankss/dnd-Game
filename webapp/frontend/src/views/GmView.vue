@@ -232,7 +232,7 @@ onUnmounted(() => {
         </SidebarSection>
 
         <SidebarSection title="Plan" icon="bolt" :default-open="false">
-          <PlotPanel compact />
+          <PlotPanel :plan="gm.plot" compact />
         </SidebarSection>
 
         <SidebarSection

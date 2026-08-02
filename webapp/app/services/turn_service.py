@@ -19,6 +19,7 @@ from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
 from app.serializers import public_world_state
 from app.services import prompt_builder, state_update, turn_prompts
+from app.services.director_service import DirectorService
 from app.services.narrator_client import NarratorClient
 
 CHAR_LINE_RE = re.compile(r"^\s*([^\n:：]+?)\s*[:：]\s*(.+)$")
@@ -51,11 +52,13 @@ class TurnService:
     """`/api/message` ve `/api/takeover` akışları."""
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
-                 game_log=None):
+                 game_log=None, gm_log=None, director=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
         self.game_log = game_log or log_repo.game_log()
+        self.gm_log = gm_log or log_repo.gm_log()
+        self.director = director or DirectorService()
 
     # ------------------------------------------------------------ /api/message
     def play(self, player, text: str) -> dict:
@@ -94,6 +97,14 @@ class TurnService:
                         rejoined.append(name)
             # Prompt blokları ve JSON dökümü AYNI anlık görüntüden okunur —
             # eski kodda hepsi mutasyonlardan sonraki `state["world_state"]`'ti.
+            # Senarist planı (data/plot.json): koşulu SAĞLANAN bekleyen
+            # beat'lerden yalnız biri bu tura girer. Kararı kod verir, model
+            # değil. Chargen turunda plan işlemez — henüz hikaye yok.
+            beat, plot, plan_olaylari = (None, None, [])
+            if not in_chargen:
+                beat, plot, plan_olaylari = self.director.take_due(world, world_entry)
+            directive = prompt_builder.directive_note(beat.to_dict()) if beat else None
+
             ws = world.to_dict()
             scene_note = prompt_builder.presence_note(ws, returned, rejoined)
             log = self.game_log.read()
@@ -124,7 +135,8 @@ class TurnService:
                 combined = "\n".join(line_descs)
                 prompt = f"[ÇOKLU KARAKTER TURU]\n{combined}"
                 extra_system = turn_prompts.multi_extra_system(
-                    ws, log, combined, in_chargen, world_entry, inventory_block, scene_note)
+                    ws, log, combined, in_chargen, world_entry, inventory_block,
+                    scene_note, directive)
             else:
                 is_group = player == GROUP_LABEL
                 if not is_group and player not in valid_players:
@@ -146,7 +158,8 @@ class TurnService:
                     roll = roll_d100()
                     band = band_for(roll)
                     extra_system = turn_prompts.turn_extra_system(
-                        ws, log, is_group, roll, band, world_entry, inventory_block, scene_note)
+                        ws, log, is_group, roll, band, world_entry, inventory_block,
+                        scene_note, directive)
 
                 user_entries = [
                     {
@@ -191,6 +204,19 @@ class TurnService:
                 "tension": world.tension,
             }
             self.game_log.append(gm_entry)
+
+            # Plan muhasebesi turun SONUNDA: model yanıt vermeden beat
+            # ateşlenmiş sayılmaz (çağrı hata verirse beat kuyrukta kalır).
+            if beat is not None:
+                plan_olaylari.append(self.director.mark_fired(beat, plot, world))
+            for olay in plan_olaylari:
+                # Plan hareketleri yalnız anlatıcı ekranında görünür.
+                self.gm_log.append({
+                    "id": None,
+                    "role": "plot",
+                    "text": olay,
+                    "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                })
 
             StateRepository.store_world(state, world)
             self.state_repo.save(state)

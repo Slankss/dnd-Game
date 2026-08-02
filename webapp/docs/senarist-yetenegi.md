@@ -4,7 +4,7 @@ Proje: `C:\GITHUB\dnd-Game\webapp` — Flask sunucu + `claude` CLI ile yürüyen
 Türkçe zombi kıyameti RPG'si. Oyuncular `/`, anlatıcı (GM) `/secrets` ekranını
 kullanır. Kod ve yorumlar Türkçe.
 
-Durum: **Faz 0 ve Faz 1 uygulandı** (aşağıda ✅). Kalan fazlar plandır.
+Durum: **Faz 0, 1 ve 2 uygulandı** (aşağıda ✅). Kalan fazlar plandır.
 
 > Satır numarası vermiyoruz — depo başka makinelerden de güncelleniyor
 > (`v1.1` ile vitals/yaralar/künyeler geldi ve tüm numaralar kaydı). Kancalar
@@ -119,7 +119,7 @@ mesajıyla dönüş, uyku telafisi, prompt bloğu. Hepsi geçiyor.
 
 ---
 
-## 5. Faz 2 — Beat tetikleyici + direktif enjeksiyonu
+## 5. ✅ Faz 2 — Beat tetikleyici + direktif enjeksiyonu
 
 Plan `data/plot.json`'da; bu fazda beat'ler **elle** yazılır (senarist yok).
 
@@ -135,21 +135,33 @@ Plan `data/plot.json`'da; bu fazda beat'ler **elle** yazılır (senarist yok).
  "seeds": ["Okan'ın ıslak defteri henüz okunmadı"]}
 ```
 
-Yapılacak:
+Uygulandı:
 
-- `Plot.due_beats(ctx)` üzerine: ateşlenecek beat seçimi + `expire(day)`
-- Tur başına **en fazla bir** beat (öncelik: en yakın `expires_day`). Üç
-  direktif aynı sahneye girerse okunmaz olur.
-- `directive_note(beat)` prompt bloğu, `presence_note` deseninde
-- `TurnService.play`: zar atıldıktan sonra değerlendir; model cevabı işlendikten
-  sonra `fired` işaretle, `on_fire.flags`'i uygula, `save_plot`
-- `state`: `pending` | `fired` | `expired` | `vetoed`; `expires_day` zorunlu
-- `plot`'u `GM_ONLY_FIELDS`'a ekle (ileride `world_state`'e özet yansırsa sızmasın)
+- `Plot.due_beats(ctx)` koşulu sağlanan beat'leri **en yakın vadeli önce**
+  sıralar; `Plot.expire(day)` vadesi geçenleri `expired` yapar;
+  `Plot.ensure_expiry(day)` vadesiz beat'e varsayılan ömür (8 gün) yazar —
+  vadesiz beat kuyrukta bekleyip 20 tur sonra alakasız sahnede patlıyordu.
+- `DirectorService` (app/services/director_service.py): turun başında çürütür
+  + **tek** beat seçer, turun sonunda `fired` işaretler ve `on_fire.flags`'i
+  dünyaya uygular. Model çağrısı hata verirse beat kuyrukta kalır.
+- `prompt_builder.directive_note(beat)` — gizli YÖNETMEN DİREKTİFİ bloğu,
+  dünya durumu JSON'ından hemen önce (sona yakın, gözden kaçmasın).
+  Metin koşul kurmayı emreder, sonucu dayatmayı yasaklar; oyuncular fark
+  etmezse zorlamaz, oyuncunun o turdaki hamlesi önceliklidir.
+- `TurnService.play` zinciri: zar → plan seçimi → prompt → model → state-update
+  → plan muhasebesi. Chargen turunda plan çalışmaz.
+- Plan hareketleri (`ateşlendi` / `çürüdü`) anlatıcı günlüğüne `role: "plot"`
+  girdisi olarak düşer — plan sessizce erimesin.
+- `/api/gm/state` artık `plot` da döndürür; `/secrets`'taki plan paneli
+  bekleyen/ateşlenmiş/çürümüş beat'leri, koşul özetini ve vadeyi gösterir
+  (salt okunur; ekleme/veto Faz 3).
 
-**Kabul**: elle yazılan beat koşulu sağlanan turda sahneye giriyor, ikinci kez
-ateşlemiyor, vadesi dolan `expired` oluyor, `/api/state` cevabında plan izi yok.
+**Kabul (doğrulandı)**: `scratchpad/t_faz2.py` — kum havuzunda gerçek kayıt
+kopyasıyla: direktif prompt'a giriyor, koşulu sağlanmayan/vadesi geçen beat
+girmiyor, ikinci turda tekrar ateşlemiyor, `on_fire` bayrağı uygulanıyor,
+anlatıcı günlüğüne düşüyor, `/api/state` cevabında plan izi YOK.
 
-## Faz 3 — GM paneli
+## Faz 3 — GM paneli (plan düzenleme)
 
 `GET/POST /api/gm/plot` (PIN kontrolü `gm_note` desenine birebir uysun): beat
 ekle/düzenle/veto/"şimdi ateşle". `/secrets`'ta bekleyen–ateşlenmiş–çürümüş

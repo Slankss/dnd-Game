@@ -16,6 +16,10 @@ DEFAULT_PLOT = {"version": 1, "updated_day": None, "threads": {},
 # pending = bekliyor · fired = ateşlendi · expired = vadesi doldu · vetoed = GM iptal etti
 BEAT_STATES = ("pending", "fired", "expired", "vetoed")
 
+# `expires_day` yazılmamış bir beat'e verilen ömür (gün). Vadesiz beat kuyrukta
+# sonsuza kadar bekler ve çok sonra alakasız bir sahnede patlar.
+DEFAULT_TTL_DAYS = 8
+
 
 @dataclass
 class Beat(DictModel):
@@ -113,3 +117,36 @@ class Plot(DictModel):
         tanesi ateşlenir; üç direktif aynı sahneye girerse okunmaz olur)."""
         ready = [b for b in self.pending_beats() if b.ready(ctx)]
         return sorted(ready, key=lambda b: (b.expires_day is None, b.expires_day))
+
+    # ------------------------------------------------------------- vade/ateş
+    def ensure_expiry(self, day) -> list:
+        """Vadesiz beat'e varsayılan vade yazar. Vadesiz bir beat sonsuza
+        kadar kuyrukta bekler ve 20 tur sonra alakasız bir sahnede patlar —
+        planın en sinsi hatası bu."""
+        if not isinstance(day, int):
+            return []
+        yazilan = []
+        for beat in self.pending_beats():
+            if beat.expires_day is None:
+                beat._set("expires_day", day + DEFAULT_TTL_DAYS)
+                yazilan.append(beat.id)
+        return yazilan
+
+    def expire(self, day) -> list:
+        """Vadesi geçmiş bekleyen beat'leri çürütür. Çürüyenlerin id'si döner
+        (anlatıcı günlüğüne yazılır ki plan sessizce erimesin)."""
+        if not isinstance(day, int):
+            return []
+        curuyen = []
+        for beat in self.pending_beats():
+            if isinstance(beat.expires_day, int) and day > beat.expires_day:
+                beat._set("state", "expired")
+                curuyen.append(beat.id)
+        return curuyen
+
+    def fire(self, beat: "Beat", day) -> None:
+        """Beat ateşlendi: bir daha seçilmesin."""
+        beat._set("state", "fired")
+        beat._set("fired_day", day)
+        if isinstance(day, int):
+            self._set("updated_day", day)

@@ -11,6 +11,11 @@ import json
 from app.services import prompt_builder
 
 
+def _directive_block(directive) -> str:
+    """Senarist direktifi varsa iki boş satır ayraçla eklenir."""
+    return ("\n\n" + directive) if directive else ""
+
+
 def notes_block(ws: dict, log: list, scene_note: str = None) -> str:
     """Her turda modele giden "defter": kadro → (sahne kadrosu) → envanter →
     yaralar → göstergeler → görünür zaman çizelgesi. Bloklar arası ayraç eski
@@ -28,7 +33,7 @@ def notes_block(ws: dict, log: list, scene_note: str = None) -> str:
 
 
 def multi_extra_system(ws, log, combined, in_chargen, world_entry,
-                       inventory_block, scene_note) -> str:
+                       inventory_block, scene_note, directive=None) -> str:
     """Aynı mesajda birden fazla karakterin hamlesi ('İsim: aksiyon')."""
     if in_chargen:
         return (
@@ -60,6 +65,7 @@ def multi_extra_system(ws, log, combined, in_chargen, world_entry,
         + combined
         + "\n\n"
         + notes_block(ws, log, scene_note)
+        + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
         + json.dumps(ws, ensure_ascii=False)
     )
@@ -96,7 +102,7 @@ def chargen_extra_system(ws, log, player, is_group) -> str:
 
 
 def turn_extra_system(ws, log, is_group, roll, band, world_entry,
-                      inventory_block, scene_note) -> str:
+                      inventory_block, scene_note, directive=None) -> str:
     """Olağan tur: oyuncu zarı + dünya zarı + tur sonu defter tutma."""
     group_note = (
         "Bu mesaj [GRUP - ORTAK KARAR] etiketiyle geliyor — SCENARIO'daki "
@@ -120,6 +126,7 @@ def turn_extra_system(ws, log, is_group, roll, band, world_entry,
         + prompt_builder.UPKEEP_REMINDER
         + "\n\n"
         + notes_block(ws, log, scene_note)
+        + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
         + json.dumps(ws, ensure_ascii=False)
     )
