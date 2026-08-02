@@ -1,6 +1,6 @@
-"""Senarist katmanı: koşul motoru + olay örgüsü planı.
+"""Koşul motoru (eski `director.py`).
 
-Koşul motoru iki ayrı yerde kullanılıyor, şeması ikisinde de aynı:
+Şema iki ayrı yerde aynen kullanılıyor:
 
   * SAHNE KATILIMI — bir karakterin sahneye dönme/uyanma koşulu
     (`characters.<isim>.presence.until`)
@@ -10,83 +10,36 @@ Koşul motoru iki ayrı yerde kullanılıyor, şeması ikisinde de aynı:
 İkisi de `matches(when, ctx)` ile çözülür; `ctx` bir turun anlık görüntüsüdür
 (`build_context`). Böylece "şafakta uyanır" ile "gün 101'den sonra kampta
 mühür görünür" aynı makineyi kullanır.
-
-Bu modül `server`'ı import ETMEZ (döngüsel import olurdu) — bu yüzden metin
-normalleştirme burada kendi kopyasıyla duruyor, bkz. `norm_tr`.
 """
 
-import json
-import re
-import unicodedata
-from pathlib import Path
-
-BASE_DIR = Path(__file__).resolve().parent
-PLOT_FILE = BASE_DIR / "data" / "plot.json"
-
-# --------------------------------------------------------------- yardımcılar
-
-_CLOCK_RE = re.compile(r"^\s*(\d{1,2})\s*[:.]\s*(\d{2})")
-
-
-def norm_tr(text) -> str:
-    """Türkçe'ye güvenli normalleştirme (server._norm_tr ile aynı davranış —
-    modüller birbirini import etmesin diye kopya). Düz `casefold()` burada
-    yanlış çalışır: "İyi".casefold() -> "i̇yi", "ı" olduğu gibi kalır."""
-    if not isinstance(text, str):
-        return ""
-    for src in ("ı", "I", "İ"):
-        text = text.replace(src, "i")
-    text = unicodedata.normalize("NFKD", text.casefold())
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def clock_minutes(clock):
-    """'HH:MM' -> gün içindeki dakika. Okunamazsa None."""
-    if not isinstance(clock, str):
-        return None
-    m = _CLOCK_RE.match(clock)
-    if not m:
-        return None
-    hour, minute = int(m.group(1)), int(m.group(2))
-    if hour > 23 or minute > 59:
-        return None
-    return hour * 60 + minute
-
-
-def _as_int(value):
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return int(value)
-    if isinstance(value, str) and value.strip().lstrip("-").isdigit():
-        return int(value.strip())
-    return None
-
+from .text import as_int, clock_minutes, norm_tr
 
 # Anahtarlar normalleştirilmiş biçimde: norm_tr("düşük") -> "dusuk".
 TENSION_ORDER = {"dusuk": 0, "orta": 1, "yuksek": 2}
 
 
-def _tension_rank(value):
+def tension_rank(value):
     return TENSION_ORDER.get(norm_tr(value))
 
 
 # ------------------------------------------------------------------ bağlam
 
-def build_context(world_state: dict, world_entry: dict = None) -> dict:
-    """Koşulların üzerinde çalıştığı turun anlık görüntüsü."""
-    day = _as_int(world_state.get("day")) or 0
-    minutes = clock_minutes(world_state.get("clock"))
-    flags = world_state.get("flags") or {}
+def build_context(world_state, world_entry: dict = None) -> dict:
+    """Koşulların üzerinde çalıştığı turun anlık görüntüsü. `world_state` ham
+    sözlük ya da WorldState olabilir (ikisi de `.get`/alan üzerinden okunur)."""
+    read = world_state.get if isinstance(world_state, dict) else (
+        lambda key, default=None: getattr(world_state, key, default))
+    day = as_int(read("day")) or 0
+    minutes = clock_minutes(read("clock"))
+    flags = read("flags") or {}
     return {
         "day": day,
         "clock_minutes": minutes,
         # Gün + saat tek eksene indirgenir: "gün 99 saat 06:00" gibi randevular
         # gün dönümünü doğru geçsin diye.
         "abs_minutes": day * 1440 + (minutes if minutes is not None else 0),
-        "location": world_state.get("location"),
-        "tension": world_state.get("tension"),
+        "location": read("location"),
+        "tension": read("tension"),
         "flags": {k: v for k, v in flags.items() if isinstance(k, str)},
         "world_roll": (world_entry or {}).get("roll"),
     }
@@ -108,8 +61,8 @@ def matches(when, ctx: dict) -> bool:
     if not isinstance(when, dict):
         return False
 
-    day_gte = _as_int(when.get("day_gte"))
-    day_lte = _as_int(when.get("day_lte"))
+    day_gte = as_int(when.get("day_gte"))
+    day_lte = as_int(when.get("day_lte"))
     clock_gte = clock_minutes(when.get("clock_gte"))
     clock_lte = clock_minutes(when.get("clock_lte"))
 
@@ -143,9 +96,9 @@ def matches(when, ctx: dict) -> bool:
         if not any(norm_tr(p) and (norm_tr(p) in here or here in norm_tr(p)) for p in places):
             return False
 
-    want_tension = _tension_rank(when.get("tension_gte"))
+    want_tension = tension_rank(when.get("tension_gte"))
     if want_tension is not None:
-        have = _tension_rank(ctx.get("tension"))
+        have = tension_rank(ctx.get("tension"))
         if have is None or have < want_tension:
             return False
 
@@ -165,8 +118,8 @@ def matches(when, ctx: dict) -> bool:
             return False
 
     roll = ctx.get("world_roll")
-    roll_lte = _as_int(when.get("world_roll_lte"))
-    roll_gte = _as_int(when.get("world_roll_gte"))
+    roll_lte = as_int(when.get("world_roll_lte"))
+    roll_gte = as_int(when.get("world_roll_gte"))
     if roll_lte is not None or roll_gte is not None:
         if roll is None:
             return False
@@ -205,32 +158,3 @@ def describe_when(when) -> str:
     if when.get("world_roll_gte") is not None:
         parts.append(f"dünya zarı ≥ {when['world_roll_gte']}")
     return " ve ".join(parts) if parts else "koşulsuz"
-
-
-# --------------------------------------------------------- olay örgüsü planı
-# (Faz 2'de kullanılacak; şimdilik sadece dosya iskeleti kuruluyor.)
-
-DEFAULT_PLOT = {"version": 1, "updated_day": None, "threads": {}, "beats": [], "seeds": []}
-
-
-def load_plot() -> dict:
-    if not PLOT_FILE.exists():
-        return json.loads(json.dumps(DEFAULT_PLOT))
-    try:
-        data = json.loads(PLOT_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return json.loads(json.dumps(DEFAULT_PLOT))
-    if not isinstance(data, dict):
-        return json.loads(json.dumps(DEFAULT_PLOT))
-    for key, value in DEFAULT_PLOT.items():
-        data.setdefault(key, json.loads(json.dumps(value)))
-    if not isinstance(data.get("beats"), list):
-        data["beats"] = []
-    return data
-
-
-def save_plot(plot: dict) -> None:
-    PLOT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = PLOT_FILE.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(plot, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(PLOT_FILE)

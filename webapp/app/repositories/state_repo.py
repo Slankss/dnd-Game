@@ -1,0 +1,111 @@
+"""`data/state.json` — oyunun tek kalıcı durumu.
+
+Buradaki kilit tüm sunucunun kilidi: tur akışı seri kalsın diye tek bir
+`threading.Lock` var ve state.json'a yazan herkes ondan geçer.
+"""
+
+import json
+import os
+import threading
+from pathlib import Path
+
+from ..models.world import TIME_FIELDS, WorldState
+from .scenario_repo import ScenarioRepository
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+STATE_FILE = BASE_DIR / "data" / "state.json"
+
+# Sunucunun tek kilidi (bkz. mimari.md §2.6).
+LOCK = threading.Lock()
+
+
+class StateRepository:
+    def __init__(self, state_file=None, scenario_repo=None):
+        self.state_file = Path(state_file) if state_file else STATE_FILE
+        self.scenario = scenario_repo or ScenarioRepository()
+        self.lock = LOCK
+
+    # --------------------------------------------------------- varsayılan
+    def default_state(self) -> dict:
+        return {
+            "world_state": self.scenario.initial_world_state(),
+            "next_id": 1,
+            "session_id": None,
+            "characters_confirmed": False,
+            "started": False,
+        }
+
+    # ------------------------------------------------------------- okuma
+    def load(self) -> dict:
+        """Ham state sözlüğü (eski `load_state` ile birebir)."""
+        if not self.state_file.exists():
+            state = self.default_state()
+            self.save(state)
+            return state
+        with open(self.state_file, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        self.backfill(state)
+        return state
+
+    def backfill(self, state: dict) -> dict:
+        """Devam eden bir oyun, `resources` alanı eklenmeden önce başlamış
+        olabilir — eksikse senaryonun başlangıç stoğuyla doldur, oyun
+        bozulmasın. Aynı şekilde zaman/hava alanları da sonradan eklendi:
+        devam eden oyunda eksikse senaryonun başlangıç değeriyle doldur,
+        yoksa arayüzde ve prompt'ta boş görünüp anlatıcı saati hiç
+        ilerletmiyor."""
+        ws = state.setdefault("world_state", {})
+        if not ws.get("resources"):
+            ws["resources"] = json.loads(json.dumps(
+                self.scenario.load()["initial_world_state"].get("resources", {})))
+        missing = [f for f in TIME_FIELDS if not ws.get(f)]
+        if missing:
+            initial = self.scenario.load()["initial_world_state"]
+            for name in missing:
+                if initial.get(name):
+                    ws[name] = initial[name]
+        return state
+
+    # ------------------------------------------------------------- yazma
+    def save(self, state: dict) -> int:
+        """Sürüm sayacı: istemciler /api/state?since=<v> ile yoklayıp
+        değişmediyse gövdesiz cevap alır — böylece 1 saniyelik hızlı polling
+        ucuz kalır. Yazma atomiktir: yarım kalan bir yazma kaydı bozmasın."""
+        state["version"] = int(state.get("version", 0)) + 1
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.state_file.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, self.state_file)
+        return int(state["version"])
+
+    @staticmethod
+    def version_of(state: dict) -> int:
+        return int(state.get("version", 0))
+
+    # ------------------------------------------------------- model köprüsü
+    @staticmethod
+    def world_of(state: dict) -> WorldState:
+        """Ham state'ten alan modelini kurar."""
+        return WorldState.from_dict(state.get("world_state") or {})
+
+    @staticmethod
+    def store_world(state: dict, world: WorldState) -> None:
+        """Modeli ham state'e geri yazar (kaydetmeden önce çağrılır)."""
+        state["world_state"] = world.to_dict()
+
+    def load_world(self):
+        """(state, WorldState) — servis katmanının olağan giriş noktası."""
+        state = self.load()
+        return state, self.world_of(state)
+
+    def save_world(self, state: dict, world: WorldState) -> int:
+        self.store_world(state, world)
+        return self.save(state)
+
+    # -------------------------------------------------------- yardımcılar
+    @staticmethod
+    def next_id(state: dict) -> int:
+        val = state["next_id"]
+        state["next_id"] += 1
+        return val
