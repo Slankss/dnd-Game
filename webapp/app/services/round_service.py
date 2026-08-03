@@ -22,6 +22,7 @@ from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
 from app.models.options import CATEGORIES, FREE_CATEGORY
 from app.models.round import DONE, OPEN, SENDING, Pick, Round
+from app.models.text import DEFAULT_TURN_MINUTES
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
@@ -31,6 +32,7 @@ from app.services.director_service import DirectorService
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
+from app.services.threat_service import ThreatService
 from app.services.turn_service import TurnService
 
 # Kendi hamlesini yazan oyuncu için en kısa metin.
@@ -42,7 +44,7 @@ class RoundService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, director=None, learning=None,
-                 options=None, turn=None):
+                 options=None, turn=None, threat=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -51,10 +53,12 @@ class RoundService:
         self.director = director or DirectorService()
         self.learning = learning or LearningService()
         self.options = options or OptionsService()
+        self.threat = threat or ThreatService()
         self.turn = turn or TurnService(
             state_repo=self.state_repo, scenario_repo=self.scenario_repo,
             narrator=self.narrator, game_log=self.game_log, gm_log=self.gm_log,
             director=self.director, learning=self.learning, options=self.options,
+            threat=self.threat,
         )
 
     # ------------------------------------------------------------ yardımcı
@@ -250,12 +254,20 @@ class RoundService:
             for name in bekleyenler:
                 satirlar.append(f"{name} — SEÇİM YAPMADI (süre doldu)")
 
+            # Zombi tehdidi: seçimlerin TAMAMINDAN gürültü/yolculuk okunur —
+            # biri ateş ediyorsa ya da grup yola çıktıysa bu turda karşılaşma
+            # ihtimali yükselir.
+            threat_prep = self.threat.prepare(
+                world, action_text=" \n".join(p.text for p in round_.picks.values()),
+                minutes=DEFAULT_TURN_MINUTES)
+
             combined = "\n".join(satirlar)
             prompt = f"[TUR {round_.no} — TOPLU GÖNDERİM]\n{combined}"
             extra_system = turn_prompts.round_extra_system(
                 ws, log, combined, world_entry, scene_note, directive,
                 bekleyenler, StateRepository.settings_of(state), oyuncular,
                 self.options, round_.no, self.learning.note(),
+                threat_prep["note"],
             )
 
             try:
@@ -291,6 +303,7 @@ class RoundService:
                 state, world, result.get("result", ""),
                 beat=beat, plot=plot, plan_olaylari=plan_olaylari,
                 picks=picks, kind="tur", seconds=round(time.time() - baslangic, 1),
+                threat_prep=threat_prep,
             )
 
             # Yeni tur: seçenekler tazelendi, süre sayacı sıfırlanır.

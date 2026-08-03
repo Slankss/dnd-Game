@@ -19,7 +19,7 @@ from scenario import GROUP_DISPLAY_NAME, GROUP_LABEL
 
 from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
-from app.models.text import canonical_name, elapsed_minutes
+from app.models.text import DEFAULT_TURN_MINUTES, canonical_name, elapsed_minutes
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
@@ -29,6 +29,7 @@ from app.services.director_service import DirectorService
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
+from app.services.threat_service import ThreatService
 
 CHAR_LINE_RE = re.compile(r"^\s*([^\n:：]+?)\s*[:：]\s*(.+)$")
 
@@ -88,7 +89,7 @@ class TurnService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, director=None, learning=None,
-                 options=None):
+                 options=None, threat=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -97,11 +98,12 @@ class TurnService:
         self.director = director or DirectorService()
         self.learning = learning or LearningService()
         self.options = options or OptionsService()
+        self.threat = threat or ThreatService()
 
     # ------------------------------------------------------- ortak tur sonu
     def finish_turn(self, state, world, raw_text, beat=None, plot=None,
                     plan_olaylari=None, picks=None, kind="tur", seconds=None,
-                    entry_kind=None) -> dict:
+                    entry_kind=None, threat_prep=None) -> dict:
         """Model yanıtından sonrası — serbest tur ve tur bazlı akış için ORTAK.
 
         Yapılanlar sırayla: state-update ayrıştır → dünyaya uygula → göstergeler
@@ -126,6 +128,10 @@ class TurnService:
         world.normalize_wound_status()
         # Harita: anlatıcı `map` yazmasa bile konum bilgisinden beslenir.
         world.sync_map()
+        # Tehdit: bu turun karşılaşması deftere işlenir (dikkat/sessizlik
+        # sayaçları burada güncellenir; model yanıt vermeseydi işlenmezdi).
+        # Geçen gerçek süre de saklanır — gürültü ona göre sönecek.
+        self.threat.commit(world, threat_prep, minutes=turn_minutes)
 
         gm_entry = {
             "id": self.state_repo.next_id(state),
@@ -158,10 +164,15 @@ class TurnService:
         board = self.options.refresh(world, oyuncular, learning=self.learning,
                                      turn=(state.get("round") or {}).get("no"))
 
-        # Öğrenme defteri: her interaction burada kayda geçer.
+        # Öğrenme defteri: her interaction burada kayda geçer. Zombi
+        # karşılaşmaları da sayaca girer — tehdit dengesi oynandıkça izlenebilsin.
+        olaylar = stat_delta(onceki, world_stats(world))
+        karsilasma = (threat_prep or {}).get("encounter")
+        if karsilasma is not None and getattr(karsilasma, "var", False):
+            olaylar["karsilasma"] = 1
+            olaylar["zombi"] = int(karsilasma.count or 0)
         self.learning.observe_turn(
-            world, picks=picks or [], scene_text=gm_text,
-            events=stat_delta(onceki, world_stats(world)),
+            world, picks=picks or [], scene_text=gm_text, events=olaylar,
             seconds=seconds, kind=kind,
         )
         return {"gm_text": gm_text, "gm_entry": gm_entry, "options": board}
@@ -190,6 +201,14 @@ class TurnService:
             inventory_block = ("\n\n" + prompt_builder.INVENTORY_REPORT_INSTRUCTION) if wants_inventory else ""
 
             multi = detect_multi_character(text, valid_players)
+
+            # Zombi tehdidi: bu turun karşılaşma zarı. Oyuncunun hamlesinden
+            # gürültü ve yolculuk niyeti okunur; sonuç prompt'a ZORUNLU blok
+            # olarak girer.
+            threat_prep = None if in_chargen else self.threat.prepare(
+                world, action_text=text,
+                minutes=DEFAULT_TURN_MINUTES)
+            threat_note = threat_prep["note"] if threat_prep else None
 
             # Sahne katılımı: vadesi dolan uyku/uzaklık halleri bu turda kapanır.
             # Oyuncusu adına hamle yazılan karakter de tanım gereği sahneye dönmüş
@@ -243,7 +262,8 @@ class TurnService:
                 prompt = f"[ÇOKLU KARAKTER TURU]\n{combined}"
                 extra_system = turn_prompts.multi_extra_system(
                     ws, log, combined, in_chargen, world_entry, inventory_block,
-                    scene_note, directive, profanity, self.learning.note())
+                    scene_note, directive, profanity, self.learning.note(),
+                    threat_note)
             else:
                 is_group = player == GROUP_LABEL
                 if not is_group and player not in valid_players:
@@ -266,7 +286,8 @@ class TurnService:
                     band = band_for(roll)
                     extra_system = turn_prompts.turn_extra_system(
                         ws, log, is_group, roll, band, world_entry, inventory_block,
-                        scene_note, directive, profanity, self.learning.note())
+                        scene_note, directive, profanity, self.learning.note(),
+                    threat_note)
 
                 user_entries = [
                     {
@@ -302,7 +323,7 @@ class TurnService:
             sonuc = self.finish_turn(
                 state, world, result.get("result", ""),
                 beat=beat, plot=plot, plan_olaylari=plan_olaylari,
-                picks=picks, kind="serbest_tur",
+                picks=picks, kind="serbest_tur", threat_prep=threat_prep,
             )
             gm_entry = sonuc["gm_entry"]
 

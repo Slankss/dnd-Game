@@ -17,10 +17,11 @@ def _directive_block(directive) -> str:
 
 
 def notes_block(ws: dict, log: list, scene_note: str = None,
-                profanity: str = None, learning_note: str = None) -> str:
+                profanity: str = None, learning_note: str = None,
+                threat_note: str = None) -> str:
     """Her turda modele giden "defter": kadro → (sahne kadrosu) → envanter →
-    yaralar → göstergeler → harita → refleks/küfür → öğrenilenler → görünür
-    zaman çizelgesi. Bloklar arası ayraç eski kodda olduğu gibi tek boş
+    yaralar → göstergeler → harita → ZOMBİ TEHDİDİ → refleks/küfür →
+    öğrenilenler → görünür zaman çizelgesi. Bloklar arası ayraç eski kodda olduğu gibi tek boş
     satırdır."""
     parts = [prompt_builder.roster_note(ws)]
     if scene_note is not None:
@@ -31,6 +32,10 @@ def notes_block(ws: dict, log: list, scene_note: str = None,
         prompt_builder.vitals_note(ws),
         prompt_builder.map_note(ws),
     ]
+    # Tehdit bloğu haritadan hemen sonra: "neredeyiz" ile "burada ne var"
+    # yan yana okunsun.
+    if threat_note:
+        parts.append(threat_note)
     if profanity is not None:
         parts.append(prompt_builder.reflex_note(ws, profanity))
     if learning_note:
@@ -41,7 +46,8 @@ def notes_block(ws: dict, log: list, scene_note: str = None,
 
 def multi_extra_system(ws, log, combined, in_chargen, world_entry,
                        inventory_block, scene_note, directive=None,
-                       profanity="hafif", learning_note=None) -> str:
+                       profanity="hafif", learning_note=None,
+                       threat_note=None) -> str:
     """Aynı mesajda birden fazla karakterin hamlesi ('İsim: aksiyon')."""
     if in_chargen:
         return (
@@ -72,7 +78,7 @@ def multi_extra_system(ws, log, combined, in_chargen, world_entry,
         + "\n\n"
         + combined
         + "\n\n"
-        + notes_block(ws, log, scene_note, profanity, learning_note)
+        + notes_block(ws, log, scene_note, profanity, learning_note, threat_note)
         + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON):\n"
         + json.dumps(ws, ensure_ascii=False)
@@ -111,7 +117,8 @@ def chargen_extra_system(ws, log, player, is_group) -> str:
 
 def turn_extra_system(ws, log, is_group, roll, band, world_entry,
                       inventory_block, scene_note, directive=None,
-                      profanity="hafif", learning_note=None) -> str:
+                      profanity="hafif", learning_note=None,
+                      threat_note=None) -> str:
     """Olağan tur: oyuncu zarı + dünya zarı + tur sonu defter tutma."""
     group_note = (
         "Bu mesaj [GRUP - ORTAK KARAR] etiketiyle geliyor — SCENARIO'daki "
@@ -134,7 +141,7 @@ def turn_extra_system(ws, log, is_group, roll, band, world_entry,
         "görünür, oyunculara asla gösterilmez).\n"
         + prompt_builder.UPKEEP_REMINDER
         + "\n\n"
-        + notes_block(ws, log, scene_note, profanity, learning_note)
+        + notes_block(ws, log, scene_note, profanity, learning_note, threat_note)
         + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
         + json.dumps(ws, ensure_ascii=False)
@@ -143,7 +150,7 @@ def turn_extra_system(ws, log, is_group, roll, band, world_entry,
 
 def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
                        waiting, settings, players, options_service,
-                       round_no, learning_note=None) -> str:
+                       round_no, learning_note=None, threat_note=None) -> str:
     """Tur bazlı toplu gönderim: her karakterin seçimi kendi zarıyla gelir.
 
     Serbest turdan iki farkı var: (1) seçim yapmayanlar için ANİ SAHNE
@@ -196,7 +203,7 @@ def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
         + "\n\n"
         + combined
         + "\n\n"
-        + notes_block(ws, log, scene_note, profanity, learning_note)
+        + notes_block(ws, log, scene_note, profanity, learning_note, threat_note)
         + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
         + json.dumps(ws, ensure_ascii=False)

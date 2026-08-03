@@ -74,6 +74,10 @@ class WorldPatchMixin:
         if isinstance(patch.get("grid"), dict):
             self._merge_grid(patch["grid"])
 
+        # Tehdit: anlatıcının bildirdiği gürültü ve yoğunluk değişimi.
+        if isinstance(patch.get("threat"), dict):
+            self._merge_threat(patch["threat"])
+
         if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
             seen = self.ensure_sightings()
             for item in patch["zombie_sightings_add"]:
@@ -205,6 +209,27 @@ class WorldPatchMixin:
             if varlik is None or varlik.kind == KIND_PLAYER:
                 continue
             move(grid, varlik, kayit.get("direction"))
+
+    def _merge_threat(self, patch: dict) -> None:
+        """`threat` yaması — anlatıcı yalnız İKİ şeyi bildirir:
+
+          {"noise_add": 25}                     bu turda çıkan gürültü
+          {"density": {"Kuzey deposu": 30}}     bir yerin yeni ölü yoğunluğu
+
+        Karşılaşmaların kendisi sunucunun zarıyla belirlenir; model buradan
+        karşılaşma yazamaz, sayacı sıfırlayamaz."""
+        threat = self.ensure_threat()
+
+        eklenen = as_int(patch.get("noise_add"))
+        if eklenen:
+            threat.add_noise(max(-40, min(60, eklenen)))
+
+        yogunluk = patch.get("density")
+        if isinstance(yogunluk, dict):
+            for yer, deger in yogunluk.items():
+                sayi = as_int(deger)
+                if isinstance(yer, str) and yer.strip() and sayi is not None:
+                    threat.density[yer.strip()] = max(0, min(100, sayi))
 
     def _merge_narrator(self, npatch: dict) -> None:
         narrator = self.ensure_narrator()

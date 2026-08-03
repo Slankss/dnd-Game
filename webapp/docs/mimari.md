@@ -30,6 +30,7 @@ webapp/
       factions.py           # Faction — iki katmanlı görünürlük
       world.py              # WorldState — kök nesne, patch birleştirme
       worldmap.py           # WorldMap, Place — konum ve keşfedilen yerler
+      threat.py             # zombi tehdidi: yoğunluk, gürültü, karşılaşma zarı
       grid/                 # kare harita: grid[y][x] Cell dizisi (bkz. kare-harita.md)
         coords.py           #   Direction — yön vektörleri
         cell.py             #   Cell — bir koordinatın zemini + içindekiler
@@ -59,6 +60,7 @@ webapp/
       learning_service.py   # öğrenme defteri + Claude yeteneğine yazma
       worldgen_service.py   # her oyuna farklı başlangıç ve fraksiyonlar
       grid_service.py       # kare harita: sahne kurulumu + hareket
+      threat_service.py     # her turda karşılaşma zarı + zorunlu tehdit bloğu
       setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
@@ -102,7 +104,7 @@ taşınır; eski dosya kaldırılır (import'u sadece `server.py` kullanıyordu)
 `WorldState` alanları: `day` (int), `time_of_day`, `clock`, `season`,
 `weather`, `temperature`, `location`, `tension` (`düşük|orta|yüksek`),
 `factions`, `characters`, `npcs`, `resources`, `challenges`,
-`map`, `grid`, `zombie_sightings`, `flags`, `narrator`, `options`,
+`map`, `grid`, `zombie_sightings`, `flags`, `narrator`, `options`, `threat`,
 `world_roll`, `world_roll_history`.
 
 `state.json` kökünde ayrıca iki alan vardır: `settings`
@@ -128,6 +130,8 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 - `learning.lessons_add` öğrenme defterine düşer, dünya durumunda saklanmaz
 - `grid` yaması zemin/varlık ekler, NPC oynatır; oyuncu karakterlerini
   HAREKET ETTİREMEZ (onlar yalnız `/api/grid/move` ile oynar)
+- `threat` yaması yalnız `noise_add` ve `density` kabul eder; karşılaşmayı
+  model YAZAMAZ, onu sunucunun zarı belirler (bkz. zombi-tehdidi.md)
 
 ## 4. HTTP API sözleşmesi (DEĞİŞMEZ)
 

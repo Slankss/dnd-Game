@@ -50,6 +50,14 @@ sadece metin üretimi için) çalıştırır.
   tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu. Harita görsel
   olarak da çizilir ve **bilinmeyen yer detaylı görünmez**: sadece adı duyulmuş
   bir yerin türü/tehlikesi/notu oyuncuya hiç gönderilmez.
+- **Zombi tehdidi gerçek bir mekanik**: her turda sunucu karşılaşma zarı atar.
+  Bölge yoğunluğu (metro ~82, orman ~30), grubun gürültüsü, gece, hava ve
+  özellikle **yolculuk** ihtimali belirler — yolda geçen turların ~%75'inde
+  temas olur, ortalama 15 ölü. Kaç ölü, hangi mutasyonlar, ne mesafede ve
+  hangi yönden geldikleri sunucuda belirlenip anlatıcıya ZORUNLU blok olarak
+  verilir; anlatıcı "birkaç zombi" diye geçiştiremez. Gürültü (silah, araç,
+  bağırma) ihtimali yükseltir ve saatler içinde söner, yani sessiz seyahat
+  gerçekten işe yarar (bkz. `docs/zombi-tehdidi.md`).
 - **Kare harita**: bulunulan yerin taktik ızgarası (`grid[y][x]`). Karakterler
   yön tuşları/ok tuşlarıyla birer kare hareket eder; duvar ve engeller geçilmez,
   aynı karede birden fazla oyuncu/NPC/eşya bulunabilir (bkz. `docs/kare-harita.md`).
@@ -533,6 +541,7 @@ otomatik olarak onu kullanır.
 - `docs/senarist-yetenegi.md` — senarist katmanının faz planı (hangi faz uygulandı, sırada ne var)
 - `docs/tur-akisi-ve-ogrenme.md` — tur bazlı akış, seçenek havuzu, öğrenme defteri, dünya üretimi
 - `docs/kare-harita.md` — sahnenin kare (ızgara) haritası: `grid[y][x]` Cell dizisi, O(1) hareket algoritması
+- `docs/zombi-tehdidi.md` — karşılaşma motoru: bölge yoğunluğu, gürültü, yolculuk riski, mutasyon katalogu ve ölçülen denge
 - `data/learning.json` + `data/learning_events.jsonl` — öğrenme defteri (dersler + ham olay akışı); `/api/reset` bunları BİLEREK silmez
 - `data/options_pool.jsonl` — sunulan ve seçilen tüm seçenekler, zar sonuçlarıyla
 - `../.claude/skills/kizil-cokus-anlatici/` — anlatıcı yeteneği: `SKILL.md` (elle yazılmış zanaat) + `ogrenilenler.md` (her turda sunucu yazar)

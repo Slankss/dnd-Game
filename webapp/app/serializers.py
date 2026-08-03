@@ -10,7 +10,7 @@ import time
 from app.models.person import SECRET_FIELD
 from app.models.round import Round
 from app.models.world import GM_ONLY_FIELDS
-from app.models.worldmap import public_place
+from app.models.worldmap import knowledge_of, public_place
 
 
 def public_world_state(world_state: dict) -> dict:
@@ -39,6 +39,10 @@ def public_world_state(world_state: dict) -> dict:
             } if isinstance(places, dict) else {},
         }
 
+    threat = public.get("threat")
+    if isinstance(threat, dict):
+        public["threat"] = public_threat(threat, world_map if isinstance(world_map, dict) else {})
+
     challenges = public.get("challenges")
     if isinstance(challenges, dict):
         # zorluklar oyunculara görünür ama her zorluğun gm_notes'u görünmez
@@ -58,6 +62,37 @@ def public_world_state(world_state: dict) -> dict:
             for name, info in factions.items()
         }
     return public
+
+
+def public_threat(threat: dict, world_map: dict) -> dict:
+    """Tehdit kaydının OYUNCUYA giden hali.
+
+    Grubun kendi gürültüsünü, bölgenin dikkatini ve son karşılaşmayı görmesi
+    oyunun kendisidir — "dikkatli seyahat et" ancak ölçülebilirse bir karardır.
+    Ama YOĞUNLUK bir bilgidir: yalnız KEŞFEDİLMİŞ yerlerin ölü yoğunluğu
+    gönderilir. Gidilmemiş bir yerin ne kadar kalabalık olduğunu oyuncular
+    haritaya bakarak öğrenemez.
+    """
+    yerler = world_map.get("places") if isinstance(world_map, dict) else {}
+    yerler = yerler if isinstance(yerler, dict) else {}
+    bilinen = {ad for ad, bilgi in yerler.items() if knowledge_of(bilgi) == "keşfedildi"}
+    simdiki = world_map.get("current") if isinstance(world_map, dict) else None
+    if simdiki:
+        bilinen.add(simdiki)
+
+    yogunluk = threat.get("density")
+    yogunluk = yogunluk if isinstance(yogunluk, dict) else {}
+    return {
+        "noise": threat.get("noise", 0),
+        "heat": threat.get("heat", 0),
+        "quiet_turns": threat.get("quiet_turns", 0),
+        "travelling": bool(threat.get("travelling")),
+        "encounters": threat.get("encounters", 0),
+        "last": threat.get("last") or {},
+        "history": (threat.get("history") or [])[-5:],
+        "density": {ad: deger for ad, deger in yogunluk.items()
+                    if ad in bilinen or ad == "yol"},
+    }
 
 
 def public_round(round_state, actors=None) -> dict:

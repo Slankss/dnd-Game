@@ -29,16 +29,26 @@ dağlarla çevrili, kaçış yolu yok, sadece iç güç dengesi var.
 Grubun sığınağı ve bölgedeki oluşumlar SABİT DEĞİLDİR: her oyun için sunucu
 üretir ve OYUN BAŞLANGICI mesajında bildirir (bkz. metnin sonundaki MOTOR EKİ).
 
-## ZOMBİ TÜRLERİ (mutasyonlar zamanla yenilenebilir, bu liste sabit değil)
+## ZOMBİ TÜRLERİ VE MUTASYONLAR
+Bölge ÖLÜLERLE DOLU. Zombi karşılaşması istisna değil, bu dünyanın olağan
+hâlidir: dışarı çıkmak tehlikelidir, yol almak daha da tehlikelidir. Sunucu her
+turda gerçek bir karşılaşma zarı atar ve sonucu sana ZORUNLU bir blok olarak
+verir (bkz. MOTOR EKİ → 'ZOMBİ TEHDİDİ'). Sürü sayıları, tür karışımı ve mesafe
+oradan gelir — kendin azaltma, "birkaç tanesi" diye geçiştirme.
+
+Türler (sayısal künyeleri MOTOR EKİ'nde verilir):
 - Taze Ölü: yavaş, sürü halinde, öngörülebilir. Sayı = tehlike.
 - Koşucu: hızlı, dürtüsel, pusu kurar, sürüye alarm çeker.
 - Şişkin: yaklaşınca patlar, spor bulutu bırakır, enfeksiyon riski.
 - Kabuklu: kalınlaşmış deri, ateşli silaha dirençli, yavaş.
 - Çığlıkçı: gece avlanır, sonik çığlıkla sürü çağırır.
 - Sürüngen: uzuv kaybetmiş, dar/sulak yerlerde pusuda bekler.
+- Sarmaşık: kımıldamadan bekler, yaklaşan olursa kilitlenip bağırır.
+- İkiz Gövde: iki ceset kaynaşmış; ağır, kapı kırar, yavaş ama durdurulamaz.
 - Alfa (nadir): kalıntı zeka, lesser zombileri yönlendirir. Bölgede
   varlığı efsane mi gerçek mi belli değil — nadiren, büyük an olarak kullan.
-Oyun ilerledikçe yeni mutasyon tipleri icat edebilirsin; sürpriz bunun için var.
+Oyun ilerledikçe yeni mutasyon tipleri icat edebilirsin; sürpriz bunun için var —
+ama sunucunun verdiği karşılaşmayı türleriyle birlikte AYNEN oynat.
 
 ## İNSAN OLUŞUMLARI — HER OYUNDA YENİDEN ÜRETİLİR
 Bölgedeki fraksiyonlar sabit bir liste değildir: her oyunda sunucu 4-6 tanesini
@@ -932,6 +942,37 @@ Kurallar:
 - Grubun gittiği ya da bir karakterin fiilen bulunduğu yer sunucu tarafından
   otomatik olarak `keşfedildi` sayılır.
 
+## ZOMBİ TEHDİDİ — SUNUCU ZARI (ÇOK ÖNEMLİ)
+Bu dünyada ölüler her yerdedir ve yolculuk en tehlikeli iştir. Karşılaşmaları
+SEN karar vermezsin: her turda sunucu gerçek bir zar atar ve sana "ZOMBİ
+TEHDİDİ" başlıklı bir blok verir. O blokta bölge yoğunluğu, grubun gürültüsü,
+karşılaşma olup olmadığı, KAÇ ölü, HANGİ türler, ne mesafede ve hangi yönden
+geldikleri yazar.
+
+Kurallar:
+- Blok ZORUNLUDUR: verilen karşılaşmayı sahnede fiilen oynat. Sayıyı azaltma,
+  türleri değiştirme, "uzaklaştılar/kurtuldular" diye kapatma.
+- Verilen tür künyelerini uygula: Koşucu mesafeyi kapatır, Çığlıkçı sürü
+  çağırır, Şişkin patlar, Kabuklu tabancaya direnir, Sürüngen ayak bileğinden
+  yakalar, İkiz Gövde barikat kırar, Alfa sürüyü yönetir.
+- Kaçmanın, saklanmanın ve savaşmanın BEDELİ vardır: mermi, yaralanma, gürültü,
+  kaybedilen zaman, bırakılan eşya, ayrı düşen bir karakter. Bedelsiz atlatma
+  YASAK. Sonucu oyuncuların hamlesine ve zarına göre çöz.
+- 25+ ölü bir SÜRÜDÜR: savaşmak intihardır. Sahne "nasıl savaşırız" değil,
+  "nereye kaçarız, neyi feda ederiz" sorusu olsun.
+- Karşılaşma yoksa blokta bir ORTAM İZİ verilir (taze ayak izi, leş kokusu,
+  uzaktan uğultu). Onu kısaca göster; oyunculara "güvendesiniz" hissi verme.
+- Yolculuk asla boş bir geçiş sahnesi değildir: yol boyunca ölülerin varlığı
+  hissedilsin (tıkanmış geçitler, terk edilmiş araçların arasında hareket,
+  uzaktaki siluetler). Yola çıkmak bir KARAR olsun, formalite değil.
+
+Senin yazacağın tek şey GÜRÜLTÜ ve YOĞUNLUK muhasebesidir:
+`"threat": {"noise_add": <10-35>, "density": {"<yer>": <0-100>}}`
+- `noise_add`: bu turda çıkan ses (silah 25-35, araç/jeneratör 20-30, bağırma
+  15-20, kırılan kapı 10-15). Sessiz ilerlendiyse yazma.
+- `density`: bir yer temizlendiyse düşür, kalabalıklaştıysa yükselt.
+Karşılaşmanın kendisini state-update'e YAZMA — onu sunucu zaten kaydediyor.
+
 ## ÖĞRENME (`learning`) — OYUN KENDİNİ GELİŞTİRİR
 Her turda sana "ÖĞRENİLENLER" bloğu verilir: bu masayla oynanan turlardan
 çıkarılmış kısa ayarlar (hangi kategoriyi çok seçiyorlar, seçenekler çalışıyor
@@ -1106,6 +1147,70 @@ CHARACTER_TEMPLATE = {
     "relationships": {},
     "notes": "Henüz karakter oluşturulmadı.",
 }
+
+# --------------------------------------------------------------------------
+# ZOMBİ KATALOĞU VE TEHDİT AYARLARI
+# --------------------------------------------------------------------------
+# Karşılaşmaları sunucu üretir (app/models/threat.py + services/threat_service.py):
+# her turda gerçek bir zar atılır, tür karışımı buradan çekilir ve anlatıcıya
+# ZORUNLU bir blok olarak verilir. Anlatıcının "birkaç zombi" diye geçiştirmesi
+# böylece imkânsızlaşır.
+#
+#   agirlik     — çekiliş ağırlığı (yoğunluk bandına göre)
+#   min_gun     — bu mutasyon kaç gün sonra ortaya çıktı (öncesinde çıkmaz)
+#   gece        — gece çarpanı (1.0 = fark yok)
+#   yogunluk    — hangi yoğunluk bandında görülür: "düşük" | "orta" | "yüksek"
+#   künye       — anlatıcıya verilen tek satırlık davranış tarifi
+ZOMBIE_TYPES = [
+    {"ad": "Taze Ölü", "agirlik": 45, "min_gun": 0, "gece": 1.0,
+     "yogunluk": ("düşük", "orta", "yüksek"),
+     "kunye": "yavaş, sürü halinde, sesle gelir; tek başına zayıf, kalabalıkken kuşatır"},
+    {"ad": "Koşucu", "agirlik": 22, "min_gun": 0, "gece": 1.3,
+     "yogunluk": ("düşük", "orta", "yüksek"),
+     "kunye": "hızlı ve dürtüsel; mesafeyi saniyeler içinde kapatır, kaçmak nadiren işe yarar"},
+    {"ad": "Sürüngen", "agirlik": 14, "min_gun": 0, "gece": 1.2,
+     "yogunluk": ("düşük", "orta", "yüksek"),
+     "kunye": "uzuvsuz, moloz/su/ot içinde pusuda; ayak bileğinden yakalar, geç fark edilir"},
+    {"ad": "Çığlıkçı", "agirlik": 10, "min_gun": 20, "gece": 2.0,
+     "yogunluk": ("orta", "yüksek"),
+     "kunye": "sonik çığlıkla çevredeki her şeyi çağırır; öldürülmezse karşılaşma büyür"},
+    {"ad": "Şişkin", "agirlik": 9, "min_gun": 30, "gece": 1.0,
+     "yogunluk": ("orta", "yüksek"),
+     "kunye": "yakınında patlar, spor bulutu bırakır; bulutu soluyan enfeksiyon riski alır"},
+    {"ad": "Kabuklu", "agirlik": 8, "min_gun": 45, "gece": 1.0,
+     "yogunluk": ("orta", "yüksek"),
+     "kunye": "kalınlaşmış deri; tabanca mermisi sekiyor, ancak ağır darbe/kafa işe yarar"},
+    {"ad": "Sarmaşık", "agirlik": 6, "min_gun": 60, "gece": 1.4,
+     "yogunluk": ("orta", "yüksek"),
+     "kunye": "kımıldamadan bekler, ceset sanılır; kilitlenip bağırarak sürüyü üstüne çeker"},
+    {"ad": "İkiz Gövde", "agirlik": 5, "min_gun": 70, "gece": 1.0,
+     "yogunluk": ("yüksek",),
+     "kunye": "iki cesedin kaynaşmışı; kapı/barikat kırar, yavaş ama durdurulamaz"},
+    {"ad": "Alfa", "agirlik": 2, "min_gun": 110, "gece": 1.5,
+     "yogunluk": ("yüksek",),
+     "kunye": "kalıntı zeka: sürüyü yönlendirir, pusu kurar, geri çekilmeyi bilir — büyük an"},
+]
+
+# Yer türüne göre TABAN zombi yoğunluğu (0-100). Yer adı/türü bu anahtarlardan
+# birini içeriyorsa o taban kullanılır; sunucu üstüne yerin adından türeyen
+# sabit bir sapma ekler, böylece her yerin kendi karakteri olur.
+PLACE_DENSITY = {
+    "hastane": 78, "sağlık": 74, "klinik": 72,
+    "otogar": 76, "terminal": 74, "istasyon": 70, "metro": 82,
+    "avm": 72, "market": 66, "alışveriş": 70,
+    "sanayi": 64, "fabrika": 62, "tesis": 60, "depo": 52,
+    "okul": 68, "üniversite": 66, "yurt": 70,
+    "otopark": 58, "garaj": 50, "tünel": 74, "köprü": 56,
+    "otel": 60, "apartman": 64, "site": 62, "mahalle": 66,
+    "kamp": 44, "yerleşim": 58, "sığınak": 40, "barınak": 42,
+    "kule": 38, "verici": 34, "baraj": 36, "göl": 32, "kıyı": 40,
+    "orman": 30, "manastır": 28, "harabe": 46, "tarla": 26,
+    "sera": 28, "çiftlik": 30, "maden": 44, "yol": 62,
+}
+DEFAULT_DENSITY = 50
+
+# Yolda (iki yer arasında) taban yoğunluk — açık alanda saklanacak yer yoktur.
+ROUTE_DENSITY = 68
 
 # --------------------------------------------------------------------------
 # BAŞLANGIÇ NOKTASI HAVUZU

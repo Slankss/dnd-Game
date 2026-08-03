@@ -109,6 +109,8 @@ export const useGameStore = defineStore('game', () => {
   const worldMap = computed(() => worldState.value?.map ?? { current: '', places: {}, party: {} })
   /** Seçenek havuzu: {karakter: [{id, text, category, cost}]} */
   const options = computed(() => worldState.value?.options ?? {})
+  /** Zombi tehdidi: {noise, heat, density, last, travelling…} */
+  const threat = computed(() => worldState.value?.threat ?? null)
 
   /** Bir karakterin bu turdaki seçenekleri */
   function optionsFor(ad) {
@@ -552,6 +554,7 @@ export const useGameStore = defineStore('game', () => {
     worldRoll,
     worldMap,
     options,
+    threat,
     optionsFor,
     pickOf,
     waiting,

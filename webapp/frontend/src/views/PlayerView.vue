@@ -27,6 +27,7 @@ import RoundBar from '@/components/game/RoundBar.vue'
 import OptionPool from '@/components/game/OptionPool.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
 import GridPanel from '@/components/game/GridPanel.vue'
+import ThreatPanel from '@/components/game/ThreatPanel.vue'
 import StoryFeed from '@/components/game/StoryFeed.vue'
 import CharacterCard from '@/components/game/CharacterCard.vue'
 import CharacterModal from '@/components/game/CharacterModal.vue'
@@ -386,6 +387,19 @@ function yeniSahneyeGit() {
             @ac="kunyeAc"
           />
         </template>
+      </SidebarSection>
+
+      <SidebarSection
+        v-if="oyun.phase === 'playing'"
+        title="Zombi tehdidi"
+        icon="skull"
+        :vurgu="(oyun.threat?.noise ?? 0) >= 55 || !!oyun.threat?.travelling"
+      >
+        <ThreatPanel
+          :tehdit="oyun.threat"
+          :konum="oyun.worldClock.location"
+          :yukleniyor="ilkYukleme"
+        />
       </SidebarSection>
 
       <SidebarSection

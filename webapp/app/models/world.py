@@ -15,6 +15,7 @@ from .options import OptionBoard
 from .person import Person
 from .presence import absent_players, bring_to_scene, present_players, resolve_presence
 from .resources import ResourcePool
+from .threat import ThreatState
 from .worldmap import WorldMap
 # TIME_FIELDS / TENSION_LEVELS burada da dışa açılır: `state_repo` ve servis
 # katmanı bunları dünya modelinin parçası olarak import ediyor.
@@ -38,8 +39,8 @@ FLAT_FIELDS = ("day",) + TIME_FIELDS + ("location", "tension", "flags",
 # Kanonik alan sırası (senaryodaki INITIAL_WORLD_STATE ile aynı).
 WORLD_FIELDS = ("day",) + TIME_FIELDS + (
     "location", "map", "grid", "factions", "characters", "npcs", "resources",
-    "challenges", "options", "zombie_sightings", "flags", "narrator", "tension",
-    "world_roll", "world_roll_history")
+    "challenges", "options", "threat", "zombie_sightings", "flags", "narrator",
+    "tension", "world_roll", "world_roll_history")
 
 
 @dataclass
@@ -64,6 +65,7 @@ class WorldState(WorldPatchMixin, DictModel):
     map: object = None
     grid: object = None        # sahnenin kare haritası (bkz. models/grid)
     options: object = None
+    threat: object = None      # zombi tehdidi (gürültü, yoğunluk, karşılaşmalar)
     zombie_sightings: object = None
     flags: object = None
     narrator: object = None
@@ -94,6 +96,7 @@ class WorldState(WorldPatchMixin, DictModel):
                                   ("map", dict, WorldMap.from_dict),
                                   ("grid", dict, GridMap.from_dict),
                                   ("options", dict, OptionBoard.from_dict),
+                                  ("threat", dict, ThreatState.from_dict),
                                   ("narrator", dict, dict),
                                   ("world_roll_history", list, list)):
             raw = data.get(name)
@@ -116,6 +119,8 @@ class WorldState(WorldPatchMixin, DictModel):
             values["grid"] = self.grid.to_dict()
         if self.options is not None:
             values["options"] = self.options.to_dict()
+        if self.threat is not None:
+            values["threat"] = self.threat.to_dict()
         values["narrator"] = self.narrator
         values["world_roll_history"] = self.world_roll_history
         return self._emit({name: values[name] for name in WORLD_FIELDS if name in values})
@@ -148,6 +153,14 @@ class WorldState(WorldPatchMixin, DictModel):
             self.grid = GridMap.blank(width or 14, height or 10, name=name)
         self._touch("grid")
         return self.grid
+
+    def ensure_threat(self) -> ThreatState:
+        """Tehdit kaydı: gürültü, bölge dikkati, yer yoğunlukları, karşılaşma
+        geçmişi. Sunucunun ürettiği bir alandır (bkz. services/threat_service)."""
+        if not isinstance(self.threat, ThreatState):
+            self.threat = ThreatState()
+        self._touch("threat")
+        return self.threat
 
     def ensure_options(self) -> OptionBoard:
         if not isinstance(self.options, OptionBoard):
