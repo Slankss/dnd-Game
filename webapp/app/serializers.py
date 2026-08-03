@@ -5,7 +5,10 @@ oyuncunun bildiği ayrı iki katmandır. Oyuncuya giden HER gövde buradan geçe
 başka hiçbir yerde world_state doğrudan serileştirilmez.
 """
 
+import time
+
 from app.models.person import SECRET_FIELD
+from app.models.round import Round
 from app.models.world import GM_ONLY_FIELDS
 
 
@@ -40,4 +43,24 @@ def public_world_state(world_state: dict) -> dict:
             for name, info in factions.items()
         }
     return public
+
+
+def public_round(round_state, actors=None) -> dict:
+    """Turun oyunculara giden hali.
+
+    Seçimler bilerek AÇIKTIR: masadaki herkes kimin karar verdiğini, hangi
+    kategoriyi seçtiğini ve zarının kaç geldiğini görür — tur, herkes seçim
+    yapınca kapanacağı için bu bilgi oyunun kendisidir. Gizlenen tek şey
+    yoktur; anlatıcıya özel alanlar zaten bu kayıtta durmuyor.
+    """
+    round_ = round_state if isinstance(round_state, Round) else Round.from_dict(round_state)
+    now = time.time()
+    body = round_.to_dict()
+    body["remaining"] = round_.remaining(now)
+    body["expired"] = round_.expired(now)
+    body["actors"] = list(actors or [])
+    body["waiting"] = round_.waiting_for(actors or [])
+    body["all_picked"] = round_.all_picked(actors or [])
+    body["server_ts"] = now
+    return body
 

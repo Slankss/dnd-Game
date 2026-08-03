@@ -10,9 +10,11 @@ from .base import DictModel
 from .challenges import Challenge
 from .conditions import build_context
 from .factions import Faction
+from .options import OptionBoard
 from .person import Person
 from .presence import absent_players, bring_to_scene, present_players, resolve_presence
 from .resources import ResourcePool
+from .worldmap import WorldMap
 # TIME_FIELDS / TENSION_LEVELS burada da dışa açılır: `state_repo` ve servis
 # katmanı bunları dünya modelinin parçası olarak import ediyor.
 from .world_patch import TENSION_LEVELS, TIME_FIELDS, WorldPatchMixin  # noqa: F401
@@ -34,8 +36,8 @@ FLAT_FIELDS = ("day",) + TIME_FIELDS + ("location", "tension", "flags",
 
 # Kanonik alan sırası (senaryodaki INITIAL_WORLD_STATE ile aynı).
 WORLD_FIELDS = ("day",) + TIME_FIELDS + (
-    "location", "factions", "characters", "npcs", "resources", "challenges",
-    "zombie_sightings", "flags", "narrator", "tension",
+    "location", "map", "factions", "characters", "npcs", "resources", "challenges",
+    "options", "zombie_sightings", "flags", "narrator", "tension",
     "world_roll", "world_roll_history")
 
 
@@ -58,6 +60,8 @@ class WorldState(WorldPatchMixin, DictModel):
     npcs: dict = field(default_factory=dict)
     resources: object = None
     challenges: dict = field(default_factory=dict)
+    map: object = None
+    options: object = None
     zombie_sightings: object = None
     flags: object = None
     narrator: object = None
@@ -85,6 +89,8 @@ class WorldState(WorldPatchMixin, DictModel):
             elif name in data:
                 world.extra[name] = raw
         for name, kind, parse in (("resources", dict, ResourcePool.from_dict),
+                                  ("map", dict, WorldMap.from_dict),
+                                  ("options", dict, OptionBoard.from_dict),
                                   ("narrator", dict, dict),
                                   ("world_roll_history", list, list)):
             raw = data.get(name)
@@ -101,6 +107,10 @@ class WorldState(WorldPatchMixin, DictModel):
                             for key, value in (getattr(self, name) or {}).items()}
         if self.resources is not None:
             values["resources"] = self.resources.to_dict()
+        if self.map is not None:
+            values["map"] = self.map.to_dict()
+        if self.options is not None:
+            values["options"] = self.options.to_dict()
         values["narrator"] = self.narrator
         values["world_roll_history"] = self.world_roll_history
         return self._emit({name: values[name] for name in WORLD_FIELDS if name in values})
@@ -119,6 +129,18 @@ class WorldState(WorldPatchMixin, DictModel):
             self.resources = ResourcePool()
         self._touch("resources")
         return self.resources
+
+    def ensure_map(self) -> WorldMap:
+        if not isinstance(self.map, WorldMap):
+            self.map = WorldMap.new()
+        self._touch("map")
+        return self.map
+
+    def ensure_options(self) -> OptionBoard:
+        if not isinstance(self.options, OptionBoard):
+            self.options = OptionBoard()
+        self._touch("options")
+        return self.options
 
     def ensure_flags(self) -> dict:
         if not isinstance(self.flags, dict):
@@ -179,6 +201,13 @@ class WorldState(WorldPatchMixin, DictModel):
                 if person.explicitly_dead:
                     continue
                 person.normalize_wound_status()
+
+    def sync_map(self) -> None:
+        """Haritayı dünyanın geri kalanıyla eşler: ana konum `location`'dan,
+        parti dağılımı karakterlerin `location` alanından beslenir. Anlatıcı
+        `map` yazmayı unutsa bile harita akmaya devam eder."""
+        day = self.day if isinstance(self.day, int) else None
+        self.ensure_map().sync_from_world(self.location, self.characters, day)
 
     # ----------------------------------------------------- sahne katılımı
     def build_context(self, world_entry: dict = None) -> dict:

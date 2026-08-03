@@ -14,8 +14,11 @@ from .vitals import Vitals
 from .wounds import HEALTHY_STATUSES, WoundList, status_for
 
 # Kurulum ekranındaki künye alanları. `secret` oyuncu arayüzüne ASLA gitmez.
-SHEET_FIELDS = ("profession", "age", "strength", "weakness", "secret")
+# `reflex` = karakterin baskı altındaki ilk tepkisi (küfreder, donar, saldırır…);
+# felaket/kritik zar bantlarında anlatıcı bu refleksi FİİLEN oynatır.
+SHEET_FIELDS = ("profession", "age", "strength", "weakness", "reflex", "secret")
 SECRET_FIELD = "secret"
+REFLEX_FIELD = "reflex"
 
 # Üzerine yazılan düz metin alanları (`_merge_person_like`'daki sıra).
 SCALAR_FIELDS = ("background", "traits", "status", "location", "notes") + SHEET_FIELDS
@@ -43,6 +46,8 @@ def build_traits(char) -> str:
         parts.append(f"Güçlü yanı: {char['strength']}")
     if char.get("weakness"):
         parts.append(f"Zayıf yanı: {char['weakness']}")
+    if char.get("reflex"):
+        parts.append(f"Refleksi: {char['reflex']}")
     return " · ".join(parts)
 
 
@@ -58,6 +63,7 @@ class Person(DictModel):
     age: object = None
     strength: object = None
     weakness: object = None
+    reflex: object = None
     secret: object = None
     background: object = None
     traits: object = None

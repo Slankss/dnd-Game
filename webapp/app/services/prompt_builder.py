@@ -10,7 +10,7 @@ alan katmanına dokunmak gerekmez.
 import re
 
 from app.models.conditions import describe_when
-from app.models.person import SECRET_FIELD
+from app.models.person import REFLEX_FIELD, SECRET_FIELD
 from app.models.presence import PRESENCE_LABELS, canon_presence
 from app.models.vitals import vital_label
 
@@ -247,6 +247,87 @@ def roster_note(world_state: dict) -> str:
 
 
 
+def map_note(world_state: dict) -> str:
+    """Her turda modele verilen harita durumu — 'neredeyiz' sorusu her turda
+    net cevaplansın ve panel canlı kalsın diye."""
+    world_map = world_state.get("map")
+    world_map = world_map if isinstance(world_map, dict) else {}
+    current = world_map.get("current") or world_state.get("location") or "(bilinmiyor)"
+    lines = [f"HARİTA — grubun şu anki konumu: {current}"]
+
+    party = world_map.get("party")
+    if isinstance(party, dict) and party:
+        dagilmis = {name: where for name, where in party.items() if where != current}
+        if dagilmis:
+            lines.append("Grup DAĞILMIŞ durumda:")
+            for name, where in dagilmis.items():
+                lines.append(f"- {name} → {where}")
+
+    places = world_map.get("places")
+    if isinstance(places, dict) and places:
+        lines.append("Bilinen yerler:")
+        for name, info in list(places.items())[:14]:
+            info = info if isinstance(info, dict) else {}
+            bits = [b for b in (info.get("kind"), info.get("status")) if b]
+            danger = info.get("danger")
+            if danger and danger != "bilinmiyor":
+                bits.append(f"tehlike: {danger}")
+            links = info.get("links")
+            if isinstance(links, list) and links:
+                bits.append("komşu: " + ", ".join(links[:3]))
+            lines.append(f"- {name}" + (f" ({'; '.join(bits)})" if bits else ""))
+
+    lines.append(
+        "KURAL: bu turda konum değiştiyse `map.current` ve üst düzey `location` "
+        "alanlarını AYNI yeni yerle güncelle; sahnede yeni bir yer adı geçtiyse "
+        "`map.places` altına ekle (henüz gidilmemiş olsa bile); grup dağıldıysa "
+        "`map.party` ile kimin nerede olduğunu yaz. Oyuncular haritayı canlı izliyor."
+    )
+    return "\n".join(lines)
+
+
+PROFANITY_NOTES = {
+    "kapalı": (
+        "KÜFÜR AYARI: kapalı. Karakterler küfretmez; öfke ve şok tonla, kısa "
+        "cümleyle ve davranışla verilir."
+    ),
+    "hafif": (
+        "KÜFÜR AYARI: hafif. Gerçekten sert anlarda ölçülü küfür/argo serbest "
+        "('siktir', 'lanet olsun', 'hassiktir'), her replikte değil."
+    ),
+    "sert": (
+        "KÜFÜR AYARI: sert. Kriz anlarında sansürsüz argo ve küfür serbest — "
+        "ama süs değil karakterizasyon olsun: kimin nasıl küfrettiği onu "
+        "anlatsın. Anlatıcı sesi küfretmez, sadece karakterler küfreder."
+    ),
+}
+
+
+def reflex_note(world_state: dict, profanity: str = "hafif") -> str:
+    """Karakter refleksleri + küfür dozu. Felaket/Kritik bantlarda ve gerilim
+    yükseldiğinde anlatıcı refleksi FİİLEN oynatsın diye her turda verilir."""
+    lines = [PROFANITY_NOTES.get(profanity) or PROFANITY_NOTES["hafif"]]
+    refleksler = []
+    for name, info in (world_state.get("characters") or {}).items():
+        if not isinstance(info, dict) or not info.get("alive", True):
+            continue
+        reflex = info.get(REFLEX_FIELD)
+        if reflex:
+            refleksler.append(f"- {name}: {reflex}")
+    if refleksler:
+        lines.append(
+            "KARAKTER REFLEKSLERİ (baskı altındaki İLK tepki — zar Felaket ya "
+            "da Kritik geldiğinde, ya da sahne aniden yükseldiğinde bunu "
+            "düşünülmüş bir karar değil, gövdenin tepkisi olarak oynat):"
+        )
+        lines += refleksler
+        lines.append(
+            "Refleks tanınabilir bir imza olsun ama her turda tekrarlayan bir "
+            "tike dönüşmesin; bedeli varsa (gürültü, kaçan fırsat) göster."
+        )
+    return "\n".join(lines)
+
+
 def presence_note(world_state: dict, returned=None, rejoined=None) -> str:
     """Her turda modele verilen sahne kadrosu — kimden hamle beklendiği,
     kimin sahnede olmadığı."""
@@ -409,6 +490,13 @@ UPKEEP_REMINDER = (
     "koşulu `until`); sahneye döndüyse `state`'i sahnede yap. SAHNE KADROSU "
     "bölümünde sahne dışında görünen karakterlere bu turda replik/aksiyon/karar "
     "YAZMA — susmaları normaldir, yokluklarını açıklama borcun yok.\n"
+    "(9) HARİTA (her tur): konum değiştiyse `map.current` + `location` "
+    "ikisini birden güncelle; sahnede yeni bir yer adı geçtiyse `map.places` "
+    "altına ekle; grup dağıldıysa `map.party` ile kimin nerede olduğunu yaz.\n"
+    "(10) SEÇENEKLER (her normal tur, ZORUNLU): sahnedeki HER oyuncu karakteri "
+    "için `options` altına 5-10 seçenek yaz (`text` + `category` + `cost`), en "
+    "az üç farklı kategori olsun. Bu olmadan oyuncuların ekranında seçim kartı "
+    "kalmaz.\n"
     "Ayrıca gerçekten değişen başka alanlar varsa (karakter durumu/ilişkisi, "
     "fraksiyon tavrı, gün, konum, yeni NPC, narrator.upcoming_events vb.) "
     "aynı bloğa ekle.\n"

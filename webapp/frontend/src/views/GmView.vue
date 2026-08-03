@@ -33,6 +33,7 @@ import ResourceBoard from '@/components/gm/ResourceBoard.vue'
 import GmLogList from '@/components/gm/GmLogList.vue'
 import GmLogTabs from '@/components/gm/GmLogTabs.vue'
 import PlotPanel from '@/components/gm/PlotPanel.vue'
+import LearningPanel from '@/components/gm/LearningPanel.vue'
 import ScenarioTransfer from '@/components/gm/ScenarioTransfer.vue'
 import { jsonYaz, gerilimTonu, yayinOnEkiniAt } from '@/components/gm/gmYardimcilar'
 
@@ -74,6 +75,15 @@ function kilitle() {
 /* --------------------------------------------------------------- yenileme */
 
 const yenileniyor = ref(false)
+
+/** Öğrenme defterine elle ders ekle (otomatik derslerin önünde okunur). */
+async function dersEkle(metin) {
+  try {
+    await gm.addLesson(metin)
+  } catch {
+    /* hata store'da gösteriliyor */
+  }
+}
 
 async function yenile() {
   yenileniyor.value = true
@@ -312,6 +322,9 @@ onUnmounted(() => {
             @gonder="notGonder"
           />
         </Panel>
+
+        <!-- Öğrenme defteri: oyunun kendi kendine çıkardığı dersler -->
+        <LearningPanel :defter="gm.learning" :mesgul="gm.addingLesson" @ders-ekle="dersEkle" />
 
         <!-- Anlatıcı defteri -->
         <Panel tone="gm" title="Anlatıcı defteri" icon="menu_book" collapsible>

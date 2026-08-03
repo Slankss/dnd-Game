@@ -28,6 +28,12 @@ def gm_note():
     return jsonify(services.gm.note(body.get("pin"), body.get("text"), body.get("mode")))
 
 
+@bp.post("/lesson")
+def gm_lesson():
+    body = request.get_json(force=True) or {}
+    return jsonify(services.gm.add_lesson(body.get("pin"), body.get("text")))
+
+
 @bp.post("/patch")
 def gm_patch():
     body = request.get_json(force=True) or {}

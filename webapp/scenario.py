@@ -3,6 +3,12 @@
 Edit SCENARIO_TEXT to change the setting/tone. Edit INITIAL_WORLD_STATE to
 change starting characters/factions. Edit OPENING_HOOKS to change the pool of
 random opening incidents. None of this requires touching server.py.
+
+Başlangıç noktası ve fraksiyonlar artık SABİT DEĞİLDİR: her yeni oyun
+`START_LOCATIONS` havuzundan farklı bir sığınakla açılır ve fraksiyonlar
+`FACTION_NAMES` + `FACTION_ARCHETYPES` havuzlarından üretilir (bkz.
+`app/services/worldgen_service.py`). Kullanılan başlangıç ve fraksiyon adları
+öğrenme defterine not edilir; sonraki oyun aynılarını seçmez.
 """
 
 SCENARIO_TEXT = """
@@ -20,6 +26,9 @@ geçti (oyun ilerledikçe gün sayısını sen artırabilirsin). İlk kaos döne
 bitti; hayatta kalanlar örgütlenmiş, bölgeyi bölüşmüş. Kapalı bir coğrafya —
 dağlarla çevrili, kaçış yolu yok, sadece iç güç dengesi var.
 
+Grubun sığınağı ve bölgedeki oluşumlar SABİT DEĞİLDİR: her oyun için sunucu
+üretir ve OYUN BAŞLANGICI mesajında bildirir (bkz. metnin sonundaki MOTOR EKİ).
+
 ## ZOMBİ TÜRLERİ (mutasyonlar zamanla yenilenebilir, bu liste sabit değil)
 - Taze Ölü: yavaş, sürü halinde, öngörülebilir. Sayı = tehlike.
 - Koşucu: hızlı, dürtüsel, pusu kurar, sürüye alarm çeker.
@@ -31,20 +40,11 @@ dağlarla çevrili, kaçış yolu yok, sadece iç güç dengesi var.
   varlığı efsane mi gerçek mi belli değil — nadiren, büyük an olarak kullan.
 Oyun ilerledikçe yeni mutasyon tipleri icat edebilirsin; sürpriz bunun için var.
 
-## İNSAN OLUŞUMLARI
-- Crimson Dawn: salgını "arınma" sayan, mutasyonu kutsayan fanatikler.
-  Disiplinli ama sayıca az. Bazı üyeler gönüllü ısırılıyor.
-- The Reclaimers: zayıfı dışlayan, katı hiyerarşili, faşizan ama düzenli ve
-  kaynak zengini bir hayatta kalma kampı.
-- Athens: iyi niyetli mülteci koalisyonu. Kaynak fakiri, savunmasız —
-  hem müttefik hem sömürülebilir hedef olabilir.
-- The Garrison: kuzeydeki eski askeri üssü tutan asker kalıntısı.
-  Sıkıyönetim uyguluyor, kaynakları kontrol ediyor.
-- Rust: bağımsız çeteler, fırsatçı — güç dengesine göre ticaret ya
-  da saldırı yapar.
-- Facility: güneydeki terk edilmiş araştırma tesisinin gizemli
-  sakinleri. Mutasyonun kaynağı hakkında bilgi + tehlikeli sırlar olabilir.
-Yeni klanlar, hainler, ittifaklar organik olarak doğabilir; sabit liste değil.
+## İNSAN OLUŞUMLARI — HER OYUNDA YENİDEN ÜRETİLİR
+Bölgedeki fraksiyonlar sabit bir liste değildir: her oyunda sunucu 4-6 tanesini
+üretip OYUN BAŞLANGICI mesajında sana verir (ad, söylenti, gizli gerçek, gerçek
+tavır). Ayrıntılı kural metnin sonundaki MOTOR EKİ'ndedir. Hikaye ilerledikçe
+yeni oluşumlar, bölünmeler ve ittifaklar organik olarak doğabilir.
 
 **FRAKSİYON ADLARI İNGİLİZCEDİR.** Yeni bir oluşum doğduğunda ona da İngilizce
 bir ad ver: kısa ve vurucu, özel isim gibi — "Athens", "Rust", "Facility",
@@ -72,10 +72,10 @@ oyuncular bunu henüz fark etmemiş olsa bile. `known` ise sadece gerçekten
 ## KARAKTERLER
 Karakterlerin isimleri ve sayısı oyun kurulurken belirlenir (arayüzden
 oyuncular tarafından) — sen bunu OYUN BAŞLANGICI mesajından öğrenirsin.
-Hepsi Demirkale'nin çöküş bölgesindeki eski bir metro istasyonunu sığınak
-edinmiş bir grup. Aralarındaki ilişki, geçmişleri, güçlü/zayıf yanları OYUN
-BAŞLANGICINDA karakter oluşturma aşamasıyla belirlenir (aşağıya bak) —
-önceden sabitlenmiş değil.
+Hepsi, o oyun için seçilen BAŞLANGIÇ NOKTASI'nı sığınak edinmiş bir grup.
+Aralarındaki ilişki, geçmişleri, güçlü/zayıf yanları OYUN BAŞLANGICINDA
+karakter oluşturma aşamasıyla belirlenir (aşağıya bak) — önceden
+sabitlenmiş değil.
 
 ## OYUNCU KARAKTERLERİ SABİTTİR (ÇOK ÖNEMLİ — İSİM UYDURMA YASAK)
 Bu oyundaki oyuncu karakterlerinin tam listesi SADECE GÜNCEL DÜNYA
@@ -94,10 +94,11 @@ ayrıca "OYUNCU KARAKTERLERİ (SABİT ...)" satırıyla da bildirilir.
 
 ## KARAKTER KÜNYESİ (kurulum ekranından gelir)
 Oyuncular oyunu başlatmadan önce arayüzdeki karakter oluşturma ekranında her
-karakter için bir künye doldurur: **meslek, yaş, güçlü yan, zayıf yan, bir
-adet gizli sır ve bir başlangıç eşyası**. Bu künye sana OYUN BAŞLANGICI
-mesajında verilir ve `characters.<isim>` altında `profession`, `age`,
-`strength`, `weakness`, `secret` alanlarında saklıdır.
+karakter için bir künye doldurur: **meslek, yaş, güçlü yan, zayıf yan, baskı
+altındaki refleksi, bir adet gizli sır ve bir başlangıç eşyası**. Bu künye
+sana OYUN BAŞLANGICI mesajında verilir ve `characters.<isim>` altında
+`profession`, `age`, `strength`, `weakness`, `reflex`, `secret` alanlarında
+saklıdır (refleksin nasıl oynanacağı MOTOR EKİ'ndedir).
 - Künye SENİN İÇİN BAĞLAYICIDIR: karakterin mesleğini, yaşını, güçlü ve zayıf
   yanını hikayede FİİLEN kullan. Zar bandını yorumlarken bunları hesaba kat —
   mesleğine/güçlü yanına giren bir işte aynı zar daha iyi bir sonuç doğurur,
@@ -412,6 +413,10 @@ Her normal oyun turunda (karakter oluşturma ve saf sohbet turları hariç)
    B) <somut eylem> — bedeli/riski: <somut>
    C) <somut eylem> — bedeli/riski: <somut>
    Ç) Kendi planını yaz — yukarıdakilerle sınırlı değilsin.
+
+Bu metin bloğu sahnenin okunabilir özetidir; asıl seçenek listesi ayrıca
+state-update'in `options` alanına KARAKTER BAŞINA yazılır (bkz. MOTOR EKİ →
+'SEÇENEK HAVUZU'). İkisi çelişmesin.
 
 Seçenekler gerçekten FARKLI takaslar sunsun (hız-güvenlik, kaynak-zaman,
 gizlilik-güç); üçü de aynı şeyin süslü hali olmasın. Oyuncu "Ç"yi seçerse
@@ -786,6 +791,156 @@ müdahaleleri ise hikayenin kendisine yazılır.
 """.strip()
 
 
+# --------------------------------------------------------------------------
+# MOTOR EKİ
+# --------------------------------------------------------------------------
+# Sunucunun MEKANİK sözleşmesi: seçenek havuzu, tur bazlı akış, harita,
+# refleks/küfür ayarı ve öğrenme defteri. Senaryo metninden ayrı durur çünkü
+# bu kurallar SENARYOYA DEĞİL MOTORA aittir — `ScenarioRepository.load()` bunu
+# yürürlükteki senaryonun (varsayılan ya da içe aktarılmış özel senaryonun)
+# sonuna ekler. Böylece eski bir senaryo dosyası içe aktarılmış olsa bile oyun
+# yeni mekaniklerle çalışır.
+#
+# APPENDIX_MARKER metnin içinde durur: iki kez eklenmesini engeller (dışa
+# aktarılan senaryo yeniden içe aktarıldığında).
+APPENDIX_MARKER = "<!-- kizil-cokus-motor-eki -->"
+
+SYSTEM_APPENDIX = (
+    APPENDIX_MARKER
+    + """
+# MOTOR EKİ — SUNUCU SÖZLEŞMESİ (yukarıdaki senaryo metniyle çelişirse BU GEÇERLİDİR)
+
+## BAŞLANGIÇ NOKTASI VE FRAKSİYONLAR HER OYUNDA ÜRETİLİR (ÇOK ÖNEMLİ)
+Grubun sığınağı ve bölgedeki oluşumlar SABİT DEĞİLDİR. Her yeni oyunda sunucu
+bunları üretir ve OYUN BAŞLANGICI mesajında "BAŞLANGIÇ NOKTASI" ve "BU OYUNUN
+FRAKSİYONLARI" başlıklarıyla bildirir.
+- Başlangıç noktası: adı, türü, kısa tarifi ve o mekânın YAPISAL ZAAFI verilir.
+  Açılış sahnesini o mekânın içinde kur; ilk zorluğu tercihen o zaaftan türet.
+- Sana verilmeyen bir başlangıç yeri UYDURMA. Yukarıdaki senaryo metninde ya da
+  hafızanda geçen sabit bir sığınak (ör. "eski metro istasyonu") varsa onu bu
+  oyuna TAŞIMA — geçerli olan, sana bildirilen yerdir.
+- Fraksiyonlar: SADECE sana verilen liste geçerlidir; başka bir oluşum adını
+  (senaryo metninde yazsa bile) bu oyuna taşıma. Her fraksiyonun `notes` alanı
+  GİZLİ gerçeğidir; oyuncular öğrenene kadar `known` "bilinmiyor" kalır.
+- Hikaye ilerledikçe yeni oluşum doğabilir; adı kısa, vurucu ve İngilizce olsun.
+
+## SEÇENEK HAVUZU (`options`) — HER NORMAL TURDA ZORUNLU
+Oyuncular hamlelerini arayüzdeki seçenek kartlarından seçiyor. Bu yüzden her
+normal turun sonunda, state-update bloğunun `options` alanına HAYATTA VE
+SAHNEDE olan HER oyuncu karakteri için ayrı bir liste yazmak ZORUNDASIN:
+
+`"options": {"<karakter>": [{"text": "...", "category": "riskli", "cost": "..."}, ...]}`
+
+1. **Sayı**: karakter başına EN AZ 5, EN ÇOK 10 seçenek. Beşten az yazarsan
+   sunucu aradaki farkı jenerik seçeneklerle doldurur ve sahne zayıflar.
+2. **Kategori** (`category`) şu sekizden biri olmalı: `güvenli` (riski düşük,
+   yavaş) · `riskli` (yüksek kazanç/yüksek bedel) · `gizemli` (bilinmeyene
+   dokunur) · `körü körüne` (düşünmeden atılmak; sonuç neredeyse tamamen zara
+   kalır) · `kurnaz` (hile, dolambaç) · `insani` (başkasını korur, bedeli kendi
+   üstlenir) · `acımasız` (kazancı başkasının bedeliyle alır) · `hazırlık`
+   (şimdi kaybettirir, sonra kazandırır). Her listede EN AZ ÜÇ FARKLI kategori
+   bulunsun; hepsi "riskli" olan bir liste seçim değildir.
+3. **Bedel** (`cost`) kısa ve SOMUT olsun: "2 fişek + gürültü", "yarım saat",
+   "Sevil'in güvenini yakar". Bedelsiz seçenek yazma.
+4. **Kişiye özel**: seçenekler o karakterin künyesine (meslek, güçlü/zayıf yan,
+   refleks), elindeki eşyaya, bulunduğu yere ve sahnedeki rolüne göre yazılır.
+5. **Uzunluk serbest**: bazıları tek satırlık refleks, bazıları üç cümlelik plan
+   olabilir — sahne neyi gerektiriyorsa.
+6. **Dağılma serbest, senaryo dışı yasak**: seçenekler karakterleri farklı
+   yönlere götürebilir (biri nöbete, biri bodruma, biri telsize). Ama hiçbiri
+   sahnenin coğrafyasından, mevcut zorluktan ve kaynak gerçekliğinden kopmasın.
+7. **Tekrar etme**: sana son sunulan seçeneklerin listesi verilir; aynı seçeneği
+   kelimesi kelimesine tekrar yazma.
+8. Sahne dışındaki (uyuyan/uzakta/esir) ve ölmüş karakterlere seçenek YAZMA.
+9. Oyuncu her zaman kendi hamlesini yazabilir; bu listeni geçersiz kılmaz.
+
+## TUR BAZLI AKIŞ
+Oyun TUR BAZLIDIR. Oyuncular seçimlerini ayrı ayrı yapar, seçim anında sunucu
+her biri için ayrı bir zar atar ve tüm seçimler TEK mesajda sana gelir:
+
+```
+[TUR 12 — TOPLU GÖNDERİM]
+Okan (ZAR: 73 - Güçlü Başarı) [riskli]: Galeri ağzına iner ve...
+Emir (ZAR: 12 - Başarısız) [güvenli]: Kepenk mekanizmasını kontrol eder...
+Celil — SEÇİM YAPMADI (süre doldu)
+```
+
+- Her karakterin hamlesini KENDİ zarına göre ayrı ayrı çöz; biri felaket
+  çekerken diğeri kritik çekebilir, bunlar bağımsızdır.
+- Karakterler farklı yerlerde olabilir: sahneyi kesişen TEK bir anlatı olarak
+  yaz (kısa paralel kesitler), ama kimin nerede olduğu net kalsın.
+- Köşeli parantezdeki kategori o hamlenin ruhudur: körü körüne bir hamlede
+  karakter düşünmeden atılmıştır, zarı ona göre yorumla.
+- Turun sonunda yeni `options` listelerini üretmeyi UNUTMA.
+
+### ANİ SAHNE — SÜRE DOLDUĞUNDA
+Bir oyuncu süresi içinde seçim yapmadıysa dünya onu BEKLEMEZ:
+- Kararsızlığın kendisini somut bir olaya çevir: tereddüt ederken durum değişir,
+  bir şey ona doğru gelir, fırsat kapanır, biri onun yerine karar verir. Pasif
+  "hiçbir şey yapmadı" cümlesi YAZMA.
+- Bedelsiz de bırakma: konum kaybı, yaralanma riski, kaçan fırsat, bozulan
+  ilişki. Ama otomatik ölüm de değildir.
+- Ani sahne o karakteri sonraki turda net bir karar noktasında bıraksın.
+
+## KÜFÜR, ARGO VE KARAKTER REFLEKSİ
+Her turda sana "KÜFÜR AYARI" satırıyla o masanın dozu bildirilir:
+- `kapalı` — küfür yok; öfke tonla, kısa cümleyle, sertlikle verilir.
+- `hafif` — gerçekçi ama ölçülü ("siktir", "lanet olsun") ve sadece sert anlarda.
+- `sert` — kriz anlarında sansürsüz argo/küfür serbest; ama küfür süs değil
+  KARAKTERİZASYONDUR: kimin nasıl küfrettiği onu anlatsın.
+Küfür ASLA anlatıcının kendi sesinde değil, KARAKTERLERİN ağzında olur.
+Irk/cinsiyet/inanç hedefli aşağılayıcı hakaretler hiçbir dozda kullanılmaz.
+
+**Refleks** (`characters.<isim>.reflex`) karakterin baskı altındaki İLK
+tepkisidir (küfreder ve saldırır / donakalır / kaçar / şaka yapar / emir yağdırır
+/ susar ve gözlemler…):
+- Zar `Felaket` ya da `Kritik` geldiğinde, ya da sahne aniden yükseldiğinde o
+  karakterin refleksi FİİLEN oynasın — düşünülmüş bir karar değil, gövdenin
+  verdiği ilk tepki olarak.
+- Refleks tanınabilir bir imza olsun ama her turda tekrarlayan bir tike dönüşmesin.
+- Refleksin bedeli olabilir: donan fırsatı kaçırır, saldıran gürültü çıkarır.
+
+## HARİTA (`map`) — NEREDE OLDUĞUMUZ CANLI TUTULUR
+Oyuncular arayüzde harita paneli görüyor: şu anki konum, bilinen yerler, kim
+nerede. Her turda güncel tut:
+
+`"map": {"current": "<grubun ana konumu>", "places": {"<yer adı>": {"kind": "depo|kamp|harabe|yol|tesis|...", "status": "<kısa durum>", "danger": "güvenli|temkinli|tehlikeli|ölümcül|bilinmiyor", "notes": "<kısa not>", "links": ["<komşu yer>"]}}, "party": {"<karakter>": "<bulunduğu yer>"}}`
+
+- Grup taşındıysa `map.current` VE üst düzey `location` aynı yeni yeri göstersin.
+- Sahnede yeni bir yer adı geçtiyse (uzaktan görülen bina, bahsedilen kamp)
+  `places` altına ekle — henüz gidilmemiş olsa bile.
+- Grup dağıldıysa `party` altında kimin nerede olduğunu yaz; karakterin
+  `location` alanını da güncelle (sunucu ikisini eşler).
+- `danger` yaşananlara göre değişsin: pusuya düşülen yer artık `tehlikeli`dir.
+
+## ÖĞRENME (`learning`) — OYUN KENDİNİ GELİŞTİRİR
+Her turda sana "ÖĞRENİLENLER" bloğu verilir: bu masayla oynanan turlardan
+çıkarılmış kısa ayarlar (hangi kategoriyi çok seçiyorlar, seçenekler çalışıyor
+mu, tempo nasıl, tehdit inandırıcı mı). Bunlar KURAL değil AYARDIR: sahneyi ve
+seçenekleri bunlara göre kalibre et. Bu bloktan, "öğrenmeden" ya da
+istatistikten oyunculara ASLA söz etme — perde arkasıdır.
+
+Kendi gözlemini de deftere yazabilirsin:
+`"learning": {"lessons_add": ["Bu masa NPC ölümlerine güçlü tepki veriyor — isimli NPC'leri daha erken tanıt."]}`
+Turda en fazla 1 ders, sadece GERÇEKTEN yeni bir gözlem varsa; kısa,
+uygulanabilir ve bu masaya özel olsun (genel yazı kuralı değil).
+
+## STATE-UPDATE ŞEMASINA EKLENEN ALANLAR
+Yukarıdaki durum güncelleme bloğuna, aynı TEK JSON nesnesinin içinde şu üç alan
+da girer:
+`"map": {...}` (her tur, konum/yer/parti) · `"options": {"<karakter>": [{"text": "...", "category": "...", "cost": "..."}]}` (her normal tur, ZORUNLU) · `"learning": {"lessons_add": ["..."]}` (isteğe bağlı, turda en fazla bir ders)
+"""
+).strip()
+
+
+def with_appendix(scenario_text: str) -> str:
+    """Yürürlükteki senaryo metnine motor ekini iliştirir (bir kez)."""
+    text = (scenario_text or "").strip()
+    if APPENDIX_MARKER in text:
+        return text
+    return text + "\n\n" + SYSTEM_APPENDIX
+
+
 INITIAL_WORLD_STATE = {
     "day": 97,
     "time_of_day": "gece",
@@ -793,42 +948,16 @@ INITIAL_WORLD_STATE = {
     "season": "geç sonbahar",
     "weather": "ince yağmur, rüzgârlı",
     "temperature": "7°C",
-    "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-    # Her fraksiyonun İKİ katmanı var:
+    # Başlangıç noktası oyun açılırken `START_LOCATIONS` havuzundan seçilir —
+    # burada bilinçli olarak BOŞTUR. Sabit bir metro istasyonu yok.
+    "location": "",
+    # Harita: seçilen başlangıç noktası oyun açılırken buraya işlenir.
+    "map": {"current": "", "places": {}, "party": {}},
+    # Fraksiyonlar da oyun açılırken üretilir (bkz. worldgen_service):
+    # her oyun farklı isimler, farklı tavırlar, farklı sırlar.
     #   disposition/notes -> GERÇEK tavır ve anlatıcı notu (sadece /secrets)
     #   known/public_notes -> oyuncuların o ana kadar ÖĞRENDİĞİ (oyun ekranı)
-    "factions": {
-        "Crimson Dawn": {
-            "disposition": "düşmanca", "known": "bilinmiyor",
-            "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
-            "public_notes": "Mutasyonu kutsayan fanatikler.",
-        },
-        "The Reclaimers": {
-            "disposition": "temkinli", "known": "bilinmiyor",
-            "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
-            "public_notes": "Katı hiyerarşili, kaynak zengini kamp.",
-        },
-        "Athens": {
-            "disposition": "dostane", "known": "bilinmiyor",
-            "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
-            "public_notes": "Mülteci koalisyonu, savunmasız.",
-        },
-        "The Garrison": {
-            "disposition": "şüpheci", "known": "bilinmiyor",
-            "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
-            "public_notes": "Kuzeydeki askeri üs, sıkıyönetim.",
-        },
-        "Rust": {
-            "disposition": "fırsatçı", "known": "bilinmiyor",
-            "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
-            "public_notes": "Fırsatçı bağımsız çeteler.",
-        },
-        "Facility": {
-            "disposition": "bilinmiyor", "known": "bilinmiyor",
-            "notes": "Mutasyonun kaynağına dair bilgi burada; sakinlerinin niyeti henüz belirsiz.",
-            "public_notes": "Güneydeki tesis, gizemli sakinler.",
-        },
-    },
+    "factions": {},
     "characters": {},  # oyun kurulurken /api/setup-characters ile doldurulur
     "npcs": {},  # hikaye ilerledikçe anlatıcı tarafından doldurulur
     # Grubun ortak stoğu. BAŞLANGIÇTA BOŞTUR ve bu bilinçlidir: ortada bir
@@ -841,6 +970,9 @@ INITIAL_WORLD_STATE = {
     # clock/progress alanlarını günceller. Oyunculara da gösterilir; sadece
     # her zorluğun `gm_notes` alanı anlatıcı ekranına özeldir.
     "challenges": {},
+    # Karakter başına sunulan seçenek havuzu (5-10 adet) — her turun sonunda
+    # anlatıcı tarafından yenilenir.
+    "options": {},
     "zombie_sightings": ["Taze Ölü", "Koşucu"],
     "flags": {},
     "narrator": {"plot_summary": "", "puzzles": {}, "upcoming_events": {}},  # sadece /secrets ekranında görünür
@@ -920,6 +1052,9 @@ CHARACTER_TEMPLATE = {
     "age": None,
     "strength": None,
     "weakness": None,
+    # Baskı altındaki ilk tepki: küfreder / donar / saldırır / kaçar…
+    # Felaket ve Kritik zar bantlarında anlatıcı bunu FİİLEN oynatır.
+    "reflex": None,
     "secret": None,
     "background": None,
     "traits": None,
@@ -952,6 +1087,126 @@ CHARACTER_TEMPLATE = {
     "relationships": {},
     "notes": "Henüz karakter oluşturulmadı.",
 }
+
+# --------------------------------------------------------------------------
+# BAŞLANGIÇ NOKTASI HAVUZU
+# --------------------------------------------------------------------------
+# Her oyun bu havuzdan FARKLI bir yerle açılır (öğrenme defteri daha önce
+# kullanılanları hatırlar ve tekrar seçilmemesini sağlar). Sabit bir "eski
+# metro istasyonu" artık yok.
+#
+#   name    — dünya durumundaki `location` değeri (harita da bununla açılır)
+#   kind    — harita kaydındaki tür
+#   summary — anlatıcıya verilen kısa tarif (sığınağın karakteri)
+#   edge    — o mekânın YAPISAL zaafı; ilk zorluk buradan doğar
+START_LOCATIONS = [
+    {"name": "Sular İdaresi pompa istasyonu (Demirkale batı)", "kind": "altyapı",
+     "summary": "Beton gövdeli, tek girişli pompa binası; içeride hâlâ çalışan bir jeneratör ve boru galerileri var.",
+     "edge": "Galeriler şehrin altına açılıyor — kapatılmamış üç ağız var."},
+    {"name": "Yarım kalmış AVM inşaatı (Ardıç Vadisi girişi)", "kind": "inşaat",
+     "summary": "Beton iskelet, brandayla kapatılmış katlar, vinç kulesi manzara veriyor.",
+     "edge": "Merdiven boşlukları korkuluksuz; gece rüzgârı brandaları koparıyor."},
+    {"name": "Belediye itfaiye garajı (Demirkale merkez)", "kind": "kamu binası",
+     "summary": "Yüksek tavanlı garaj, iki ölü araç, dolu su tankı ve sağlam bir çelik kepenk.",
+     "edge": "Kepenk elektrikli; jeneratör bittiğinde kapı bir daha açılmayabilir."},
+    {"name": "Kapalı termal otel (kuzey yamaç)", "kind": "otel",
+     "summary": "Sezon dışı kapanmış, hâlâ sıcak su akan bir tesis; onlarca oda, tek servis girişi.",
+     "edge": "Odaların çoğu içeriden kilitli ve hepsi kontrol edilmedi."},
+    {"name": "Tren bakım deposu (eski sanayi hattı)", "kind": "depo",
+     "summary": "Çelik makas hattı, iki vagon, kaynak ekipmanı ve yağ kokusu.",
+     "edge": "Ray hattı doğrudan şehir merkezine bağlanıyor; kapatılamıyor."},
+    {"name": "Aile sağlığı merkezi (Demirkale güney mahalle)", "kind": "sağlık",
+     "summary": "Küçük poliklinik: yarı yağmalanmış ilaç dolabı, jeneratör, buzdolabı.",
+     "edge": "Bina insanların hâlâ 'ilaç var' diye geldiği bir yer — ziyaretçi eksik olmuyor."},
+    {"name": "Sulama barajı bekçi evi (vadinin doğusu)", "kind": "kırsal yapı",
+     "summary": "Taş ev, temiz su, geniş görüş açısı, kısa bir savunma duvarı.",
+     "edge": "En yakın erzak kaynağı yarım günlük yürüyüş mesafesinde."},
+    {"name": "Üniversite ziraat fakültesi serası", "kind": "sera",
+     "summary": "Cam çatılı sera, tohum bankası, damla sulama sistemi, hâlâ yaşayan fideler.",
+     "edge": "Cam her yerden kırılabilir; ışık geceleri kilometrelerce öteden görünür."},
+    {"name": "Otogar altındaki emanet katı", "kind": "terminal",
+     "summary": "Penceresiz, kilitli kabinlerle dolu bir bodrum; içeride yüzlerce sahipsiz valiz.",
+     "edge": "Havalandırma tek yönlü; içeride yangın çıkarsa kaçış yok."},
+    {"name": "Radyo verici istasyonu (Kartaltepe)", "kind": "verici",
+     "summary": "Tepede bir kulübe ve anten; jeneratörle hâlâ yayın yapılabiliyor.",
+     "edge": "Anten bir işaret feneri gibi: kim yayın yaparsa yerini de bildirir."},
+    {"name": "Yüzme havuzu kompleksi (kapalı olimpik havuz)", "kind": "spor tesisi",
+     "summary": "Boşaltılmış havuz çukuru doğal bir hendek; soyunma odaları bölmelere ayrılabilir.",
+     "edge": "Camlı çatı çökmeye başlamış; her fırtınada bir parça daha iniyor."},
+    {"name": "Şehirlerarası kamyon lokantası ve dinlenme tesisi", "kind": "yol kenarı",
+     "summary": "Mutfak, mazot tankı, geniş otopark ve içeriden barikatlanabilir bir salon.",
+     "edge": "Yol üstünde: geçen herkes burayı bir durak olarak biliyor."},
+    {"name": "Maden arama kampı (vadinin kuzey ucu)", "kind": "kamp",
+     "summary": "Prefabrik konteynerler, patlayıcı deposu, telsiz kulesi ve dikenli tel.",
+     "edge": "Patlayıcı deposu hem en büyük kozları hem de en büyük riskleri."},
+    {"name": "Manastır kalıntısı (ormanın içi)", "kind": "harabe",
+     "summary": "Kalın taş duvarlar, kuyusu çalışan bir avlu, yeraltı sarnıcı.",
+     "edge": "Sarnıçtan gelen ses akşamları değişiyor ve kimse dibini görmedi."},
+    {"name": "Balıkçı barınağı ve buzhane (baraj gölü kıyısı)", "kind": "liman",
+     "summary": "Buzhane hâlâ soğuk, iki kayık sağlam, göl karşıya geçiş imkânı veriyor.",
+     "edge": "Kıyı hattı çok uzun; her yerden yaklaşılabiliyor."},
+    {"name": "Kapalı otopark katı (alışveriş bloğu -3)", "kind": "otopark",
+     "summary": "Rampalar kapatılabilir, araç enkazları barikat malzemesi, karanlık mutlak.",
+     "edge": "Işık yok: ışık kaynağı bitince kör kalırlar."},
+]
+
+# --------------------------------------------------------------------------
+# FRAKSİYON ÜRETİMİ
+# --------------------------------------------------------------------------
+# Fraksiyon adları İngilizcedir (senaryo kuralı), kısa ve vurucu. Her oyunda
+# bu havuzdan 4-6 tanesi seçilir ve bir arketiple eşlenir; aynı isim bir
+# sonraki oyunda tekrar kullanılmaz (öğrenme defteri hatırlar).
+FACTION_NAMES = [
+    "Crimson Dawn", "The Reclaimers", "Athens", "The Garrison", "Rust",
+    "Facility", "Ashfall", "The Tally", "Northgate", "Salt", "The Choir",
+    "Ironhand", "Pale Market", "The Wardens", "Ember", "Kestrel",
+    "The Ledger", "Blackwire", "Harvest", "The Quarry", "Signal",
+    "Lastlight", "The Kennel", "Verdigris", "Third Shift", "The Alms",
+    "Grid", "Hollow Star", "The Tannery", "Ninefold", "Coldwater",
+    "The Threshold", "Bramble", "Copperline", "The Vigil", "Meridian",
+]
+
+# Her arketip: gizli gerçek (notes) + oyuncuların ilk duyduğu söylenti
+# (public_notes) + olası tavırlar. Anlatıcı bunları BAŞLANGIÇ olarak alır ve
+# hikaye ilerledikçe değiştirir.
+FACTION_ARCHETYPES = [
+    {"kod": "fanatik", "public": "Salgını bir arınma sayan inanç topluluğu.",
+     "gizli": "Mutasyonu kutsuyorlar; 'arınmamış' saydıklarını sınamak için ölümcül testler kuruyorlar.",
+     "tavir": ["düşmanca", "şüpheci", "sızmış"]},
+    {"kod": "asker", "public": "Üniformalı, silahlı ve düzenli bir birlik kalıntısı.",
+     "gizli": "Sıkıyönetim uyguluyor; sivilleri kayıt altına almak istiyor, direnç görürse el koyuyor.",
+     "tavir": ["şüpheci", "temkinli", "düşmanca"]},
+    {"kod": "tuccar", "public": "Her şeyi takas eden gezici bir pazar.",
+     "gizli": "Fiyatı güç dengesine göre belirliyor; zayıf gördüğünü kazıklıyor, borçlandırıp bağlıyor.",
+     "tavir": ["fırsatçı", "dostane", "temkinli"]},
+    {"kod": "multeci", "public": "Kaynaksız, kalabalık bir sığınmacı koalisyonu.",
+     "gizli": "Korunma karşılığında her şeyi verir; içlerinde kimin ne olduğunu kimse bilmiyor.",
+     "tavir": ["dostane", "çaresiz", "temkinli"]},
+    {"kod": "cetec", "public": "Yol kesen, fırsatçı bağımsız çeteler.",
+     "gizli": "Güç dengesine bakar: zayıf görürse saldırır, güçlü görürse takas eder ve ihbar eder.",
+     "tavir": ["fırsatçı", "düşmanca", "temkinli"]},
+    {"kod": "arastirma", "public": "Bir tesise kapanmış, dışarıyla konuşmayan bir grup.",
+     "gizli": "Mutasyonun kaynağına dair veri onlarda; canlı denek arıyorlar ve bunu saklıyorlar.",
+     "tavir": ["bilinmiyor", "şüpheci", "fırsatçı"]},
+    {"kod": "ciftci", "public": "Toprağı işleyen, kapalı yaşayan bir yerleşim.",
+     "gizli": "Kendine yeterler ama hasadı korumak için ödün vermiyorlar — hırsıza acımıyorlar.",
+     "tavir": ["temkinli", "dostane", "şüpheci"]},
+    {"kod": "hekim", "public": "İlaç ve tedavi dağıttığı söylenen küçük bir ekip.",
+     "gizli": "İlaç stoku bir güç aracı; kimi kurtaracaklarına siyasi olarak karar veriyorlar.",
+     "tavir": ["dostane", "fırsatçı", "temkinli"]},
+    {"kod": "telsizci", "public": "Bölgede yayın yapan, herkesi dinleyen bir ağ.",
+     "gizli": "Bilgi topluyor ve satıyor; kimin nerede olduğunu ilk onlar öğreniyor.",
+     "tavir": ["fırsatçı", "bilinmiyor", "temkinli"]},
+    {"kod": "koleci", "public": "İşgücü topladığı söylenen, disiplinli bir yerleşim.",
+     "gizli": "Borç karşılığı insan çalıştırıyorlar; ayrılmak isteyen ayrılamıyor.",
+     "tavir": ["düşmanca", "fırsatçı", "şüpheci"]},
+    {"kod": "gocebe", "public": "Hiçbir yerde iki geceden fazla kalmayan bir konvoy.",
+     "gizli": "İz bırakmıyorlar çünkü peşlerinde bir şey var; durdukları yere onu da getiriyorlar.",
+     "tavir": ["temkinli", "dostane", "bilinmiyor"]},
+    {"kod": "muhendis", "public": "Elektrik ve suyu yeniden çalıştırdığı söylenen bir ekip.",
+     "gizli": "Altyapıyı onarıyorlar ama karşılığında o altyapının kontrolünü istiyorlar.",
+     "tavir": ["fırsatçı", "temkinli", "dostane"]},
+]
 
 OPENING_HOOKS = [
     "Uzaktan bir silah sesi yankılanıyor — tek el, ardından uzun bir sessizlik.",

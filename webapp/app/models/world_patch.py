@@ -8,6 +8,7 @@ boş zaman alanı mevcut değeri ezmez, tanımadık isim `npcs`'e düşer,
 
 from .challenges import Challenge
 from .factions import Faction
+from .options import normalize_list
 from .person import Person
 from .text import canonical_name
 
@@ -57,6 +58,17 @@ class WorldPatchMixin:
 
         if isinstance(patch.get("challenges"), dict):
             self._merge_challenges(patch["challenges"])
+
+        # Harita: `map` alanı + üstteki `location` değişikliği. İkisi de aynı
+        # haritaya yazar, sıra önemli — önce yer kayıtları, sonra ana konum.
+        if isinstance(patch.get("map"), dict):
+            day = self.day if isinstance(self.day, int) else None
+            self.ensure_map().merge_patch(patch["map"], day)
+
+        # Seçenek havuzu: karakter başına liste TAMAMEN yenilenir (seçenekler
+        # o tura aittir, birikmezler).
+        if isinstance(patch.get("options"), dict):
+            self._merge_options(patch["options"])
 
         if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
             seen = self.ensure_sightings()
@@ -110,6 +122,12 @@ class WorldPatchMixin:
                 touched = person.merge_patch(fields, day, clock)
                 if touched and vitals_touched is not None:
                     vitals_touched.setdefault(key, set()).update(touched)
+                # Karakterin konumu değiştiyse harita da aynı turda taşınsın —
+                # iki alanın ayrı ayrı yazılmasını beklemek, panelde grubun
+                # eski yerde görünmesine yol açıyordu.
+                if section == "characters" and isinstance(fields.get("location"), str) \
+                        and fields["location"].strip():
+                    self.ensure_map().place_person(key, fields["location"], self.day)
 
     def _merge_challenges(self, patch: dict) -> None:
         self._touch("challenges")
@@ -121,6 +139,21 @@ class WorldPatchMixin:
             if not isinstance(challenge, Challenge):
                 challenge = self.challenges[key] = Challenge.new()
             challenge.merge_patch(fields)
+
+    def _merge_options(self, patch: dict) -> None:
+        """Anlatıcının bu tur için sunduğu seçenekler.
+
+        İsim eşlemesi kadroya göre yapılır: model "okan" yazsa da seçenekler
+        "Okan"a düşer. Kadroda olmayan isim (NPC, uydurma) yok sayılır —
+        seçenek yalnız oyuncu karakterine sunulur."""
+        board = self.ensure_options()
+        for raw_name, raw_list in patch.items():
+            if not isinstance(raw_list, list):
+                continue
+            key = canonical_name(self.characters, raw_name)
+            if not key:
+                continue
+            board.set_player(key, normalize_list(key, raw_list))
 
     def _merge_narrator(self, npatch: dict) -> None:
         narrator = self.ensure_narrator()

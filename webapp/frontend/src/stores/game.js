@@ -47,6 +47,20 @@ export const useGameStore = defineStore('game', () => {
   /** Yoklama sonrası okunmamış yeni girdi sayısı (docs §4: "yeni sahne" rozeti) */
   const unseenCount = ref(0)
 
+  /* --- tur bazlı akış --- */
+  /** Açık turun sunucudaki hali: {no, status, seconds, deadline_ts, picks, waiting…} */
+  const round = ref(null)
+  /** Oyun ayarları: {turn_seconds, profanity, round_mode} */
+  const settings = ref({ turn_seconds: 0, profanity: 'hafif', round_mode: true })
+  /** Seçim isteği uçuşta mı (zar atılıyor) */
+  const picking = ref(false)
+  /** Tur gönderimi uçuşta mı */
+  const committing = ref(false)
+  /** Son atılan zar — animasyon bileşeni bunu izler */
+  const lastRoll = ref(null)
+  /** Sunucu saatiyle bizimki arasındaki fark (ms) — geri sayım kaymasın */
+  const clockSkew = ref(0)
+
   /* -------------------------------------------------------------- getters */
   const characters = computed(() => worldState.value?.characters ?? {})
   const npcs = computed(() => worldState.value?.npcs ?? {})
@@ -82,6 +96,28 @@ export const useGameStore = defineStore('game', () => {
   /** 'düşük' | 'orta' | 'yüksek' */
   const tension = computed(() => worldState.value?.tension ?? 'düşük')
   const worldRoll = computed(() => worldState.value?.world_roll ?? null)
+
+  /** Harita: {current, places, party} */
+  const worldMap = computed(() => worldState.value?.map ?? { current: '', places: {}, party: {} })
+  /** Seçenek havuzu: {karakter: [{id, text, category, cost}]} */
+  const options = computed(() => worldState.value?.options ?? {})
+
+  /** Bir karakterin bu turdaki seçenekleri */
+  function optionsFor(ad) {
+    return options.value?.[ad] ?? []
+  }
+  /** Bir karakterin bu turdaki seçimi (yapmışsa) */
+  function pickOf(ad) {
+    return round.value?.picks?.[ad] ?? null
+  }
+
+  /** Turda seçim bekleyen karakterler */
+  const waiting = computed(() => round.value?.waiting ?? [])
+  /** Herkes seçtiyse tur gönderilmeye hazırdır */
+  const roundReady = computed(() => !!round.value?.all_picked)
+  const roundOpen = computed(() => round.value?.status === 'acik')
+  /** Tur bazlı akış açık mı (kapalıysa serbest metin turu) */
+  const roundMode = computed(() => settings.value?.round_mode !== false)
 
   /** Akış için ters sıralı log — EN YENİ EN ÜSTTE (docs §4). */
   const logNewestFirst = computed(() => [...log.value].reverse())
@@ -122,7 +158,22 @@ export const useGameStore = defineStore('game', () => {
     customScenario.value = !!data.custom_scenario
     if (data.group_label) groupLabel.value = data.group_label
     if (data.group_display_name) groupDisplayName.value = data.group_display_name
+    if (data.settings) settings.value = data.settings
+    if (data.round) turuBenimse(data.round)
     return true
+  }
+
+  /**
+   * Turu benimse. Geri sayım sunucunun saatine göre yürür: `server_ts` ile
+   * bizim saatimizin farkı ölçülür, böylece istemci saati kaymışsa bile
+   * sayaç sunucudaki gerçek süreyi gösterir.
+   */
+  function turuBenimse(yeni) {
+    if (!yeni) return
+    if (typeof yeni.server_ts === 'number') {
+      clockSkew.value = Date.now() - yeni.server_ts * 1000
+    }
+    round.value = yeni
   }
 
   /** Tur/GM yanıtlarında gelen kısmi güncellemeyi uygula. */
@@ -135,6 +186,7 @@ export const useGameStore = defineStore('game', () => {
     if (data.system_entry) yeni.unshift(data.system_entry)
     if (yeni.length) log.value = [...log.value, ...yeni]
     if ('started' in data) started.value = !!data.started
+    if (data.round) turuBenimse(data.round)
   }
 
   function hatayiKur(e) {
@@ -260,6 +312,98 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * POST /api/round/pick — seçeneği seç (ya da kendi hamleni yaz).
+   * Zar SUNUCUDA atılır ve burada `lastRoll`'a düşer; zar animasyonunu
+   * OptionPool bu değeri izleyerek oynatır.
+   * @param {string} player
+   * @param {{optionId?: string, text?: string}} secim
+   */
+  async function pickOption(player, secim) {
+    if (picking.value) return null
+    picking.value = true
+    try {
+      const data = await api.pickOption(player, secim)
+      if (typeof data.version === 'number') version.value = data.version
+      turuBenimse(data.round)
+      lastRoll.value = {
+        player,
+        roll: data.roll,
+        band: data.band,
+        category: data.pick?.category ?? 'serbest',
+        ts: Date.now(),
+      }
+      error.value = null
+      return data
+    } catch (e) {
+      throw hatayiKur(e)
+    } finally {
+      picking.value = false
+    }
+  }
+
+  /** POST /api/round/wait — bu turda hamle yapmadan bekle. */
+  async function waitRound(player) {
+    picking.value = true
+    try {
+      const data = await api.waitRound(player)
+      if (typeof data.version === 'number') version.value = data.version
+      turuBenimse(data.round)
+      error.value = null
+      return data
+    } catch (e) {
+      throw hatayiKur(e)
+    } finally {
+      picking.value = false
+    }
+  }
+
+  /**
+   * POST /api/round/commit — turu kapat ve tüm seçimleri tek seferde gönder.
+   * Süre dolduğunda arayüz bunu `reason: 'sure'` ile kendisi çağırır; sunucu
+   * aynı turun iki kez gönderilmesini `round_no` ile engeller.
+   * @param {'elle'|'sure'} reason
+   */
+  async function commitRound(reason = 'elle') {
+    if (committing.value || sending.value) return null
+    committing.value = true
+    sending.value = true
+    try {
+      const data = await api.commitRound(reason, round.value?.no ?? null)
+      if (!data?.skipped) {
+        turYanitiniIsle(data)
+        lastRoll.value = null
+        lastSyncAt.value = Date.now()
+      } else if (data.round) {
+        turuBenimse(data.round)
+      }
+      error.value = null
+      return data
+    } catch (e) {
+      throw hatayiKur(e)
+    } finally {
+      committing.value = false
+      sending.value = false
+    }
+  }
+
+  /** POST /api/settings — tur süresi / küfür dozu / tur bazlı akış. */
+  async function saveSettings(ayarlar) {
+    busy.value = true
+    try {
+      const data = await api.saveSettings(ayarlar)
+      if (data.settings) settings.value = data.settings
+      if (data.round) turuBenimse(data.round)
+      if (typeof data.version === 'number') version.value = data.version
+      error.value = null
+      return data
+    } catch (e) {
+      throw hatayiKur(e)
+    } finally {
+      busy.value = false
+    }
+  }
+
   /** POST /api/finish-chargen */
   async function finishChargen() {
     busy.value = true
@@ -276,11 +420,14 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  /** POST /api/reset — her şeyi sıfırlar. */
-  async function reset() {
+  /**
+   * POST /api/reset — oyunu sıfırlar.
+   * @param {{keepLearning?: boolean}} [secenek] öğrenme defteri korunsun mu
+   */
+  async function reset({ keepLearning = true } = {}) {
     busy.value = true
     try {
-      const data = await api.resetGame()
+      const data = await api.resetGame({ keepLearning })
       version.value = null
       worldState.value = null
       log.value = []
@@ -288,6 +435,8 @@ export const useGameStore = defineStore('game', () => {
       charactersConfirmed.value = false
       chargenDone.value = false
       unseenCount.value = 0
+      round.value = null
+      lastRoll.value = null
       error.value = null
       await refresh({ force: true })
       return data
@@ -327,6 +476,12 @@ export const useGameStore = defineStore('game', () => {
     lastSyncAt,
     inventoryReport,
     unseenCount,
+    round,
+    settings,
+    picking,
+    committing,
+    lastRoll,
+    clockSkew,
     // getters
     characters,
     npcs,
@@ -340,6 +495,14 @@ export const useGameStore = defineStore('game', () => {
     worldClock,
     tension,
     worldRoll,
+    worldMap,
+    options,
+    optionsFor,
+    pickOf,
+    waiting,
+    roundReady,
+    roundOpen,
+    roundMode,
     logNewestFirst,
     phase,
     connectionStatus,
@@ -356,6 +519,10 @@ export const useGameStore = defineStore('game', () => {
     setupCharacters,
     start,
     sendAction,
+    pickOption,
+    waitRound,
+    commitRound,
+    saveSettings,
     takeover,
     finishChargen,
     reset,

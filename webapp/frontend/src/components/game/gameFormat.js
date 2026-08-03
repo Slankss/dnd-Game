@@ -126,6 +126,83 @@ export function zarTonu(bant) {
   return ZAR_BANT_TONU[bant] || 'neutral'
 }
 
+/* ---------------------------------------------------------- seçenek havuzu */
+
+/**
+ * Seçenek kategorileri — sunucudaki `app/models/options.py` ile BİREBİR aynı
+ * sekiz kategori. Kategori bir vaattir: rengi ve ikonu oyuncunun ne tür bir
+ * takasa girdiğini bir bakışta söylemeli.
+ */
+export const KATEGORI_TONU = {
+  güvenli: 'ok',
+  riskli: 'danger',
+  gizemli: 'accent',
+  'körü körüne': 'warn',
+  kurnaz: 'gm',
+  insani: 'ok',
+  acımasız: 'danger',
+  hazırlık: 'neutral',
+  serbest: 'muted',
+}
+
+export const KATEGORI_IKONU = {
+  güvenli: 'shield',
+  riskli: 'bolt',
+  gizemli: 'help',
+  'körü körüne': 'visibility_off',
+  kurnaz: 'psychology',
+  insani: 'volunteer_activism',
+  acımasız: 'skull',
+  hazırlık: 'build',
+  serbest: 'edit',
+}
+
+/* -------------------------------------------------------------------- harita */
+
+/** Yerin tehlike seviyesi → ton (sunucudaki DANGER_LEVELS ile aynı). */
+export const TEHLIKE_TONU = {
+  güvenli: 'ok',
+  temkinli: 'warn',
+  tehlikeli: 'danger',
+  ölümcül: 'danger',
+  bilinmiyor: 'muted',
+}
+
+/**
+ * Harita kaydını listeye çevirir: şu an bulunulan yer BAŞA gelir, gerisi
+ * keşfedilmiş olanlar önce olacak şekilde sıralanır.
+ * @param {{current?:string, places?:object, party?:object}} harita
+ */
+export function yerleriDiziye(harita) {
+  const yerler = harita?.places
+  if (!yerler || typeof yerler !== 'object') return []
+  const simdiki = harita?.current || ''
+  const parti = harita?.party || {}
+  return Object.entries(yerler)
+    .map(([ad, bilgi]) => ({
+      ad,
+      ...(bilgi || {}),
+      burada: ad === simdiki,
+      kimler: Object.entries(parti)
+        .filter(([, yer]) => yer === ad)
+        .map(([kisi]) => kisi),
+    }))
+    .sort((a, b) => {
+      if (a.burada !== b.burada) return a.burada ? -1 : 1
+      const av = a.visited ? 0 : 1
+      const bv = b.visited ? 0 : 1
+      if (av !== bv) return av - bv
+      return a.ad.localeCompare(b.ad, 'tr')
+    })
+}
+
+/** Grup dağılmış mı — kim nerede? */
+export function partiDagilmis(harita) {
+  const parti = harita?.party || {}
+  const yerler = new Set(Object.values(parti).filter(Boolean))
+  return yerler.size > 1
+}
+
 /* --------------------------------------------------------------- zorluklar */
 
 const KAPALI_DURUMLAR = ['çözüldü', 'başarısız']

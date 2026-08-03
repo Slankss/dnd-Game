@@ -29,24 +29,36 @@ webapp/
       challenges.py         # Challenge
       factions.py           # Faction — iki katmanlı görünürlük
       world.py              # WorldState — kök nesne, patch birleştirme
+      worldmap.py           # WorldMap, Place — konum ve keşfedilen yerler
+      options.py            # Option, OptionBoard — seçenek havuzu (5-10)
+      round.py              # Round, Pick — tur bazlı akışın kaydı
+      learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
       plot.py               # Plot, Beat (senarist katmanı)
       conditions.py         # koşul motoru (mevcut director.matches)
     repositories/           # kalıcılık — dosya I/O burada, başka yerde yok
       state_repo.py         # state.json (atomik yazma, version sayacı)
       log_repo.py           # game_log.jsonl, gm_log.jsonl
       scenario_repo.py      # scenario_override.json + scenario.py varsayılanı
+                            #   (+ SYSTEM_APPENDIX'i her senaryoya iliştirir)
       plot_repo.py          # plot.json
+      learning_repo.py      # learning.json + learning_events.jsonl
+      options_repo.py       # options_pool.jsonl (sunulan/seçilen seçenekler)
     services/               # iş akışı — modelleri ve repo'ları orkestre eder
       narrator_client.py    # claude CLI süreci (subprocess)
       prompt_builder.py     # modele giden tüm metin blokları
       state_update.py       # yanıttan state-update ayrıştırma/temizleme
-      turn_service.py       # bir oyuncu turunun tam akışı
-      setup_service.py      # karakter kurulumu, oyunu başlatma, devralma
+      turn_service.py       # serbest metin turu + ortak tur sonu (finish_turn)
+      round_service.py      # tur bazlı akış: seçim topla → toplu gönder
+      options_service.py    # seçenek havuzu bakımı (eksik kalanı tamamlar)
+      learning_service.py   # öğrenme defteri + Claude yeteneğine yazma
+      worldgen_service.py   # her oyuna farklı başlangıç ve fraksiyonlar
+      setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
     api/                    # Flask blueprint'leri — İNCE olacak
       pages.py              # /, /secrets, /static/<path>
-      game.py               # /api/state, /api/message, /api/start, ...
+      game.py               # /api/state, /api/message, /api/start, /api/settings
+      round.py              # /api/round/pick, /wait, /commit
       gm.py                 # /api/gm/*
       scenario.py           # /api/scenario/*, /api/game/*
     serializers.py          # public_world_state (oyuncu) / gm görünümü
@@ -54,7 +66,9 @@ webapp/
   frontend/                 # Vue 3 + Vite kaynak (bkz. tasarim-sistemi.md)
   static/dist/              # Vite build çıktısı (Flask servis eder)
   static/audio/             # kullanıcının kendi müziği
-  data/                     # state.json, *.jsonl, plot.json
+  data/                     # state.json, *.jsonl, plot.json, learning.json
+.claude/skills/kizil-cokus-anlatici/   # yetenek: SKILL.md (elle) +
+                            #   ogrenilenler.md (her turda sunucu yazar)
 ```
 
 `director.py` içeriği `app/models/conditions.py` ve `app/models/plot.py`'a
@@ -80,12 +94,18 @@ taşınır; eski dosya kaldırılır (import'u sadece `server.py` kullanıyordu)
 `WorldState` alanları: `day` (int), `time_of_day`, `clock`, `season`,
 `weather`, `temperature`, `location`, `tension` (`düşük|orta|yüksek`),
 `factions`, `characters`, `npcs`, `resources`, `challenges`,
-`zombie_sightings`, `flags`, `narrator`, `world_roll`, `world_roll_history`.
+`map`, `zombie_sightings`, `flags`, `narrator`, `options`, `world_roll`,
+`world_roll_history`.
+
+`state.json` kökünde ayrıca iki alan vardır: `settings`
+(`{turn_seconds, profanity, round_mode}`) ve `round` (açık turun kaydı:
+`{no, status, seconds, opened_ts, picks}`). Eski kayıtlarda yoklarsa
+`StateRepository.backfill` varsayılanla doldurur.
 
 `Person` (characters ve npcs): `background`, `traits`, `status`, `alive`,
 `location`, `notes`, `inventory`, `lost_items`, `relationships`, `wounds`,
 `vitals`, `presence`, künye alanları (`profession`, `age`, `strength`,
-`weakness`, `secret`).
+`weakness`, `reflex`, `secret`).
 
 Patch birleştirme kuralları (davranış AYNEN korunacak):
 - `inventory` üzerine yazmaz, birleştirir; `lost_items` elden çıkanı hatırlar
@@ -93,6 +113,11 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 - boş/None zaman alanı mevcut değeri korur
 - model `characters` altına tanımadık isim yazarsa `npcs`'e yönlendirilir
 - `presence.until` dolduğunda karakter sahneye döner
+- `map` yaması yerleri/parti dağılımını birleştirir; `map.party` bu turda
+  yazıldıysa sunucunun otomatik eşlemesi onun ÜZERİNE YAZMAZ
+- `options` karakter başına TAMAMEN yenilenir (seçenekler o tura aittir) ve
+  kadroda olmayan isim için yok sayılır
+- `learning.lessons_add` öğrenme defterine düşer, dünya durumunda saklanmaz
 
 ## 4. HTTP API sözleşmesi (DEĞİŞMEZ)
 
@@ -101,15 +126,20 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | GET | `/` | — | oyuncu arayüzü (SPA) |
 | GET | `/secrets` | — | anlatıcı arayüzü (aynı SPA, farklı rota) |
 | GET | `/static/<path>` | — | dosya |
-| GET | `/api/state?since=<v>` | — | `{version, changed}` ya da `{version, changed:true, world_state, log, started, characters_confirmed, chargen_done, default_players, start_item_suggestions, custom_scenario, group_label, group_display_name}` |
-| POST | `/api/setup-characters` | `{players:[{name,item,profession,age,strength,weakness,secret}]}` | `{world_state, characters_confirmed}` |
+| GET | `/api/state?since=<v>` | — | `{version, changed}` ya da `{version, changed:true, world_state, log, started, characters_confirmed, chargen_done, default_players, start_item_suggestions, custom_scenario, group_label, group_display_name, settings, round}` |
+| POST | `/api/setup-characters` | `{players:[{name,item,profession,age,strength,weakness,reflex,secret}]}` | `{world_state, characters_confirmed}` |
 | POST | `/api/start` | — | `{gm_entry, world_state, started}` |
 | POST | `/api/message` | `{player, text}` | `{user_entries, gm_entry, world_state, inventory_report, version}` |
 | POST | `/api/takeover` | `{dead_player, new_character}` | `{system_entry, gm_entry, world_state}` |
 | POST | `/api/finish-chargen` | — | `{ok, world_state}` |
-| POST | `/api/reset` | — | `{ok}` |
+| POST | `/api/settings` | `{turn_seconds?, profanity?, round_mode?}` | `{ok, settings, version, round}` |
+| POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
+| POST | `/api/round/pick` | `{player, option_id?, text?}` | `{ok, pick, roll, band, round, all_picked, version}` — zar SEÇİM ANINDA atılır |
+| POST | `/api/round/wait` | `{player}` | `{ok, round, version}` |
+| POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` |
 | POST | `/api/gm/unlock` | `{pin}` | `{ok}` / 403 |
-| GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started, plot}` |
+| GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started, plot, round, settings, learning}` |
+| POST | `/api/gm/lesson` | `{pin, text}` | `{ok, learning}` — deftere elle ders |
 | POST | `/api/gm/note` | `{pin, text, mode: gizli\|sahne\|surpriz}` | `{note_entry, reply_entry, gm_entry, published, world_state}` — `note_entry`/`reply_entry` anlatıcı günlüğüne, `gm_entry` oyuncu akışına gider (gizli modda `null`) |
 | POST | `/api/gm/patch` | `{pin, patch}` | `{ok, version, world_state}` |
 | GET | `/api/scenario/export` | — | senaryo JSON |

@@ -44,6 +44,14 @@ export const useGmStore = defineStore('gm', () => {
   /** Oyuncu akışının son 40 girdisi (anlatıcı canlı izlesin) */
   const log = ref([])
   const started = ref(false)
+  /** Öğrenme defteri özeti: dersler, seçim profili, tempo, havuz */
+  const learning = shallowRef(null)
+  /** Açık turun hali (kim seçti, süre) */
+  const round = shallowRef(null)
+  /** Oyun ayarları (tur süresi, küfür dozu) */
+  const settings = ref({})
+  /** Ders ekleme isteği uçuşta mı */
+  const addingLesson = ref(false)
 
   const loading = ref(false)
   const error = ref(null)
@@ -109,6 +117,8 @@ export const useGmStore = defineStore('gm', () => {
     version.value = null
     worldState.value = null
     plot.value = null
+    learning.value = null
+    round.value = null
     gmLog.value = []
     log.value = []
     error.value = null
@@ -130,6 +140,9 @@ export const useGmStore = defineStore('gm', () => {
         if (Array.isArray(data.gm_log)) gmLog.value = data.gm_log
         if (data.plot !== undefined) plot.value = data.plot
         if (Array.isArray(data.log)) log.value = data.log
+        if (data.learning) learning.value = data.learning
+        if (data.round !== undefined) round.value = data.round
+        if (data.settings) settings.value = data.settings
         started.value = !!data.started
       }
       unlocked.value = true
@@ -195,6 +208,27 @@ export const useGmStore = defineStore('gm', () => {
   }
 
   /**
+   * POST /api/gm/lesson — öğrenme defterine elle ders ekle.
+   * Elle yazılan dersler otomatik olanların ÖNÜNDE prompt'a girer ve
+   * `.claude/skills/kizil-cokus-anlatici/ogrenilenler.md` dosyasına da işlenir.
+   * @param {string} text
+   */
+  async function addLesson(text) {
+    addingLesson.value = true
+    try {
+      const data = await api.gmLesson(pin.value, text)
+      if (data.learning) learning.value = data.learning
+      error.value = null
+      return data
+    } catch (e) {
+      error.value = api.toApiError(e)
+      throw error.value
+    } finally {
+      addingLesson.value = false
+    }
+  }
+
+  /**
    * POST /api/gm/patch — dünya durumuna elle kısmi yama.
    * @param {object} patch
    */
@@ -240,6 +274,10 @@ export const useGmStore = defineStore('gm', () => {
     gmLog,
     log,
     started,
+    learning,
+    round,
+    settings,
+    addingLesson,
     loading,
     error,
     sendingNote,
@@ -272,6 +310,7 @@ export const useGmStore = defineStore('gm', () => {
     stopPolling,
     pollNow,
     sendNote,
+    addLesson,
     applyPatch,
     clearError,
     tryStoredPin,

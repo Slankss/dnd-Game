@@ -9,19 +9,26 @@ sadece metin üretimi için) çalıştırır.
 ## Nasıl çalışır
 
 1. **Karakter oluşturma** — ilk açılışta her karakter için bir künye
-   doldurulur: **isim, meslek, yaş, güçlü yan, zayıf yan, sır ve başlangıç
-   eşyası**. Meslek/güçlü/zayıf yan anlatıcı için bağlayıcıdır: zar aynı
+   doldurulur: **isim, meslek, yaş, güçlü yan, zayıf yan, refleks, sır ve
+   başlangıç eşyası**. Sır alanı şifre gibi gizli yazılır (yanındaki göz
+   ikonuyla açılıp kapatılır) — aynı ekranı paylaşan oyuncular görmesin. Meslek/güçlü/zayıf yan anlatıcı için bağlayıcıdır: zar aynı
    gelse bile güçlü yana giren işte sonuç daha iyi, zayıf yana denk gelen
    işte bedel daha ağır olur. İsim dışındaki alanlar zorunlu değil.
-2. **Oyunu Başlat** butonuna basınca sunucu rastgele bir açılış olayı seçer
-   (`scenario.py` içindeki `OPENING_HOOKS` listesinden) ve anlatıcı sahneyi
-   açar. Künyeler dolduysa oyun içi karakter oluşturma turu atlanır ve
+2. **Oyunu Başlat** butonuna basınca sunucu o oyuna özel bir **başlangıç
+   noktası** (`START_LOCATIONS` havuzundan, daha önce kullanılmamış biri) ve
+   4-6 **fraksiyon** üretir, rastgele bir açılış olayı seçer
+   (`OPENING_HOOKS`) ve anlatıcı sahneyi açar. Sabit bir sığınak yoktur —
+   her oyun başka bir yerde başlar. Künyeler dolduysa oyun içi karakter oluşturma turu atlanır ve
    hikaye doğrudan başlar; künye boş bırakıldıysa anlatıcı eskisi gibi her
    karakter için 2-3 seçenekli soru sorar. Bu turda zar atılmaz.
-3. Karakterler hazır olduğunda normal oyun başlar: her oyuncu mesajı
-   öncesi sunucu 1-100 arası **gerçek bir zar** atar (kriptografik RNG) ve
-   `claude -p ...` komutunu bu zar sonucu + güncel dünya durumuyla birlikte
-   çağırır.
+3. Karakterler hazır olduğunda oyun **tur bazlı** işler: anlatıcı her
+   karaktere 5-10 kategorili seçenek bırakır (riskli / güvenli / gizemli /
+   körü körüne …), oyuncular kendi seçeneklerini seçer, sunucu **seçim
+   anında** 1-100 arası gerçek bir zar atar (kriptografik RNG) ve arayüz onu
+   animasyonla gösterir. Seçimler hafızada birikir; **herkes seçince** (ya da
+   tur süresi dolunca) hepsi TEK mesajda anlatıcıya gider. Süresi içinde
+   seçim yapmayan karakter için anlatıcı **ani sahne** yazar — dünya
+   beklemez. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
 - Oturum sürekliliği Claude Code'un kendi `--resume` mekanizmasıyla sağlanır —
   sunucu konuşma geçmişini kendi başına biriktirip API'ye yeniden göndermez;
   Claude Code bunu zaten kendi tarafında tutar.
@@ -32,6 +39,15 @@ sadece metin üretimi için) çalıştırır.
   kaydedilir — bu dosya asla üzerine yazılmaz, sadece eklenir. Web arayüzünde
   "Oyun Geçmişi" sekmesi bu geçmişin tamamını gösterir; kenar çubuğundaki
   "Son Olaylar" paneli ise son birkaç olayın kısa özetini verir.
+- **Oyun oynandıkça kendini geliştirir**: her seçim, her zar, her tur
+  `data/learning.json` defterine işlenir; sayaçlardan kısa "dersler" çıkarılır
+  (hangi kategori çok seçiliyor, seçenekler çalışıyor mu, tempo nasıl, tehdit
+  inandırıcı mı) ve bu dersler bir sonraki turun promptuna girer. Aynı dersler
+  `.claude/skills/kizil-cokus-anlatici/ogrenilenler.md` dosyasına da yazılır —
+  yani öğrenilenler bir **Claude yeteneğine** dönüşür ve sunucunun dışında da
+  yaşar. Ders üretimi kodda yapılır, ek model çağrısı yoktur.
+- **Harita** kenar çubuğunda canlı durur: grubun konumu, keşfedilen yerler,
+  tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu.
 - Arayüz durumu **sürüm bazlı yoklamayla** tazeler: her istek `?since=<sürüm>`
   gönderir, durum değişmediyse sunucu ağır gövdeyi hiç kurmaz. Sunucu
   yanıt vermezse yoklama durmaz, aralığı kademeli açılır (tavan 30 sn) ve
@@ -510,6 +526,10 @@ otomatik olarak onu kullanır.
 - `docs/` — mimari, tasarım sistemi ve senarist katmanı planı
 - `director.py` — koşul motoru (`matches`: gün/saat randevusu, konum, gerilim, bayrak, dünya zarı) + olay örgüsü planı (`data/plot.json`) yardımcıları. Sahne katılımının `until` koşulunu ve ileride beat tetikleyicilerini bu modül çözer
 - `docs/senarist-yetenegi.md` — senarist katmanının faz planı (hangi faz uygulandı, sırada ne var)
+- `docs/tur-akisi-ve-ogrenme.md` — tur bazlı akış, seçenek havuzu, öğrenme defteri, dünya üretimi
+- `data/learning.json` + `data/learning_events.jsonl` — öğrenme defteri (dersler + ham olay akışı); `/api/reset` bunları BİLEREK silmez
+- `data/options_pool.jsonl` — sunulan ve seçilen tüm seçenekler, zar sonuçlarıyla
+- `../.claude/skills/kizil-cokus-anlatici/` — anlatıcı yeteneği: `SKILL.md` (elle yazılmış zanaat) + `ogrenilenler.md` (her turda sunucu yazar)
 - `scenario.py` — senaryo metni (system prompt), başlangıç dünya durumu, varsayılan karakter önerileri ve rastgele açılış olayları listesi — **oyunun içeriğini değiştirmek için bu dosyayı düzenleyin** (ya da arayüzden bir senaryo JSON'u içe aktarın)
 - `static/audio/` — buraya kendi ambiyans/müzik dosyanızı (`ambient.mp3`) koyabilirsiniz
 - `data/state.json` — güncel dünya durumu + Claude Code oturum ID'si — silerseniz oyun sıfırlanır

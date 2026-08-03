@@ -207,9 +207,61 @@ export function finishChargen(opts = {}) {
   return istek('/api/finish-chargen', { method: 'POST', body: {}, signal: opts.signal })
 }
 
-/** POST /api/reset → `{ok}` — oyunu sıfırlar. */
-export function resetGame(opts = {}) {
-  return istek('/api/reset', { method: 'POST', body: {}, signal: opts.signal })
+/**
+ * POST /api/settings — tur süresi, küfür dozu, tur bazlı akış.
+ * @param {{turn_seconds?: number, profanity?: 'kapalı'|'hafif'|'sert', round_mode?: boolean}} ayarlar
+ */
+export function saveSettings(ayarlar, opts = {}) {
+  return istek('/api/settings', { method: 'POST', body: ayarlar, signal: opts.signal })
+}
+
+/**
+ * POST /api/reset → `{ok}` — oyunu sıfırlar.
+ * Öğrenme defteri varsayılan olarak KORUNUR (oyun öğrendiklerini unutmasın).
+ * @param {{keepLearning?: boolean}} [secenek]
+ */
+export function resetGame({ keepLearning = true } = {}, opts = {}) {
+  return istek('/api/reset', {
+    method: 'POST',
+    body: { keep_learning: keepLearning },
+    signal: opts.signal,
+  })
+}
+
+/* ==========================================================================
+ * Tur bazlı akış (seçenek havuzu)
+ * ========================================================================== */
+
+/**
+ * POST /api/round/pick — seçimi bildir; zar SUNUCUDA o anda atılır.
+ * @param {string} player
+ * @param {{optionId?: string, text?: string}} secim havuzdan seçenek ya da kendi hamlesi
+ * @returns {Promise<{roll:number, band:string, round:object, all_picked:boolean}>}
+ */
+export function pickOption(player, { optionId = null, text = null } = {}, opts = {}) {
+  return istek('/api/round/pick', {
+    method: 'POST',
+    body: { player, option_id: optionId, text },
+    signal: opts.signal,
+  })
+}
+
+/** POST /api/round/wait — bu turda hamle yapmadan bekle. */
+export function waitRound(player, opts = {}) {
+  return istek('/api/round/wait', { method: 'POST', body: { player }, signal: opts.signal })
+}
+
+/**
+ * POST /api/round/commit — turu kapat, tüm seçimleri tek seferde gönder.
+ * @param {'elle'|'sure'} reason süre dolduğunda 'sure' gönderilir
+ * @param {number|null} roundNo aynı turu iki istemci göndermesin diye
+ */
+export function commitRound(reason = 'elle', roundNo = null, opts = {}) {
+  return istek('/api/round/commit', {
+    method: 'POST',
+    body: { reason, round_no: roundNo },
+    signal: opts.signal,
+  })
 }
 
 /* ==========================================================================
@@ -241,6 +293,15 @@ export function getGmState(pin, since = null, opts = {}) {
  */
 export function gmNote(pin, text, mode, opts = {}) {
   return istek('/api/gm/note', { method: 'POST', body: { pin, text, mode }, signal: opts.signal })
+}
+
+/**
+ * POST /api/gm/lesson → `{ok, learning}` — deftere elle ders ekler.
+ * @param {string} pin
+ * @param {string} text
+ */
+export function gmLesson(pin, text, opts = {}) {
+  return istek('/api/gm/lesson', { method: 'POST', body: { pin, text }, signal: opts.signal })
 }
 
 /**
@@ -319,10 +380,15 @@ export default {
   sendMessage,
   takeover,
   finishChargen,
+  saveSettings,
   resetGame,
+  pickOption,
+  waitRound,
+  commitRound,
   gmUnlock,
   getGmState,
   gmNote,
+  gmLesson,
   gmPatch,
   exportScenario,
   importScenario,

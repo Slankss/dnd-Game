@@ -112,6 +112,38 @@ export const ZAYIF_YANLAR = {
   Beceri: ['Silah kullanamıyor', 'Bağımlılık (ilaç/alkol)', 'Uykusuz kalamıyor', 'Yüzme bilmiyor'],
 }
 
+/**
+ * Karakter refleksi — baskı altındaki İLK tepki (düşünülmüş karar değil).
+ * Anlatıcı bunu Felaket/Kritik zar bantlarında ve gerilim yükseldiğinde
+ * fiilen oynatır; küfür dozu ayarlardan gelir.
+ */
+export const REFLEKSLER = {
+  Saldırgan: [
+    'Küfreder ve üstüne yürür',
+    'Önce vurur, sonra sorar',
+    'Bağırarak emir yağdırır',
+    'Eline ne geçerse fırlatır',
+  ],
+  Kaçıngan: [
+    'Donakalır, sesi çıkmaz',
+    'İçgüdüsel olarak kaçar',
+    'Siper alır ve bekler',
+    'Geri çekilip başkasını çeker',
+  ],
+  Soğukkanlı: [
+    'Sessizleşir ve hesaplar',
+    'Önce yaralıya bakar',
+    'Kara mizahla dalga geçer',
+    'Yüksek sesle plan söyler',
+  ],
+  Dağınık: [
+    'Panikleyip konuşmaya başlar',
+    'Elindekini düşürür',
+    'Aynı şeyi tekrar tekrar dener',
+    'Sövüp sayarak kendini suçlar',
+  ],
+}
+
 /** Sunucu 1-8 karakter kabul eder (bkz. /api/setup-characters). */
 export const EN_AZ_KARAKTER = 1
 export const EN_COK_KARAKTER = 8
@@ -125,6 +157,7 @@ export function bosKunye(isim = '') {
     age: '',
     strength: '',
     weakness: '',
+    reflex: '',
     secret: '',
     item: '',
   }

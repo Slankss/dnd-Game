@@ -16,6 +16,15 @@ SCENARIO_FIELDS = ("scenario_text", "initial_world_state", "default_players",
                    "opening_hooks", "start_item_suggestions")
 
 
+def append_engine_rules(scenario_text: str) -> str:
+    """Motor eki: seçenek havuzu, tur akışı, harita, refleks ve öğrenme
+    kuralları senaryoya DEĞİL motora aittir, bu yüzden yürürlükteki her
+    senaryo metnine (varsayılan ya da içe aktarılmış) eklenir. İçe aktarılan
+    eski bir senaryo bu mekanikleri bilmese bile oyun çalışır."""
+    from scenario import with_appendix
+    return with_appendix(scenario_text)
+
+
 def scenario_defaults() -> dict:
     """`scenario.py` bir İÇERİK dosyasıdır — buradan sadece okunur.
     Import gecikmeli: senaryo yüklenmeden model/test kodu çalışabilsin."""
@@ -51,13 +60,17 @@ class ScenarioRepository:
 
     def load(self) -> dict:
         """Yürürlükteki senaryo. Override dosyasında eksik/boş kalan alan
-        varsayılana düşer — yarım bir dosya oyunu bozmasın."""
+        varsayılana düşer — yarım bir dosya oyunu bozmasın. Metnin sonuna
+        motor eki her durumda iliştirilir."""
         defaults = self.defaults()
-        if not self.has_override:
-            return dict(defaults)
-        with open(self.override_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return {name: data.get(name) or defaults[name] for name in SCENARIO_FIELDS}
+        if self.has_override:
+            with open(self.override_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            scenario = {name: data.get(name) or defaults[name] for name in SCENARIO_FIELDS}
+        else:
+            scenario = dict(defaults)
+        scenario["scenario_text"] = append_engine_rules(scenario["scenario_text"])
+        return scenario
 
     def save(self, payload: dict) -> None:
         """Senaryo içe aktarma — eksik alanlar varsayılanla tamamlanır."""

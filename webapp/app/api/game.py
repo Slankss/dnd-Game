@@ -44,6 +44,14 @@ def finish_chargen():
     return jsonify(services.game.finish_chargen())
 
 
+@bp.post("/settings")
+def update_settings():
+    body = request.get_json(force=True) or {}
+    return jsonify(services.game.update_settings(body))
+
+
 @bp.post("/reset")
 def reset_state():
-    return jsonify(services.game.reset())
+    body = request.get_json(silent=True) or {}
+    # Öğrenme defteri varsayılan olarak korunur (bkz. GameService.reset).
+    return jsonify(services.game.reset(keep_learning=body.get("keep_learning", True)))

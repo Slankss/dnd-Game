@@ -5,24 +5,36 @@ Flask burada bilinmez: servisler düz sözlük döndürür, hata için
 çağırır (`services.turn.play(...)` gibi); testler kendi repo/istemci
 örnekleriyle yeni bir servis kurabilir.
 
-Dört servis, dört akış:
-  * `game`     — kurulum, açılış, sıfırlama, durum anlık görüntüsü
-  * `turn`     — bir oyuncu turu ve karakter devralma
+Altı servis, altı akış:
+  * `game`     — kurulum, açılış, ayarlar, sıfırlama, durum anlık görüntüsü
+  * `turn`     — serbest metin turu ve karakter devralma
+  * `rounds`   — tur bazlı akış: seçim topla, süre dolunca/herkes seçince gönder
   * `gm`       — anlatıcı notu/müdahalesi ve elle yama
   * `scenario` — senaryo ve oyun dışa/içe aktarma
+  * `learning` — öğrenme defteri (her turda beslenir, yeteneğe yazılır)
 """
 
 from app.services.gm_service import GmService
+from app.services.learning_service import LearningService
+from app.services.options_service import OptionsService
+from app.services.round_service import RoundService
 from app.services.scenario_service import ScenarioService
 from app.services.setup_service import GameService
 from app.services.turn_service import TurnService
+from app.services.worldgen_service import WorldGenService
 
 # Süreç geneli tekil örnekler. Hepsi aynı `state_repo.LOCK` kilidini kullanır,
-# dolayısıyla tur akışı bugünkü gibi seri kalır.
-game = GameService()
-turn = TurnService()
+# dolayısıyla tur akışı bugünkü gibi seri kalır. Öğrenme defteri ve seçenek
+# havuzu da tek örnek üzerinden paylaşılır: her akış aynı deftere yazar.
+learning = LearningService()
+options = OptionsService()
+turn = TurnService(learning=learning, options=options)
+rounds = RoundService(learning=learning, options=options, turn=turn)
+game = GameService(learning=learning, options=options, rounds=rounds)
 gm = GmService()
 scenario = ScenarioService()
 
-__all__ = ["GameService", "TurnService", "GmService", "ScenarioService",
-           "game", "turn", "gm", "scenario"]
+__all__ = ["GameService", "TurnService", "RoundService", "GmService",
+           "ScenarioService", "LearningService", "OptionsService",
+           "WorldGenService", "game", "turn", "rounds", "gm", "scenario",
+           "learning", "options"]

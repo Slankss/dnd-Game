@@ -19,6 +19,7 @@ import {
   MESLEKLER,
   GUCLU_YANLAR,
   ZAYIF_YANLAR,
+  REFLEKSLER,
   EN_AZ_KARAKTER,
   EN_COK_KARAKTER,
   bosKunye,
@@ -44,6 +45,17 @@ const emit = defineEmits(['onayla'])
 const esyaListesiKimlik = useId()
 const kunyeler = ref([bosKunye()])
 const yerelHata = ref('')
+
+/**
+ * Sır alanı varsayılan olarak GİZLİDİR (şifre gibi): kurulum ekranı çoğu masada
+ * ortak bir ekranda dolduruluyor, yan koltuktaki oyuncu sırrı görmesin. Göz
+ * ikonuyla karakter bazında açılıp kapatılabilir.
+ */
+const sirGorunur = ref({})
+
+function sirriDegistir(anahtar) {
+  sirGorunur.value = { ...sirGorunur.value, [anahtar]: !sirGorunur.value[anahtar] }
+}
 
 /** Hazır isimler sunucudan geç gelebiliyor; kullanıcı hiç dokunmadıysa doldur. */
 const dokunuldu = ref(false)
@@ -120,6 +132,7 @@ function onayla() {
       age: k.age.trim(),
       strength: k.strength.trim(),
       weakness: k.weakness.trim(),
+      reflex: k.reflex.trim(),
       secret: k.secret.trim(),
       item: k.item.trim(),
     }))
@@ -243,7 +256,15 @@ function onayla() {
           :devre-disi="mesgul"
         />
 
-        <!-- sır -->
+        <SheetSelect
+          v-model="kunye.reflex"
+          etiket="Refleksi (baskı altında ilk tepkisi)"
+          :gruplar="REFLEKSLER"
+          yer-tutucu="Refleksini kendin yaz"
+          :devre-disi="mesgul"
+        />
+
+        <!-- sır: şifre gibi gizli, göz ikonuyla açılır -->
         <div class="flex flex-col gap-1 sm:col-span-2">
           <label
             :for="`${kunye.anahtar}-sir`"
@@ -252,16 +273,31 @@ function onayla() {
             Sır
             <Badge tone="gm" size="sm" icon="lock">sadece anlatıcı görür</Badge>
           </label>
-          <input
-            :id="`${kunye.anahtar}-sir`"
-            v-model="kunye.secret"
-            type="text"
-            placeholder="Örn: ısırıldığını kimseye söylemedi"
-            :disabled="mesgul"
-            class="h-9 w-full rounded-card border border-gm/30 bg-surface-2 px-2 text-meta text-text placeholder:text-faint disabled:opacity-50"
-          />
+          <div class="relative">
+            <input
+              :id="`${kunye.anahtar}-sir`"
+              v-model="kunye.secret"
+              :type="sirGorunur[kunye.anahtar] ? 'text' : 'password'"
+              autocomplete="off"
+              placeholder="Örn: ısırıldığını kimseye söylemedi"
+              :disabled="mesgul"
+              class="h-9 w-full rounded-card border border-gm/30 bg-surface-2 pl-2 pr-10 text-meta text-text placeholder:text-faint disabled:opacity-50"
+            />
+            <BaseButton
+              class="absolute right-0.5 top-0.5"
+              size="sm"
+              variant="quiet"
+              icon-only
+              :icon="sirGorunur[kunye.anahtar] ? 'visibility_off' : 'visibility'"
+              :aria-label="sirGorunur[kunye.anahtar] ? 'Sırrı gizle' : 'Sırrı göster'"
+              :aria-pressed="!!sirGorunur[kunye.anahtar]"
+              :title="sirGorunur[kunye.anahtar] ? 'Sırrı gizle' : 'Sırrı göster'"
+              @click="sirriDegistir(kunye.anahtar)"
+            />
+          </div>
           <p class="text-label text-faint">
-            Bu alan oyun ekranına hiç geri gelmez; hikayenin gizli motoru olarak kullanılır.
+            Yazarken gizli tutulur — göz ikonuyla açıp kontrol edebilirsin. Bu alan oyun ekranına
+            hiç geri gelmez; hikayenin gizli motoru olarak kullanılır.
           </p>
         </div>
 

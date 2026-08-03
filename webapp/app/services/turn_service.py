@@ -1,9 +1,15 @@
 """Bir oyuncu turunun tam akışı.
 
-Zincir: dünya zarı → sahne katılımı → prompt → model → state-update → kayıt.
+Zincir: dünya zarı → sahne katılımı → prompt → model → state-update → kayıt →
+seçenek havuzu → öğrenme defteri.
+
 Bu katman Flask bilmez: düz sözlük döndürür, hata için `app.errors`
 istisnalarını atar. Modele giden uzun metinler `turn_prompts`'ta durur;
 buradaki iş sadece sıralamak.
+
+Turun model çağrısından SONRAKİ yarısı (`finish_turn`) tur bazlı akışla
+(`round_service`) ortaktır — iki yol da aynı defteri tutsun diye tek yerde
+durur.
 """
 
 import re
@@ -20,9 +26,38 @@ from app.repositories.state_repo import LOCK, StateRepository
 from app.serializers import public_world_state
 from app.services import prompt_builder, state_update, turn_prompts
 from app.services.director_service import DirectorService
+from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
+from app.services.options_service import OptionsService
 
 CHAR_LINE_RE = re.compile(r"^\s*([^\n:：]+?)\s*[:：]\s*(.+)$")
+
+
+def world_stats(world) -> dict:
+    """Öğrenme defteri için turun 'öncesi/sonrası' fotoğrafı."""
+    olu = sum(1 for p in (world.characters or {}).values() if p.explicitly_dead)
+    olu += sum(1 for p in (world.npcs or {}).values() if p.explicitly_dead)
+    yara = 0
+    for _bolum, kisiler in world.sections():
+        for person in (kisiler or {}).values():
+            if person.wounds is not None:
+                yara += len(person.wounds.wounds())
+    cozulen = basarisiz = 0
+    for challenge in (world.challenges or {}).values():
+        status = (getattr(challenge, "status", "") or "").lower()
+        if status == "çözüldü":
+            cozulen += 1
+        elif status == "başarısız":
+            basarisiz += 1
+    return {"olum": olu, "yara": yara, "cozulen_zorluk": cozulen,
+            "basarisiz_zorluk": basarisiz}
+
+
+def stat_delta(before: dict, after: dict) -> dict:
+    """Sadece ARTAN sayaçlar (azalma anlatı düzeltmesidir, ders değil)."""
+    return {name: max(0, after.get(name, 0) - before.get(name, 0))
+            for name in after
+            if after.get(name, 0) > before.get(name, 0)}
 
 
 def detect_multi_character(text: str, valid_players: list):
@@ -52,13 +87,84 @@ class TurnService:
     """`/api/message` ve `/api/takeover` akışları."""
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
-                 game_log=None, gm_log=None, director=None):
+                 game_log=None, gm_log=None, director=None, learning=None,
+                 options=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
         self.game_log = game_log or log_repo.game_log()
         self.gm_log = gm_log or log_repo.gm_log()
         self.director = director or DirectorService()
+        self.learning = learning or LearningService()
+        self.options = options or OptionsService()
+
+    # ------------------------------------------------------- ortak tur sonu
+    def finish_turn(self, state, world, raw_text, beat=None, plot=None,
+                    plan_olaylari=None, picks=None, kind="tur", seconds=None,
+                    entry_kind=None) -> dict:
+        """Model yanıtından sonrası — serbest tur ve tur bazlı akış için ORTAK.
+
+        Yapılanlar sırayla: state-update ayrıştır → dünyaya uygula → göstergeler
+        ve enfeksiyonlar → harita eşle → anlatıcı kaydı → senarist muhasebesi →
+        seçenek havuzu → öğrenme defteri.
+        """
+        onceki = world_stats(world)
+        gm_text, patches = state_update.extract(raw_text)
+
+        # Göstergeler zar gibi sunucunun sorumluluğunda: anlatıcının elle
+        # yazdığı değerler (uyudu/yedi/içti) korunur, geri kalanı bu turda
+        # geçen oyun-içi süreye göre kendiliğinden yükselir.
+        clock_before = world.clock_snapshot()
+        vitals_touched = {}
+        gun = world.day if isinstance(world.day, int) else None
+        for patch in patches:
+            world.merge_patch(patch, vitals_touched)
+            self.learning.absorb_patch(patch, day=gun)
+        turn_minutes = elapsed_minutes(clock_before, world.clock_snapshot())
+        world.apply_vitals_drift(turn_minutes, vitals_touched)
+        world.advance_infections(turn_minutes)
+        world.normalize_wound_status()
+        # Harita: anlatıcı `map` yazmasa bile konum bilgisinden beslenir.
+        world.sync_map()
+
+        gm_entry = {
+            "id": self.state_repo.next_id(state),
+            "role": "assistant",
+            "text": gm_text,
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "tension": world.tension,
+        }
+        if entry_kind:
+            gm_entry["kind"] = entry_kind
+        self.game_log.append(gm_entry)
+
+        # Plan muhasebesi turun SONUNDA: model yanıt vermeden beat
+        # ateşlenmiş sayılmaz (çağrı hata verirse beat kuyrukta kalır).
+        olaylar = list(plan_olaylari or [])
+        if beat is not None:
+            olaylar.append(self.director.mark_fired(beat, plot, world))
+        for olay in olaylar:
+            # Plan hareketleri yalnız anlatıcı ekranında görünür.
+            self.gm_log.append({
+                "id": None,
+                "role": "plot",
+                "text": olay,
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            })
+
+        # Seçenek havuzu: sahnede olan herkes bir sonraki tura hazır seçeneklerle
+        # girsin (anlatıcı eksik bıraktıysa sunucu tamamlar).
+        oyuncular = [n for n in world.present_players()]
+        board = self.options.refresh(world, oyuncular, learning=self.learning,
+                                     turn=(state.get("round") or {}).get("no"))
+
+        # Öğrenme defteri: her interaction burada kayda geçer.
+        self.learning.observe_turn(
+            world, picks=picks or [], scene_text=gm_text,
+            events=stat_delta(onceki, world_stats(world)),
+            seconds=seconds, kind=kind,
+        )
+        return {"gm_text": gm_text, "gm_entry": gm_entry, "options": board}
 
     # ------------------------------------------------------------ /api/message
     def play(self, player, text: str) -> dict:
@@ -71,6 +177,7 @@ class TurnService:
             if not state["started"]:
                 raise ValidationError("Önce oyunu başlatın.")
             world = StateRepository.world_of(state)
+            profanity = StateRepository.settings_of(state).get("profanity") or "hafif"
             # ölen karakterler adına mesaj gönderilemez — oyuncusu devralma
             # ekranından yeni bir karakter seçmeli
             valid_players = world.alive_players()
@@ -136,7 +243,7 @@ class TurnService:
                 prompt = f"[ÇOKLU KARAKTER TURU]\n{combined}"
                 extra_system = turn_prompts.multi_extra_system(
                     ws, log, combined, in_chargen, world_entry, inventory_block,
-                    scene_note, directive)
+                    scene_note, directive, profanity, self.learning.note())
             else:
                 is_group = player == GROUP_LABEL
                 if not is_group and player not in valid_players:
@@ -159,7 +266,7 @@ class TurnService:
                     band = band_for(roll)
                     extra_system = turn_prompts.turn_extra_system(
                         ws, log, is_group, roll, band, world_entry, inventory_block,
-                        scene_note, directive)
+                        scene_note, directive, profanity, self.learning.note())
 
                 user_entries = [
                     {
@@ -182,41 +289,22 @@ class TurnService:
             for entry in user_entries:
                 self.game_log.append(entry)
 
-            raw_text = result.get("result", "")
-            gm_text, patches = state_update.extract(raw_text)
-            # Göstergeler zar gibi sunucunun sorumluluğunda: anlatıcının elle
-            # yazdığı değerler (uyudu/yedi/içti) korunur, geri kalanı bu turda
-            # geçen oyun-içi süreye göre kendiliğinden yükselir.
-            clock_before = world.clock_snapshot()
-            vitals_touched = {}
-            for patch in patches:
-                world.merge_patch(patch, vitals_touched)
-            turn_minutes = elapsed_minutes(clock_before, world.clock_snapshot())
-            world.apply_vitals_drift(turn_minutes, vitals_touched)
-            world.advance_infections(turn_minutes)
-            world.normalize_wound_status()
+            # Serbest metin turu da öğrenme defterine bir "seçim" olarak girer:
+            # havuzdan değil, oyuncunun kendi yazdığı hamle olarak işaretlenir.
+            picks = [
+                {"player": entry.get("player"), "category": "serbest",
+                 "text": entry.get("text"), "roll": entry.get("roll"),
+                 "band": entry.get("band"), "custom": True, "timeout": False,
+                 "uzun": len(entry.get("text") or "") > 120}
+                for entry in user_entries
+            ] if not in_chargen else []
 
-            gm_entry = {
-                "id": self.state_repo.next_id(state),
-                "role": "assistant",
-                "text": gm_text,
-                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "tension": world.tension,
-            }
-            self.game_log.append(gm_entry)
-
-            # Plan muhasebesi turun SONUNDA: model yanıt vermeden beat
-            # ateşlenmiş sayılmaz (çağrı hata verirse beat kuyrukta kalır).
-            if beat is not None:
-                plan_olaylari.append(self.director.mark_fired(beat, plot, world))
-            for olay in plan_olaylari:
-                # Plan hareketleri yalnız anlatıcı ekranında görünür.
-                self.gm_log.append({
-                    "id": None,
-                    "role": "plot",
-                    "text": olay,
-                    "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
-                })
+            sonuc = self.finish_turn(
+                state, world, result.get("result", ""),
+                beat=beat, plot=plot, plan_olaylari=plan_olaylari,
+                picks=picks, kind="serbest_tur",
+            )
+            gm_entry = sonuc["gm_entry"]
 
             StateRepository.store_world(state, world)
             self.state_repo.save(state)
@@ -228,6 +316,7 @@ class TurnService:
             # arayüz Grup Kaynakları panelini bu bayrakla açar
             "inventory_report": wants_inventory,
             "version": int(state.get("version", 0)),
+            "round": state.get("round"),
         }
 
     # ----------------------------------------------------------- /api/takeover
@@ -302,6 +391,10 @@ class TurnService:
             gm_text, patches = state_update.extract(raw_text)
             for patch in patches:
                 world.merge_patch(patch)
+            world.sync_map()
+            # Devralınan karakter bir sonraki tura seçeneklerle girsin.
+            self.options.refresh(world, world.present_players(),
+                                 learning=self.learning)
 
             gm_entry = {
                 "id": self.state_repo.next_id(state),

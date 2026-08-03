@@ -23,6 +23,9 @@ import WorldClockBar from '@/components/game/WorldClockBar.vue'
 import SetupScreen from '@/components/game/SetupScreen.vue'
 import ReadyScreen from '@/components/game/ReadyScreen.vue'
 import ActionComposer from '@/components/game/ActionComposer.vue'
+import RoundBar from '@/components/game/RoundBar.vue'
+import OptionPool from '@/components/game/OptionPool.vue'
+import MapPanel from '@/components/game/MapPanel.vue'
 import StoryFeed from '@/components/game/StoryFeed.vue'
 import CharacterCard from '@/components/game/CharacterCard.vue'
 import CharacterModal from '@/components/game/CharacterModal.vue'
@@ -36,6 +39,7 @@ import { zorluklariDiziye, zorlukKapali, stokVarMi } from '@/components/game/gam
 
 import { useGameStore } from '@/stores/game'
 import { useSidebar } from '@/composables/useSidebar'
+import { colorFor } from '@/utils/characterColors'
 
 const oyun = useGameStore()
 const { ac: sidebariAc } = useSidebar()
@@ -102,6 +106,53 @@ async function turGonder({ oyuncu, metin }) {
     oyun.markSeen()
   } catch {
     /* metin alanda kalsın ki kullanıcı tekrar deneyebilsin */
+  }
+}
+
+/* ------------------------------------------------------ tur bazlı akış */
+
+/** Seçenek havuzu ekranı: tur bazlı akış açık ve oyun gerçekten oynanıyorken. */
+const havuzAcik = computed(
+  () => oyun.roundMode && oyun.chargenDone && oyun.phase === 'playing' && !!oyun.round?.no,
+)
+
+const seciliSecim = computed(() => oyun.pickOf(seciliOyuncu.value))
+const seciliSecenekler = computed(() => oyun.optionsFor(seciliOyuncu.value))
+
+async function secenekSec(secenek) {
+  try {
+    await oyun.pickOption(seciliOyuncu.value, { optionId: secenek.id })
+  } catch {
+    /* hata store'da; ekranda gösteriliyor */
+  }
+}
+
+async function kendiHamlesi(metin) {
+  try {
+    await oyun.pickOption(seciliOyuncu.value, { text: metin })
+  } catch {
+    /* hata store'da */
+  }
+}
+
+async function turdaBekle() {
+  try {
+    await oyun.waitRound(seciliOyuncu.value)
+  } catch {
+    /* hata store'da */
+  }
+}
+
+/**
+ * Turu gönder. Süre dolduğunda RoundBar bunu `sure` gerekçesiyle kendisi
+ * çağırır; açık olan her sekme dener ama sunucu turu bir kez işler.
+ */
+async function turuGonder(neden) {
+  try {
+    await oyun.commitRound(neden)
+    oyun.markSeen()
+  } catch {
+    /* hata store'da */
   }
 }
 
@@ -176,6 +227,14 @@ async function oyunuSifirla() {
     await oyun.reset()
     ayarlarAcik.value = false
     seciliOyuncu.value = ''
+  } catch {
+    /* hata store'da */
+  }
+}
+
+async function ayarKaydet(patch) {
+  try {
+    await oyun.saveSettings(patch)
   } catch {
     /* hata store'da */
   }
@@ -308,6 +367,14 @@ function yeniSahneyeGit() {
       </SidebarSection>
 
       <SidebarSection
+        title="Harita"
+        icon="map"
+        :count="Object.keys(oyun.worldMap?.places || {}).length"
+      >
+        <MapPanel :harita="oyun.worldMap" :yukleniyor="ilkYukleme" />
+      </SidebarSection>
+
+      <SidebarSection
         title="Aktif zorluklar"
         icon="crisis_alert"
         :count="acikZorlukSayisi"
@@ -432,7 +499,53 @@ function yeniSahneyeGit() {
         <div
           class="sticky top-[var(--spacing-topbar)] z-20 -mx-3 flex flex-col gap-2 bg-bg/95 px-3 py-2 backdrop-blur-sm sm:-mx-4 sm:px-4"
         >
+          <!-- Tur bazlı akış: tur çubuğu + seçilen karakterin seçenek havuzu -->
+          <template v-if="havuzAcik">
+            <RoundBar
+              :tur="oyun.round"
+              :kayma="oyun.clockSkew"
+              :gonderiliyor="oyun.committing"
+              @gonder="turuGonder"
+            />
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
+              <button
+                v-for="ad in oyun.aliveRoster"
+                :key="ad"
+                type="button"
+                class="inline-flex h-7 items-center gap-1.5 rounded-chip border px-2.5 text-label transition-colors duration-[var(--duration-fast)]"
+                :class="
+                  seciliOyuncu === ad
+                    ? 'border-accent/60 bg-accent-soft text-text'
+                    : 'border-border bg-surface-2 text-muted hover:text-text'
+                "
+                :aria-pressed="seciliOyuncu === ad"
+                @click="seciliOyuncu = ad"
+              >
+                <span
+                  class="size-1.5 rounded-full"
+                  :style="{ backgroundColor: colorFor(ad) }"
+                  aria-hidden="true"
+                />
+                {{ ad }}
+                <Icon v-if="oyun.pickOf(ad)" name="check" :size="13" class="text-ok" />
+              </button>
+            </div>
+            <OptionPool
+              :oyuncu="seciliOyuncu"
+              :secenekler="seciliSecenekler"
+              :secim="seciliSecim"
+              :mesgul="oyun.picking"
+              :tur-acik="oyun.roundOpen"
+              :son-zar="oyun.lastRoll"
+              @sec="secenekSec"
+              @kendi-hamlesi="kendiHamlesi"
+              @bekle="turdaBekle"
+            />
+          </template>
+
           <ActionComposer
+            v-else
             ref="composer"
             v-model:secili="seciliOyuncu"
             :kadro="oyun.aliveRoster"
@@ -489,6 +602,12 @@ function yeniSahneyeGit() {
       @onayla="devral"
     />
 
-    <SettingsPanel v-model="ayarlarAcik" :mesgul="oyun.busy" @sifirla="oyunuSifirla" />
+    <SettingsPanel
+      v-model="ayarlarAcik"
+      :mesgul="oyun.busy"
+      :ayarlar="oyun.settings"
+      @sifirla="oyunuSifirla"
+      @ayar-kaydet="ayarKaydet"
+    />
   </AppShell>
 </template>

@@ -9,6 +9,8 @@ import os
 import threading
 from pathlib import Path
 
+from .. import config
+from ..models.round import Round
 from ..models.world import TIME_FIELDS, WorldState
 from .scenario_repo import ScenarioRepository
 
@@ -26,6 +28,18 @@ class StateRepository:
         self.lock = LOCK
 
     # --------------------------------------------------------- varsayılan
+    @staticmethod
+    def default_settings() -> dict:
+        """Oyun içi ayarlar — arayüzden değiştirilebilir (bkz. /api/settings)."""
+        return {
+            # Bir turda oyunculara verilen süre (saniye). 0 = süre yok.
+            "turn_seconds": config.TURN_SECONDS,
+            # Küfür/argo dozu: kapalı | hafif | sert
+            "profanity": config.PROFANITY,
+            # Tur bazlı seçenek akışı açık mı (kapalıysa serbest metin turu).
+            "round_mode": True,
+        }
+
     def default_state(self) -> dict:
         return {
             "world_state": self.scenario.initial_world_state(),
@@ -33,6 +47,8 @@ class StateRepository:
             "session_id": None,
             "characters_confirmed": False,
             "started": False,
+            "settings": self.default_settings(),
+            "round": Round().to_dict(),
         }
 
     # ------------------------------------------------------------- okuma
@@ -64,7 +80,30 @@ class StateRepository:
             for name in missing:
                 if initial.get(name):
                     ws[name] = initial[name]
+        # Ayarlar ve tur kaydı sonradan eklendi: devam eden bir oyunda eksikse
+        # varsayılanla doldur, yoksa tur akışı hiç açılmaz.
+        settings = state.get("settings")
+        if not isinstance(settings, dict):
+            settings = state["settings"] = {}
+        for name, value in self.default_settings().items():
+            settings.setdefault(name, value)
+        if not isinstance(state.get("round"), dict):
+            state["round"] = Round().to_dict()
         return state
+
+    # -------------------------------------------------------- tur kaydı
+    @staticmethod
+    def round_of(state: dict) -> Round:
+        return Round.from_dict(state.get("round"))
+
+    @staticmethod
+    def store_round(state: dict, round_: Round) -> None:
+        state["round"] = round_.to_dict()
+
+    @staticmethod
+    def settings_of(state: dict) -> dict:
+        settings = state.get("settings")
+        return settings if isinstance(settings, dict) else {}
 
     # ------------------------------------------------------------- yazma
     def save(self, state: dict) -> int:

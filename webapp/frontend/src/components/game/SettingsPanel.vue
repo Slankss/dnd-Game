@@ -16,9 +16,32 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   /** Sıfırlama isteği uçuşta mı */
   mesgul: { type: Boolean, default: false },
+  /** Sunucudaki oyun ayarları: {turn_seconds, profanity, round_mode} */
+  ayarlar: { type: Object, default: () => ({}) },
 })
 
-const emit = defineEmits(['update:modelValue', 'sifirla'])
+const emit = defineEmits(['update:modelValue', 'sifirla', 'ayarKaydet'])
+
+/* --------------------------------------------------------- oyun ayarları */
+
+/** Tur süresi seçenekleri; 0 = süresiz (klasik akış). */
+const SURELER = [
+  { deger: 0, etiket: 'Süresiz' },
+  { deger: 60, etiket: '1 dk' },
+  { deger: 120, etiket: '2 dk' },
+  { deger: 180, etiket: '3 dk' },
+  { deger: 300, etiket: '5 dk' },
+]
+
+const KUFUR = [
+  { deger: 'kapalı', etiket: 'Kapalı', aciklama: 'Küfür yok; öfke tonla verilir.' },
+  { deger: 'hafif', etiket: 'Hafif', aciklama: 'Sert anlarda ölçülü küfür.' },
+  { deger: 'sert', etiket: 'Sert', aciklama: 'Kriz anlarında sansürsüz argo.' },
+]
+
+const sure = computed(() => Number(props.ayarlar?.turn_seconds ?? 0))
+const kufur = computed(() => props.ayarlar?.profanity || 'hafif')
+const turModu = computed(() => props.ayarlar?.round_mode !== false)
 
 const {
   durum: muzikDurumu,
@@ -61,6 +84,84 @@ function sifirla() {
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <div class="flex flex-col gap-5">
+      <!-- Tur akışı -->
+      <section class="flex flex-col gap-2">
+        <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
+          <Icon name="timer" :size="14" />
+          Tur süresi
+        </h3>
+        <p class="text-label text-faint">
+          Süre dolunca tur kendiliğinden gönderilir; seçim yapmayan karakter için anlatıcı
+          <strong>ani sahne</strong> yazar — dünya kararsızı beklemez.
+        </p>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseButton
+            v-for="s in SURELER"
+            :key="s.deger"
+            size="sm"
+            :variant="sure === s.deger ? 'primary' : 'subtle'"
+            :disabled="mesgul"
+            @click="$emit('ayarKaydet', { turn_seconds: s.deger })"
+          >
+            {{ s.etiket }}
+          </BaseButton>
+        </div>
+      </section>
+
+      <!-- Küfür dozu -->
+      <section class="flex flex-col gap-2">
+        <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
+          <Icon name="record_voice_over" :size="14" />
+          Küfür ve argo
+        </h3>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseButton
+            v-for="k in KUFUR"
+            :key="k.deger"
+            size="sm"
+            :variant="kufur === k.deger ? 'primary' : 'subtle'"
+            :disabled="mesgul"
+            :title="k.aciklama"
+            @click="$emit('ayarKaydet', { profanity: k.deger })"
+          >
+            {{ k.etiket }}
+          </BaseButton>
+        </div>
+        <p class="text-label text-faint">
+          Küfür anlatıcının değil, karakterlerin ağzından çıkar; refleksleri künyeden gelir.
+        </p>
+      </section>
+
+      <!-- Akış biçimi -->
+      <section class="flex flex-col gap-2">
+        <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
+          <Icon name="playing_cards" :size="14" />
+          Akış biçimi
+        </h3>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseButton
+            size="sm"
+            :variant="turModu ? 'primary' : 'subtle'"
+            :disabled="mesgul"
+            @click="$emit('ayarKaydet', { round_mode: true })"
+          >
+            Tur bazlı (seçenek havuzu)
+          </BaseButton>
+          <BaseButton
+            size="sm"
+            :variant="!turModu ? 'primary' : 'subtle'"
+            :disabled="mesgul"
+            @click="$emit('ayarKaydet', { round_mode: false })"
+          >
+            Serbest yazışma
+          </BaseButton>
+        </div>
+        <p class="text-label text-faint">
+          Tur bazlı akışta herkes kendi seçeneğini seçer, zar seçim anında atılır ve tur hepsi
+          seçtikten sonra tek seferde gönderilir.
+        </p>
+      </section>
+
       <!-- Müzik -->
       <section class="flex flex-col gap-2">
         <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
@@ -131,6 +232,8 @@ function sifirla() {
         </h3>
         <p class="text-meta text-muted">
           Tüm oyun geçmişi, dünya durumu ve kadro silinir. Geri alınamaz.
+          <br />
+          Oyunun öğrenme defteri (biriken dersler) KORUNUR — yeni oyun öğrendikleriyle başlar.
         </p>
 
         <p v-if="onayBekleniyor" class="text-meta text-danger" role="alert">

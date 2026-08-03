@@ -12,13 +12,17 @@ import time
 from scenario import CHARACTER_TEMPLATE, GROUP_DISPLAY_NAME, GROUP_LABEL
 
 from app.errors import ValidationError
+from app.models.learning import Learning
 from app.models.person import SHEET_FIELDS, Person, build_background, build_traits
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
-from app.serializers import public_world_state
+from app.serializers import public_round, public_world_state
 from app.services import prompt_builder, state_update
+from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
+from app.services.options_service import OptionsService
+from app.services.worldgen_service import WorldGenService
 
 # Kurulum ekranından gelebilecek künye alanları (isim + eşya + künye).
 PICK_FIELDS = ("name", "item") + SHEET_FIELDS
@@ -29,12 +33,28 @@ class GameService:
     `/api/finish-chargen`, `/api/reset`."""
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
-                 game_log=None, gm_log=None):
+                 game_log=None, gm_log=None, learning=None, options=None,
+                 worldgen=None, rounds=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
         self.game_log = game_log or log_repo.game_log()
         self.gm_log = gm_log or log_repo.gm_log()
+        self.learning = learning or LearningService()
+        self.options = options or OptionsService()
+        self.worldgen = worldgen or WorldGenService(learning=self.learning)
+        self._rounds = rounds
+
+    @property
+    def rounds(self):
+        """Tur servisi geç bağlanır — RoundService bu modülü import etmiyor."""
+        if self._rounds is None:
+            from app.services.round_service import RoundService
+            self._rounds = RoundService(
+                state_repo=self.state_repo, scenario_repo=self.scenario_repo,
+                narrator=self.narrator, game_log=self.game_log,
+                gm_log=self.gm_log, learning=self.learning, options=self.options)
+        return self._rounds
 
     # -------------------------------------------------------------- /api/state
     def snapshot(self, since=None) -> dict:
@@ -45,6 +65,14 @@ class GameService:
             if since is not None and since.isdigit() and int(since) == version:
                 return {"version": version, "changed": False}
             log = self.game_log.read()
+            world = StateRepository.world_of(state)
+            # Tur kapalıysa (ör. sunucu yeniden başladı) burada açılır: oyuncu
+            # ekranı hiçbir zaman "tur yok" halinde kilitli kalmasın.
+            onceki = json.dumps(state.get("round"), sort_keys=True)
+            self.rounds.ensure_open(state, world)
+            if json.dumps(state.get("round"), sort_keys=True) != onceki:
+                version = self.state_repo.save(state)
+            round_body = public_round(state.get("round"), self.rounds.actors(world))
         scenario = self.scenario_repo.load()
         return {
             "version": version,
@@ -53,12 +81,14 @@ class GameService:
             "log": log,
             "started": state["started"],
             "characters_confirmed": state["characters_confirmed"],
-            "chargen_done": StateRepository.world_of(state).chargen_complete(),
+            "chargen_done": world.chargen_complete(),
             "default_players": scenario["default_players"],
             "start_item_suggestions": scenario["start_item_suggestions"],
             "custom_scenario": self.scenario_repo.has_override,
             "group_label": GROUP_LABEL,
             "group_display_name": GROUP_DISPLAY_NAME,
+            "settings": StateRepository.settings_of(state),
+            "round": round_body,
         }
 
     # -------------------------------------------------- /api/setup-characters
@@ -130,6 +160,11 @@ class GameService:
 
             scenario = self.scenario_repo.load()
             world = StateRepository.world_of(state)
+            # Her oyun FARKLI bir yerde ve farklı fraksiyonlarla başlar; ikisi
+            # de öğrenme defterine not edilir ki bir sonraki oyun tekrar etmesin.
+            uretilen = self.worldgen.apply(world, self.worldgen.generate(
+                seed_factions=(scenario["initial_world_state"] or {}).get("factions")))
+            world_note = self.worldgen.start_note(uretilen["start"], uretilen["factions"])
             ws = world.to_dict()
             players = list(world.characters.keys())
             hook = secrets.choice(scenario["opening_hooks"])
@@ -153,11 +188,18 @@ class GameService:
                     "HERKES için karakter oluşturma seçeneklerini sun. Bu turda "
                     "zar mekaniği YOK."
                 )
+            settings = StateRepository.settings_of(state)
             extra_system = (
                 "OYUN BAŞLANGICI.\n"
                 f"Bu oyundaki karakterler (SABİT, TAM LİSTE — başka oyuncu karakteri "
                 f"YOK, isim uydurma): {', '.join(players)}.\n"
                 f"Rastgele açılış olayı (sunucu tarafından seçildi): {hook}\n\n"
+                + world_note
+                + "\n\n"
+                + prompt_builder.reflex_note(ws, settings.get("profanity") or "hafif")
+                + "\n\n"
+                + self.options.instruction(players)
+                + "\n"
                 + chargen_note
                 + "\n\nKARAKTER KÜNYELERİ (kurulum ekranından geldi; meslek/yaş/"
                 "güçlü-zayıf yan BAĞLAYICIDIR, eşyalar zaten envanterde — tekrar "
@@ -183,8 +225,14 @@ class GameService:
 
             raw_text = result.get("result", "")
             gm_text, patches = state_update.extract(raw_text)
+            gun = world.day if isinstance(world.day, int) else None
             for patch in patches:
                 world.merge_patch(patch)
+                self.learning.absorb_patch(patch, day=gun)
+            world.sync_map()
+            # Açılış sahnesinden sonra herkes seçeneklerle karşılansın.
+            self.options.refresh(world, world.present_players(),
+                                 learning=self.learning, turn=0)
 
             gm_entry = {
                 "id": self.state_repo.next_id(state),
@@ -194,11 +242,21 @@ class GameService:
                 "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
             }
             self.game_log.append(gm_entry)
+            # Üretilen dünya anlatıcı günlüğüne de not edilir: hangi başlangıç,
+            # hangi fraksiyonlar — GM sonradan görebilsin.
+            self.gm_log.append({
+                "id": None,
+                "role": "worldgen",
+                "text": "🌍 Bu oyunun dünyası üretildi:\n" + world_note,
+                "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+            })
             StateRepository.store_world(state, world)
+            self.rounds.ensure_open(state, world)
             self.state_repo.save(state)
 
         return {"gm_entry": gm_entry,
                 "world_state": public_world_state(state["world_state"]),
+                "round": state.get("round"),
                 "started": True}
 
     # ----------------------------------------------------- /api/finish-chargen
@@ -215,11 +273,57 @@ class GameService:
             self.state_repo.save(state)
         return {"ok": True, "world_state": public_world_state(state["world_state"])}
 
+    # ----------------------------------------------------------- /api/settings
+    def update_settings(self, patch) -> dict:
+        """Oyun içi ayarlar: tur süresi, küfür dozu, tur bazlı akış.
+
+        Öğrenme defteri ve seçenek havuzu SİLİNMEZ — ayar değişikliği oyunun
+        hafızasını sıfırlamaz."""
+        if not isinstance(patch, dict) or not patch:
+            raise ValidationError("Boş ayar gönderildi.")
+        with LOCK:
+            state = self.state_repo.load()
+            settings = StateRepository.settings_of(state)
+
+            if "turn_seconds" in patch:
+                saniye = patch.get("turn_seconds")
+                if isinstance(saniye, str) and saniye.strip().isdigit():
+                    saniye = int(saniye.strip())
+                if not isinstance(saniye, int) or isinstance(saniye, bool) or saniye < 0:
+                    raise ValidationError("Tur süresi 0 ya da pozitif bir sayı olmalı.")
+                # 0 = süre yok. Çok kısa süre turu oynanamaz hale getiriyor.
+                if saniye and saniye < 20:
+                    raise ValidationError("Tur süresi en az 20 saniye olmalı (0 = süresiz).")
+                settings["turn_seconds"] = min(saniye, 3600)
+
+            if "profanity" in patch:
+                doz = str(patch.get("profanity") or "").strip().lower()
+                if doz not in ("kapalı", "hafif", "sert"):
+                    raise ValidationError("Küfür ayarı: kapalı, hafif ya da sert.")
+                settings["profanity"] = doz
+
+            if "round_mode" in patch:
+                settings["round_mode"] = bool(patch.get("round_mode"))
+
+            state["settings"] = settings
+            world = StateRepository.world_of(state)
+            self.rounds.ensure_open(state, world)
+            version = self.state_repo.save(state)
+        return {"ok": True, "settings": settings, "version": version,
+                "round": state.get("round")}
+
     # -------------------------------------------------------------- /api/reset
-    def reset(self) -> dict:
+    def reset(self, keep_learning: bool = True) -> dict:
+        """Oyunu sıfırlar. Öğrenme defteri VARSAYILAN OLARAK KORUNUR: oyun
+        yeniden kurulduğunda öğrendiklerini unutmasın (istenirse
+        `keep_learning=false` ile defter de silinir)."""
         with LOCK:
             state = self.state_repo.default_state()
             self.state_repo.save(state)
             self.game_log.clear()
             self.gm_log.clear()
-        return {"ok": True}
+            self.options.clear()
+            if not keep_learning:
+                self.learning.repo.save(Learning())
+                self.learning.export_skill()
+        return {"ok": True, "learning_kept": bool(keep_learning)}
