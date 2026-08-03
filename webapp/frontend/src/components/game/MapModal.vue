@@ -20,6 +20,8 @@ const props = defineProps({
   harita: { type: Object, default: () => ({}) },
   /** Anlatıcı kipi: sis perdesi yok */
   gm: { type: Boolean, default: false },
+  /** world_state.threat — yoğunluk ve göç bilgisi */
+  tehdit: { type: Object, default: null },
 })
 
 defineEmits(['update:modelValue'])
@@ -42,6 +44,27 @@ const kimler = computed(() =>
     .map(([kisi]) => kisi),
 )
 
+/** Seçilen yerin bilinen zombi yoğunluğu (yoksa null). */
+const yogunluk = computed(() => {
+  const deger = props.tehdit?.density?.[secili.value]
+  return deger == null ? null : Math.round(Number(deger))
+})
+
+/** Bu yere/yerden son göç hareketi — "patlama sonrası buraya akıyorlar". */
+const gocMetni = computed(() => {
+  const gocler = props.tehdit?.migrations || []
+  for (const goc of [...gocler].reverse()) {
+    if (goc.target === secili.value) {
+      const kaynak = (goc.from || []).map((k) => k.place).join(', ')
+      return `${goc.type || 'Ses'} sonrası buraya ölü çekildi${kaynak ? ` (${kaynak} boşaldı)` : ''}.`
+    }
+    if ((goc.from || []).some((k) => k.place === secili.value)) {
+      return `Buradan ${goc.target} yönüne ölü çekildi — bölge geçici olarak boşaldı.`
+    }
+  }
+  return ''
+})
+
 const DUZEY_TONU = { duyuldu: 'muted', görüldü: 'warn', keşfedildi: 'ok' }
 const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'explore' }
 </script>
@@ -56,7 +79,13 @@ const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'e
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <div class="flex flex-col gap-3">
-      <MapCanvas :harita="harita" :secili="secili" :gm="gm" @sec="secili = $event" />
+      <MapCanvas
+        :harita="harita"
+        :secili="secili"
+        :gm="gm"
+        :yogunluk="tehdit?.density || {}"
+        @sec="secili = $event"
+      />
 
       <!-- lejant -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-label text-faint">
@@ -79,6 +108,10 @@ const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'e
         <span class="inline-flex items-center gap-1.5">
           <span class="h-px w-5 border-t border-dashed border-border" aria-hidden="true" />
           kesin olmayan yol
+        </span>
+        <span class="inline-flex items-center gap-1.5">
+          <Icon name="donut_large" :size="13" />
+          dış halka: zombi yoğunluğu
         </span>
       </div>
 
@@ -125,6 +158,26 @@ const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'e
           <p v-if="yer.discovered_day" class="mt-1 text-label text-faint">
             {{ yer.discovered_day }}. günden beri biliniyor
           </p>
+
+          <!-- zombi yoğunluğu: yalnız bilinen yerler için gelir -->
+          <div v-if="yogunluk !== null" class="mt-2">
+            <div class="flex items-center gap-1.5">
+              <Icon name="skull" :size="13" class="text-faint" />
+              <span class="text-label text-muted">Zombi yoğunluğu</span>
+              <span class="ml-auto text-label nums-tabular text-muted">{{ yogunluk }}/100</span>
+            </div>
+            <div class="mt-0.5 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+              <div
+                class="h-full rounded-full"
+                :class="yogunluk >= 66 ? 'bg-danger' : yogunluk >= 38 ? 'bg-warn' : 'bg-ok'"
+                :style="{ width: `${Math.max(2, yogunluk)}%` }"
+              />
+            </div>
+            <p v-if="gocMetni" class="mt-1 flex items-start gap-1.5 text-label text-warn">
+              <Icon name="moving" :size="13" class="mt-0.5 shrink-0" />
+              <span>{{ gocMetni }}</span>
+            </p>
+          </div>
         </template>
 
         <div v-if="kimler.length" class="mt-2 flex flex-wrap gap-1">

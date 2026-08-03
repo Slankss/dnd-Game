@@ -30,6 +30,8 @@ const props = defineProps({
   mini: { type: Boolean, default: false },
   /** Anlatıcı kipi: sis perdesi yok, her şey açık çizilir */
   gm: { type: Boolean, default: false },
+  /** {yer: 0-100} zombi yoğunluğu — yalnız bilinen yerler için gelir */
+  yogunluk: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['sec'])
@@ -104,6 +106,23 @@ function kisiKonumu(dugum, i, adet) {
 function sec(dugum) {
   emit('sec', dugum.ad)
 }
+
+/**
+ * Düğümün çevresindeki yoğunluk halkası: dolu yay = o bölgedeki ölü oranı.
+ * Yalnız yoğunluğu BİLİNEN yerlerde çizilir (sunucu bilinmeyenleri zaten
+ * göndermiyor) — haritaya bakıp keşfedilmemiş bir bölgenin kalabalığı
+ * okunamaz.
+ */
+function yogunlukHalkasi(dugum) {
+  const deger = props.yogunluk?.[dugum.ad]
+  if (deger == null) return null
+  const r = dugum.r + 4.5
+  const cevre = 2 * Math.PI * r
+  const dolu = (Math.max(0, Math.min(100, Number(deger))) / 100) * cevre
+  const renk =
+    deger >= 66 ? 'var(--color-danger)' : deger >= 38 ? 'var(--color-warn)' : 'var(--color-ok)'
+  return { r, dash: `${dolu} ${cevre - dolu}`, renk, deger: Math.round(deger) }
+}
 </script>
 
 <template>
@@ -175,6 +194,23 @@ function sec(dugum) {
           stroke-width="1.5"
           opacity="0.85"
         />
+        <!-- zombi yoğunluğu halkası -->
+        <circle
+          v-if="yogunlukHalkasi(dugum)"
+          :cx="dugum.x"
+          :cy="dugum.y"
+          :r="yogunlukHalkasi(dugum).r"
+          fill="none"
+          :stroke="yogunlukHalkasi(dugum).renk"
+          stroke-width="2.5"
+          :stroke-dasharray="yogunlukHalkasi(dugum).dash"
+          stroke-linecap="round"
+          :transform="`rotate(-90 ${dugum.x} ${dugum.y})`"
+          opacity="0.75"
+        >
+          <title>zombi yoğunluğu: {{ yogunlukHalkasi(dugum).deger }}/100</title>
+        </circle>
+
         <!-- düğüm gövdesi -->
         <circle
           :cx="dugum.x"

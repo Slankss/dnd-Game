@@ -48,6 +48,28 @@ CHANCE_MIN, CHANCE_MAX = 6, 88
 NOISE_DECAY_PER_HOUR = 14
 HEAT_DECAY_PER_HOUR = 10
 
+# --------------------------------------------------------------------- GÖÇ
+# Ölüler sese gider. Bir bölgede patlama/silah sesi olduğunda oradaki yoğunluk
+# kendiliğinden artmaz — KOMŞU BÖLGELERDEN çekilir ve o bölgeler boşalır.
+# Nüfus böylece korunur: harita bir "yoğunluk tablosu" değil, akan bir nüfus.
+#
+#   HOP_WEIGHT   — kaç bağlantı uzaktaki bölgeden ne oranda çekilir
+#                  (komşu daha çok verir, iki adım öteki daha az)
+#   FLOOR        — bir bölge bu değerin altına inmez; kimse tamamen boşalmaz
+#   BACKGROUND   — modellenmemiş kırsaldan gelen ek pay (harita her şeyi
+#                  kapsamıyor; küçük tutulur ki asıl kaynak komşular olsun)
+#   DIFFUSION    — saatte yayılma oranı: boşalan bölge komşularından yavaşça
+#                  dolar, tıkabasa dolu bölge zamanla etrafa taşar
+MIGRATION_HOP_WEIGHT = {1: 1.0, 2: 0.45}
+MIGRATION_FLOOR = 6
+MIGRATION_BACKGROUND = 0.2
+DIFFUSION_PER_HOUR = 0.03
+# Bir olayın çekim gücü (0-100 puan). Gürültü puanı bununla çarpılır.
+EVENT_PULL = {
+    "patlama": 1.6, "yangın": 1.2, "silah": 1.0, "araç": 0.9, "alarm": 1.4,
+    "çığlık": 0.8, "jeneratör": 0.7, "gürültü": 1.0,
+}
+
 # Belirgin gürültü kaynakları — oyuncunun hamle metninden yakalanır. Anlatıcı
 # ayrıca `threat.noise_add` ile kendi ölçüsünü yazabilir.
 NOISE_KEYWORDS = (
@@ -193,6 +215,7 @@ class ThreatState:
     density: dict = field(default_factory=dict)     # {yer adı: 0-100}
     last: dict = field(default_factory=dict)        # son karşılaşma özeti
     history: list = field(default_factory=list)     # son 12 karşılaşma
+    migrations: list = field(default_factory=list)  # son 8 göç hareketi
     encounters: int = 0
     contacts: int = 0                               # gerçek temas sayısı
 
@@ -209,11 +232,15 @@ class ThreatState:
         state.last_location = str(data.get("last_location") or "")
         raw = data.get("density")
         if isinstance(raw, dict):
-            state.density = {str(k): clamp(v) for k, v in raw.items()}
+            state.density = {str(k): max(0.0, min(100.0, float(v)))
+                             for k, v in raw.items()
+                             if isinstance(v, (int, float))}
         if isinstance(data.get("last"), dict):
             state.last = data["last"]
         if isinstance(data.get("history"), list):
             state.history = [h for h in data["history"] if isinstance(h, dict)][-12:]
+        if isinstance(data.get("migrations"), list):
+            state.migrations = [m for m in data["migrations"] if isinstance(m, dict)][-8:]
         state.encounters = max(0, int(data.get("encounters") or 0))
         state.contacts = max(0, int(data.get("contacts") or 0))
         return state
@@ -223,23 +250,135 @@ class ThreatState:
                 "quiet_turns": self.quiet_turns, "travelling": self.travelling,
                 "last_minutes": self.last_minutes,
                 "last_location": self.last_location,
-                "density": self.density, "last": self.last,
+                # Yoğunluk ondalık tutulur ama kayıtta bir hanede kalsın.
+                "density": {k: round(float(v), 1) for k, v in self.density.items()},
+                "last": self.last, "migrations": self.migrations,
                 "history": self.history, "encounters": self.encounters,
                 "contacts": self.contacts}
 
     # -------------------------------------------------------------- yoğunluk
     def density_of(self, place: str, kind: str = "") -> int:
-        """Yerin güncel yoğunluğu; kayıtta yoksa türünden türetilip yazılır."""
+        """Yerin güncel yoğunluğu; kayıtta yoksa türünden türetilip yazılır.
+
+        Kayıtta ondalık tutulur (küçük göç hareketleri yuvarlanıp kaybolmasın),
+        dışarıya tam sayı verilir."""
         if not place:
             return clamp(base_density_for("bilinmeyen"))
         if place not in self.density:
-            self.density[place] = base_density_for(place, kind)
-        return self.density[place]
+            self.density[place] = float(base_density_for(place, kind))
+        return clamp(self.density[place])
 
-    def bump_density(self, place: str, delta: int) -> None:
+    def raw_density(self, place: str) -> float:
+        """Ham (ondalıklı) yoğunluk — göç hesapları bunu kullanır."""
+        if place not in self.density:
+            self.density[place] = float(base_density_for(place))
+        return float(self.density[place])
+
+    def bump_density(self, place: str, delta: float) -> None:
         if not place:
             return
-        self.density[place] = clamp(self.density.get(place, base_density_for(place)) + delta)
+        self.density[place] = max(0.0, min(100.0, self.raw_density(place) + float(delta)))
+
+    # ------------------------------------------------------------------ göç
+    def attract(self, target: str, strength: float, graph: dict) -> dict:
+        """Bir bölgeye ölü ÇEKER; gelenler komşu bölgelerden EKSİLİR.
+
+        `graph` haritadan gelen komşuluk sözlüğüdür ({yer: [komşular]}).
+        Kaynaklar iki adım uzağa kadar taranır: yakın komşu daha çok verir,
+        kalabalık komşu daha çok verir (ses her yerden aynı duyulur ama
+        gelen sayısı oradaki nüfusla orantılıdır).
+
+        Dönen: {"target", "gain", "from": [{"place", "amount"}], "background"}
+        """
+        target = (target or "").strip()
+        strength = max(0.0, float(strength or 0))
+        if not target or strength <= 0:
+            return {}
+
+        # Hedefin kapasitesi kadar çekilir: tavana dayanmış bir bölge için
+        # komşuları boşaltmak nüfusu yok etmek olurdu (gelen ölüler tavanda
+        # buharlaşırdı). Böylece toplam nüfus korunur.
+        kapasite = max(0.0, 100.0 - self.raw_density(target))
+        strength = min(strength, kapasite / (1.0 + MIGRATION_BACKGROUND))
+        if strength <= 0.05:
+            return {}
+
+        # --- kaynak havuzu: 1. ve 2. derece komşular
+        agirliklar = {}
+        for yer, hop in self._neighbours(graph, target, max_hop=2).items():
+            if yer == target:
+                continue
+            mevcut = self.raw_density(yer)
+            fazla = max(0.0, mevcut - MIGRATION_FLOOR)
+            if fazla <= 0:
+                continue
+            agirliklar[yer] = MIGRATION_HOP_WEIGHT.get(hop, 0.0) * fazla
+
+        toplam = sum(agirliklar.values())
+        gelenler, cekilen = [], 0.0
+        if toplam > 0:
+            for yer, agirlik in sorted(agirliklar.items(), key=lambda kv: -kv[1]):
+                pay = strength * (agirlik / toplam)
+                alinan = min(pay, max(0.0, self.raw_density(yer) - MIGRATION_FLOOR))
+                if alinan <= 0.05:
+                    continue
+                self.density[yer] = self.raw_density(yer) - alinan
+                cekilen += alinan
+                gelenler.append({"place": yer, "amount": round(alinan, 1)})
+
+        # Harita bölgenin tamamını kapsamıyor: küçük bir pay da dışarıdan gelir.
+        arka_plan = strength * MIGRATION_BACKGROUND
+        onceki = self.raw_density(target)
+        self.density[target] = min(100.0, onceki + cekilen + arka_plan)
+
+        kayit = {
+            "target": target,
+            "gain": round(self.density[target] - onceki, 1),
+            "from": gelenler,
+            "background": round(arka_plan, 1),
+        }
+        self.migrations.append(kayit)
+        del self.migrations[:-8]
+        return kayit
+
+    def diffuse(self, graph: dict, hours: float) -> None:
+        """Yavaş yayılma: boşalan bölge komşularından dolar, tıkanan taşar.
+
+        Göç kalıcı bir boşluk bırakmasın diye gerekli — patlamadan sonra
+        boşalan sokaklar günler içinde yeniden dolar."""
+        if hours <= 0 or not graph:
+            return
+        oran = min(0.35, DIFFUSION_PER_HOUR * hours)
+        degisim = {}
+        for yer, komsular in graph.items():
+            for komsu in komsular:
+                if yer >= komsu:      # her çifti bir kez işle
+                    continue
+                fark = self.raw_density(yer) - self.raw_density(komsu)
+                akis = fark * oran * 0.5
+                if abs(akis) < 0.05:
+                    continue
+                degisim[yer] = degisim.get(yer, 0.0) - akis
+                degisim[komsu] = degisim.get(komsu, 0.0) + akis
+        for yer, delta in degisim.items():
+            self.density[yer] = max(0.0, min(100.0, self.raw_density(yer) + delta))
+
+    @staticmethod
+    def _neighbours(graph: dict, start: str, max_hop: int = 2) -> dict:
+        """{yer: kaçıncı derece komşu} — genişlik öncelikli, `max_hop`'a kadar."""
+        if not isinstance(graph, dict) or start not in graph:
+            return {}
+        seviye = {start: 0}
+        kuyruk = [start]
+        while kuyruk:
+            yer = kuyruk.pop(0)
+            if seviye[yer] >= max_hop:
+                continue
+            for komsu in graph.get(yer) or []:
+                if komsu not in seviye:
+                    seviye[komsu] = seviye[yer] + 1
+                    kuyruk.append(komsu)
+        return {k: v for k, v in seviye.items() if v > 0}
 
     # ---------------------------------------------------------------- sönüm
     def decay(self, hours: float) -> None:
@@ -406,7 +545,8 @@ class ThreatState:
             self.last = ozet
             self.history.append(ozet)
             del self.history[:-12]
-            if place:
-                self.bump_density(place, 2)
+            # Yoğunluk burada ARTIRILMAZ: karşılaşmadan sonra bölgeye toplanan
+            # ölüler `threat_service` tarafından komşulardan ÇEKİLİR (göç),
+            # yoksa nüfus yoktan var olurdu.
         else:
             self.quiet_turns += 1

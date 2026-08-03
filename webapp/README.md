@@ -57,7 +57,10 @@ sadece metin üretimi için) çalıştırır.
   hangi yönden geldikleri sunucuda belirlenip anlatıcıya ZORUNLU blok olarak
   verilir; anlatıcı "birkaç zombi" diye geçiştiremez. Gürültü (silah, araç,
   bağırma) ihtimali yükseltir ve saatler içinde söner, yani sessiz seyahat
-  gerçekten işe yarar (bkz. `docs/zombi-tehdidi.md`).
+  gerçekten işe yarar. Bölge yoğunlukları **akan bir nüfustur**: bir yerde
+  patlama olursa ölüler oraya KOMŞU BÖLGELERDEN çekilir ve o bölgeler boşalır
+  (nüfus korunur); boşalan yerler günler içinde yeniden dolar
+  (bkz. `docs/zombi-tehdidi.md`).
 - **Kare harita**: bulunulan yerin taktik ızgarası (`grid[y][x]`). Karakterler
   yön tuşları/ok tuşlarıyla birer kare hareket eder; duvar ve engeller geçilmez,
   aynı karede birden fazla oyuncu/NPC/eşya bulunabilir (bkz. `docs/kare-harita.md`).

@@ -407,7 +407,7 @@ function yeniSahneyeGit() {
         icon="map"
         :count="Object.keys(oyun.worldMap?.places || {}).length"
       >
-        <MapPanel :harita="oyun.worldMap" :yukleniyor="ilkYukleme" />
+        <MapPanel :harita="oyun.worldMap" :tehdit="oyun.threat" :yukleniyor="ilkYukleme" />
       </SidebarSection>
 
       <SidebarSection

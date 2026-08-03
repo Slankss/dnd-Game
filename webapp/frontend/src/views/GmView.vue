@@ -318,7 +318,7 @@ onUnmounted(() => {
           <template #actions>
             <Badge tone="gm" size="sm" icon="visibility_off">sis perdesi yok</Badge>
           </template>
-          <MapPanel :harita="gm.worldState?.map || {}" gm />
+          <MapPanel :harita="gm.worldState?.map || {}" :tehdit="gm.worldState?.threat" gm />
         </Panel>
 
         <!-- Müdahale bestecisi -->

@@ -82,6 +82,22 @@ def public_threat(threat: dict, world_map: dict) -> dict:
 
     yogunluk = threat.get("density")
     yogunluk = yogunluk if isinstance(yogunluk, dict) else {}
+
+    # Göç hareketleri: yalnız BİLİNEN yerlerin adları görünür. Grup, hiç
+    # duymadığı bir bölgeden ölü çekildiğini haritaya bakarak öğrenemez.
+    def _gorunur_goc(kayit):
+        if not isinstance(kayit, dict):
+            return None
+        kaynaklar = [k for k in (kayit.get("from") or [])
+                     if isinstance(k, dict) and k.get("place") in bilinen]
+        if kayit.get("target") not in bilinen and not kaynaklar:
+            return None
+        return {"target": kayit.get("target") if kayit.get("target") in bilinen else "?",
+                "gain": kayit.get("gain"), "from": kaynaklar,
+                "type": kayit.get("type")}
+
+    gocler = [g for g in (_gorunur_goc(k) for k in (threat.get("migrations") or [])[-4:]) if g]
+
     return {
         "noise": threat.get("noise", 0),
         "heat": threat.get("heat", 0),
@@ -90,8 +106,10 @@ def public_threat(threat: dict, world_map: dict) -> dict:
         "encounters": threat.get("encounters", 0),
         "last": threat.get("last") or {},
         "history": (threat.get("history") or [])[-5:],
-        "density": {ad: deger for ad, deger in yogunluk.items()
-                    if ad in bilinen or ad == "yol"},
+        "density": {ad: round(float(deger)) for ad, deger in yogunluk.items()
+                    if (ad in bilinen or ad == "yol")
+                    and isinstance(deger, (int, float))},
+        "migrations": gocler,
     }
 
 

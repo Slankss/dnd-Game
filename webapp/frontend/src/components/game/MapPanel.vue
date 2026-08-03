@@ -25,6 +25,8 @@ const props = defineProps({
   yukleniyor: { type: Boolean, default: false },
   /** Anlatıcı kipi: sis perdesi yok */
   gm: { type: Boolean, default: false },
+  /** world_state.threat — yoğunluk halkaları ve göç bilgisi için */
+  tehdit: { type: Object, default: null },
 })
 
 const buyukAcik = ref(false)
@@ -57,7 +59,13 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
         title="Haritayı büyüt"
         @click="buyukAcik = true"
       >
-        <MapCanvas :harita="harita" mini :gm="gm" @sec="buyukAcik = true" />
+        <MapCanvas
+          :harita="harita"
+          mini
+          :gm="gm"
+          :yogunluk="tehdit?.density || {}"
+          @sec="buyukAcik = true"
+        />
         <span
           class="pointer-events-none absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-chip border border-border bg-surface/90 px-1.5 py-0.5 text-[0.625rem] text-muted transition-colors group-hover:text-text"
         >
@@ -111,6 +119,20 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
             <Badge v-if="yer.duzey === 'görüldü'" tone="warn" size="sm" icon="visibility">
               uzaktan
             </Badge>
+            <Badge
+              v-if="tehdit?.density?.[yer.ad] != null"
+              :tone="
+                tehdit.density[yer.ad] >= 66
+                  ? 'danger'
+                  : tehdit.density[yer.ad] >= 38
+                    ? 'warn'
+                    : 'ok'
+              "
+              size="sm"
+              icon="skull"
+            >
+              {{ Math.round(tehdit.density[yer.ad]) }}
+            </Badge>
           </div>
 
           <!-- Duyulmuş yer: ad dışında hiçbir ayrıntı yok. -->
@@ -146,6 +168,6 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
       </BaseButton>
     </template>
 
-    <MapModal v-model="buyukAcik" :harita="harita" :gm="gm" />
+    <MapModal v-model="buyukAcik" :harita="harita" :gm="gm" :tehdit="tehdit" />
   </div>
 </template>

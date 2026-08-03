@@ -64,6 +64,22 @@ const olcerler = computed(() => {
   return liste
 })
 
+/**
+ * Son göç hareketi: bir olay (patlama, silah sesi) bir bölgeye ölü çekmişse
+ * hangi bölgelerin boşaldığını gösterir. Nüfus korunur — gelenler komşu
+ * bölgelerden eksilir, bu yüzden boşalan bölge bir süre daha sakindir.
+ */
+const goc = computed(() => {
+  const liste = props.tehdit?.migrations || []
+  const son = liste[liste.length - 1]
+  if (!son?.from?.length) return null
+  return {
+    hedef: son.target,
+    tur: son.type || 'ses',
+    kaynaklar: son.from.map((k) => `${k.place} −${Math.round(k.amount)}`).join(', '),
+  }
+})
+
 /** Son karşılaşmanın tek satırlık özeti. */
 const sonMetin = computed(() => {
   if (!son.value?.var) return ''
@@ -103,6 +119,14 @@ const sonMetin = computed(() => {
           </div>
         </li>
       </ul>
+
+      <p v-if="goc" class="flex items-start gap-1.5 text-label text-warn">
+        <Icon name="moving" :size="13" class="mt-0.5 shrink-0" />
+        <span>
+          {{ goc.tur }} → <strong class="font-medium">{{ goc.hedef }}</strong> bölgesine ölü
+          çekildi; boşalan komşular: {{ goc.kaynaklar }}
+        </span>
+      </p>
 
       <p v-if="sonMetin" class="flex items-start gap-1.5 text-label text-faint">
         <Icon name="skull" :size="13" class="mt-0.5 shrink-0" />

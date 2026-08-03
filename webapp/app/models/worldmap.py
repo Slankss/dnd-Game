@@ -298,6 +298,20 @@ class WorldMap(DictModel):
         if place.discovered_day is None and day is not None:
             place._set("discovered_day", day)
 
+    def adjacency(self) -> dict:
+        """{yer: [komşular]} — göç motorunun kullandığı komşuluk grafiği.
+
+        `links` tek yönlü yazılmış olsa bile komşuluk ÇİFT YÖNLÜ sayılır:
+        A'dan B'ye yürünüyorsa B'den A'ya da yürünür."""
+        graf = {ad: set() for ad in self.places}
+        for ad, place in self.places.items():
+            for hedef in place.links or []:
+                if hedef not in graf:
+                    continue
+                graf[ad].add(hedef)
+                graf[hedef].add(ad)
+        return {ad: sorted(komsular) for ad, komsular in graf.items()}
+
     def keep_only(self, names) -> None:
         allowed = set(names or [])
         if self.party:

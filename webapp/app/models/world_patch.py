@@ -211,13 +211,18 @@ class WorldPatchMixin:
             move(grid, varlik, kayit.get("direction"))
 
     def _merge_threat(self, patch: dict) -> None:
-        """`threat` yaması — anlatıcı yalnız İKİ şeyi bildirir:
+        """`threat` yaması — anlatıcı yalnız ÜÇ şeyi bildirir:
 
-          {"noise_add": 25}                     bu turda çıkan gürültü
-          {"density": {"Kuzey deposu": 30}}     bir yerin yeni ölü yoğunluğu
+          {"noise_add": 25}                      bu turda çıkan gürültü
+          {"density": {"Kuzey deposu": 30}}      bir yerin yeni ölü yoğunluğu
+          {"events": [{"type": "patlama",        ölü çeken bir olay: o bölgeye
+                       "place": "Kuzey deposu",  komşu bölgelerden GÖÇ olur ve
+                       "strength": 40}]}         kaynak bölgeler boşalır
 
         Karşılaşmaların kendisi sunucunun zarıyla belirlenir; model buradan
         karşılaşma yazamaz, sayacı sıfırlayamaz."""
+        from .threat import EVENT_PULL
+
         threat = self.ensure_threat()
 
         eklenen = as_int(patch.get("noise_add"))
@@ -229,7 +234,30 @@ class WorldPatchMixin:
             for yer, deger in yogunluk.items():
                 sayi = as_int(deger)
                 if isinstance(yer, str) and yer.strip() and sayi is not None:
-                    threat.density[yer.strip()] = max(0, min(100, sayi))
+                    threat.density[yer.strip()] = float(max(0, min(100, sayi)))
+
+        # Olaylar: ses/ışık/patlama ölüleri KOMŞU BÖLGELERDEN çeker. Yoğunluk
+        # yoktan var olmaz; kaynak bölgeler eksilir (bkz. ThreatState.attract).
+        olaylar = patch.get("events")
+        if isinstance(olaylar, dict):
+            olaylar = [olaylar]
+        if isinstance(olaylar, list):
+            graf = self.ensure_map().adjacency()
+            for olay in olaylar:
+                if not isinstance(olay, dict):
+                    continue
+                yer = str(olay.get("place") or self.location or "").strip()
+                if not yer:
+                    continue
+                tur = str(olay.get("type") or "gürültü").strip().lower()
+                carpan = EVENT_PULL.get(tur, 1.0)
+                guc = as_int(olay.get("strength"))
+                guc = 25 if guc is None else max(0, min(100, guc))
+                kayit = threat.attract(yer, guc * carpan, graf)
+                if kayit:
+                    # Olayın türü kayıtta dursun: arayüz "patlama sonrası
+                    # buraya çekildiler" diye gösterebilsin.
+                    kayit["type"] = tur
 
     def _merge_narrator(self, npatch: dict) -> None:
         narrator = self.ensure_narrator()

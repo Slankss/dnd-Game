@@ -16,6 +16,7 @@ belirleyince anlatıcının geçiştirmesi mümkün olmuyor.
 
 from app.models.text import norm_tr
 from app.models.threat import (
+    EVENT_PULL,
     ThreatState,
     density_band,
     looks_like_travel,
@@ -24,6 +25,11 @@ from app.models.threat import (
 
 # Gecenin sayıldığı zaman dilimleri.
 NIGHT_WORDS = ("gece", "gece yarısı", "şafak")
+
+# Gürültü bu eşiği aşarsa bölgeye ölü çekilir (göç tetiklenir).
+MIGRATION_NOISE_MIN = 10
+# Karşılaşmanın kendisi de bölgeye ölü toplar — küçük ama gerçek bir çekim.
+ENCOUNTER_PULL = 0.35
 
 
 class ThreatService:
@@ -37,6 +43,12 @@ class ThreatService:
     @staticmethod
     def is_night(world) -> bool:
         return norm_tr(world.time_of_day or "") in [norm_tr(w) for w in NIGHT_WORDS]
+
+    @staticmethod
+    def graph(world) -> dict:
+        """Göç motorunun komşuluk grafiği — haritadaki `links` alanlarından."""
+        world_map = world.map
+        return world_map.adjacency() if world_map is not None else {}
 
     @staticmethod
     def place_kind(world) -> str:
@@ -60,10 +72,19 @@ class ThreatService:
         gecen = threat.last_minutes or minutes or 0
         threat.decay(max(0.0, gecen / 60.0))
 
+        # 1b) yayılma — boşalan bölgeler komşularından yavaşça dolar
+        graf = self.graph(world)
+        threat.diffuse(graf, max(0.0, gecen / 60.0))
+
         # 2) hamleden gürültü + yolculuk niyeti
         gurultu = noise_from_text(action_text)
+        goc = None
         if gurultu:
             threat.add_noise(gurultu)
+            # SES ÖLÜLERİ ÇEKER: bu bölgeye gelenler komşu bölgelerden eksilir.
+            if gurultu >= MIGRATION_NOISE_MIN and world.location:
+                goc = threat.attract(
+                    world.location, gurultu * EVENT_PULL["gürültü"], graf)
         # Yolculuk bayrağı YAPIŞKAN DEĞİLDİR: ya bu turda yola çıkma niyeti
         # var, ya da grup geçen turda gerçekten yer değiştirmiştir. Aksi halde
         # bir kez yola çıkan grup, sığınağa varsa bile sonsuza dek "yolda"
@@ -90,8 +111,9 @@ class ThreatService:
         threat.travelling = yolculuk
 
         return {"encounter": karsilasma, "threat": threat, "place": yer,
-                "density": yogunluk, "noise_added": gurultu,
-                "note": self.note(world, threat, karsilasma, yer, yogunluk)}
+                "density": yogunluk, "noise_added": gurultu, "graph": graf,
+                "migration": goc,
+                "note": self.note(world, threat, karsilasma, yer, yogunluk, goc)}
 
     @staticmethod
     def commit(world, hazirlik: dict, minutes: int = 0) -> None:
@@ -99,16 +121,49 @@ class ThreatService:
         if not hazirlik:
             return
         threat = hazirlik["threat"]
-        threat.record(hazirlik["encounter"], day=world.day, clock=world.clock,
+        karsilasma = hazirlik["encounter"]
+        threat.record(karsilasma, day=world.day, clock=world.clock,
                       place=hazirlik.get("place"))
+        # Karşılaşma bölgeye ölü TOPLAR: gelenler yine komşulardan eksilir,
+        # nüfus yoktan var olmaz.
+        if karsilasma.var and world.location and not karsilasma.travelling:
+            threat.attract(world.location, karsilasma.count * ENCOUNTER_PULL,
+                           hazirlik.get("graph") or {})
         # Sonraki turun sönümü ve yolculuk tespiti için: bu turda ne kadar
         # zaman geçti ve grup nerede kaldı.
         threat.last_minutes = max(0, int(minutes or 0))
         threat.last_location = world.location or threat.last_location
 
+    def apply_event(self, world, event: dict) -> dict:
+        """Anlatıcının bildirdiği bir OLAY: patlama, yangın, alarm…
+
+        {"type": "patlama", "place": "Kuzey deposu", "strength": 40}
+
+        Olay o bölgeye ölü çeker; gelenler komşu bölgelerden eksilir. Olay
+        grubun bulunduğu yerde olmak zorunda değil — uzaktaki bir patlama da
+        haritayı değiştirir (ve o yöne giden yolları boşaltır)."""
+        if not isinstance(event, dict):
+            return {}
+        yer = str(event.get("place") or world.location or "").strip()
+        if not yer:
+            return {}
+        tur = norm_tr(event.get("type") or "gürültü")
+        carpan = next((v for k, v in EVENT_PULL.items() if norm_tr(k) == tur), 1.0)
+        try:
+            guc = float(event.get("strength") or 25)
+        except (TypeError, ValueError):
+            guc = 25.0
+        guc = max(0.0, min(100.0, guc))
+        threat = self.state_of(world)
+        kayit = threat.attract(yer, guc * carpan, self.graph(world))
+        if kayit:
+            kayit["type"] = event.get("type") or "gürültü"
+        return kayit
+
     # -------------------------------------------------------------- prompt
     @staticmethod
-    def note(world, threat: ThreatState, encounter, place: str, density: int) -> str:
+    def note(world, threat: ThreatState, encounter, place: str, density: int,
+             migration: dict = None) -> str:
         """Anlatıcıya giden ZORUNLU tehdit bloğu."""
         bant = density_band(density)
         satirlar = [
@@ -151,6 +206,17 @@ class ThreatService:
                 "yakında dursun. Oyunculara 'güvendesiniz' hissi VERME.",
             ]
 
+        goc = migration or (threat.migrations[-1] if threat.migrations else None)
+        if goc and goc.get("from"):
+            kaynaklar = ", ".join(f"{k['place']} −{k['amount']}"
+                                  for k in goc["from"][:4])
+            satirlar.append(
+                f"- GÖÇ: ses {goc['target']} bölgesine ölü çekti (+{goc['gain']} yoğunluk); "
+                f"gelenler komşu bölgelerden eksildi → {kaynaklar}. Bunu sahnede "
+                "göster: çekilen yöne akan gölgeler, boşalan bölgenin tuhaf "
+                "sessizliği. Boşalan bölge bir süre daha SAKİN kalır."
+            )
+
         satirlar.append(
             "- GÜRÜLTÜ KURALI: silah sesi, araç, kırılan kapı, bağırma bölgenin "
             "dikkatini çeker ve bir sonraki turda karşılaşma ihtimalini yükseltir. "
@@ -158,6 +224,13 @@ class ThreatService:
             '`{"noise_add": <10-35>}` yaz; sessiz ilerlendiyse yazma. Bir bölge '
             "temizlendiyse ya da kalabalıklaştıysa "
             '`{"density": {"<yer>": <0-100>}}` ile güncelle.'
+        )
+        satirlar.append(
+            "- OLAY BİLDİRİMİ: bu turda bir yerde patlama/yangın/alarm gibi ölü "
+            "çeken bir olay olduysa state-update'e "
+            '`"threat": {"events": [{"type": "patlama", "place": "<yer>", "strength": 40}]}` '
+            "yaz. Sunucu o bölgeye KOMŞU BÖLGELERDEN ölü göçü yapar ve kaynak "
+            "bölgeleri boşaltır — olay grubun bulunduğu yerde olmak zorunda değil."
         )
         if threat.quiet_turns >= 3:
             satirlar.append(
