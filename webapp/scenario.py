@@ -904,7 +904,7 @@ tepkisidir (küfreder ve saldırır / donakalır / kaçar / şaka yapar / emir y
 Oyuncular arayüzde harita paneli görüyor: şu anki konum, bilinen yerler, kim
 nerede. Her turda güncel tut:
 
-`"map": {"current": "<grubun ana konumu>", "places": {"<yer adı>": {"kind": "depo|kamp|harabe|yol|tesis|...", "status": "<kısa durum>", "danger": "güvenli|temkinli|tehlikeli|ölümcül|bilinmiyor", "notes": "<kısa not>", "links": ["<komşu yer>"]}}, "party": {"<karakter>": "<bulunduğu yer>"}}`
+`"map": {"current": "<grubun ana konumu>", "places": {"<yer adı>": {"kind": "depo|kamp|harabe|yol|tesis|...", "known": "duyuldu|görüldü|keşfedildi", "status": "<kısa durum>", "danger": "güvenli|temkinli|tehlikeli|ölümcül|bilinmiyor", "notes": "<kısa not>", "links": ["<komşu yer>"]}}, "party": {"<karakter>": "<bulunduğu yer>"}}`
 
 - Grup taşındıysa `map.current` VE üst düzey `location` aynı yeni yeri göstersin.
 - Sahnede yeni bir yer adı geçtiyse (uzaktan görülen bina, bahsedilen kamp)
@@ -912,6 +912,25 @@ nerede. Her turda güncel tut:
 - Grup dağıldıysa `party` altında kimin nerede olduğunu yaz; karakterin
   `location` alanını da güncelle (sunucu ikisini eşler).
 - `danger` yaşananlara göre değişsin: pusuya düşülen yer artık `tehlikeli`dir.
+
+### BİLGİ DÜZEYİ (`known`) — SİS PERDESİ
+Harita oyunculara ne kadar biliniyorsa o kadarını gösterir:
+- `duyuldu` — sadece adı geçti (biri bahsetti, telsizde duyuldu). Haritada
+  silik bir soru işareti olarak görünür; TÜRÜ, DURUMU, TEHLİKESİ ve NOTU
+  oyuncuya HİÇ gönderilmez.
+- `görüldü` — uzaktan görüldü/gözlendi: tür, durum, tehlike ve komşuluk bilinir.
+- `keşfedildi` — içine girildi: her şey bilinir (not dahil).
+
+Kurallar:
+- Yeni bir yer ilk kez GEÇTİĞİNDE `known` yazmazsan sunucu `duyuldu` sayar.
+- Oyuncular bir yer hakkında gerçekten bilgi edindikçe (yaklaştılar, dürbünle
+  baktılar, biri anlattı, içine girdiler) `known` düzeyini YÜKSELT ve **o turda
+  öğrendikleri** ayrıntıyı yaz. Düzey asla geri düşmez.
+- Henüz öğrenilmemiş bir yerin ayrıntısını şimdiden yazma: sunucu düşük
+  düzeydeki yerlerin ayrıntılarını oyuncu arayüzünden ayıklar, yazdıkların
+  görünmez. O ayrıntıları keşif turunda yaz.
+- Grubun gittiği ya da bir karakterin fiilen bulunduğu yer sunucu tarafından
+  otomatik olarak `keşfedildi` sayılır.
 
 ## ÖĞRENME (`learning`) — OYUN KENDİNİ GELİŞTİRİR
 Her turda sana "ÖĞRENİLENLER" bloğu verilir: bu masayla oynanan turlardan

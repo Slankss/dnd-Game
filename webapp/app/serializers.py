@@ -10,6 +10,7 @@ import time
 from app.models.person import SECRET_FIELD
 from app.models.round import Round
 from app.models.world import GM_ONLY_FIELDS
+from app.models.worldmap import public_place
 
 
 def public_world_state(world_state: dict) -> dict:
@@ -24,6 +25,20 @@ def public_world_state(world_state: dict) -> dict:
                 name: {k: v for k, v in (info or {}).items() if k != SECRET_FIELD}
                 for name, info in people.items()
             }
+    world_map = public.get("map")
+    if isinstance(world_map, dict):
+        # Harita da iki katmanlıdır: oyuncular yalnız ÖĞRENDİKLERİ kadarını
+        # görür. Duyulmuş ama gidilmemiş bir yerin türü/tehlikesi/notu bu
+        # gövdeye hiç girmez (bkz. models/worldmap.public_place).
+        places = world_map.get("places")
+        public["map"] = {
+            **world_map,
+            "places": {
+                name: public_place(info)
+                for name, info in places.items()
+            } if isinstance(places, dict) else {},
+        }
+
     challenges = public.get("challenges")
     if isinstance(challenges, dict):
         # zorluklar oyunculara görünür ama her zorluğun gm_notes'u görünmez

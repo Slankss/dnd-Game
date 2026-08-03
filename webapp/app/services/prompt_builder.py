@@ -13,6 +13,7 @@ from app.models.conditions import describe_when
 from app.models.person import REFLEX_FIELD, SECRET_FIELD
 from app.models.presence import PRESENCE_LABELS, canon_presence
 from app.models.vitals import vital_label
+from app.models.worldmap import knowledge_of
 
 
 # Kadro yardımcıları — WorldState'in aynı adlı metotlarının sözlük üzerinde
@@ -265,23 +266,35 @@ def map_note(world_state: dict) -> str:
 
     places = world_map.get("places")
     if isinstance(places, dict) and places:
-        lines.append("Bilinen yerler:")
-        for name, info in list(places.items())[:14]:
+        lines.append("Bilinen yerler (bilgi düzeyiyle):")
+        for name, info in list(places.items())[:16]:
             info = info if isinstance(info, dict) else {}
-            bits = [b for b in (info.get("kind"), info.get("status")) if b]
+            bits = [knowledge_of(info)]
+            bits += [b for b in (info.get("kind"), info.get("status")) if b]
             danger = info.get("danger")
             if danger and danger != "bilinmiyor":
                 bits.append(f"tehlike: {danger}")
             links = info.get("links")
             if isinstance(links, list) and links:
                 bits.append("komşu: " + ", ".join(links[:3]))
-            lines.append(f"- {name}" + (f" ({'; '.join(bits)})" if bits else ""))
+            lines.append(f"- {name} ({'; '.join(bits)})")
 
     lines.append(
         "KURAL: bu turda konum değiştiyse `map.current` ve üst düzey `location` "
         "alanlarını AYNI yeni yerle güncelle; sahnede yeni bir yer adı geçtiyse "
         "`map.places` altına ekle (henüz gidilmemiş olsa bile); grup dağıldıysa "
         "`map.party` ile kimin nerede olduğunu yaz. Oyuncular haritayı canlı izliyor."
+    )
+    lines.append(
+        "BİLGİ DÜZEYİ (`known`) — haritada ne kadarının görüneceğini bu belirler: "
+        "`duyuldu` (sadece adı geçti; oyuncu haritada silik bir işaret görür), "
+        "`görüldü` (uzaktan görüldü/gözlendi: tür, durum, tehlike bilinir), "
+        "`keşfedildi` (içine girildi: her şey bilinir). Oyuncular bir yer "
+        "hakkında GERÇEKTEN bilgi edindikçe bu alanı YÜKSELT ve o turda yeni "
+        "öğrenilen ayrıntıyı (tür/durum/tehlike/not) yaz. Henüz öğrenilmemiş bir "
+        "yerin ayrıntısını ŞİMDİDEN yazma — sunucu düşük bilgi düzeyindeki "
+        "yerlerin ayrıntılarını oyuncu arayüzünden zaten ayıklar, erken yazarsan "
+        "kendi notun boşa gider."
     )
     return "\n".join(lines)
 

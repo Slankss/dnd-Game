@@ -168,9 +168,12 @@ export const TEHLIKE_TONU = {
   bilinmiyor: 'muted',
 }
 
+/** Bilgi düzeyi sırası — bilinen yerler listenin başında durur. */
+const BILGI_SIRASI = { keşfedildi: 0, görüldü: 1, duyuldu: 2 }
+
 /**
  * Harita kaydını listeye çevirir: şu an bulunulan yer BAŞA gelir, gerisi
- * keşfedilmiş olanlar önce olacak şekilde sıralanır.
+ * bilgi düzeyine (keşfedildi → görüldü → duyuldu) göre sıralanır.
  * @param {{current?:string, places?:object, party?:object}} harita
  */
 export function yerleriDiziye(harita) {
@@ -178,6 +181,13 @@ export function yerleriDiziye(harita) {
   if (!yerler || typeof yerler !== 'object') return []
   const simdiki = harita?.current || ''
   const parti = harita?.party || {}
+  const duzey = (yer) => {
+    const k = String(yer?.known || '').toLowerCase()
+    if (k in BILGI_SIRASI) return k
+    if (yer?.visited) return 'keşfedildi'
+    if (yer?.kind || yer?.status || (yer?.danger && yer.danger !== 'bilinmiyor')) return 'görüldü'
+    return 'duyuldu'
+  }
   return Object.entries(yerler)
     .map(([ad, bilgi]) => ({
       ad,
@@ -189,9 +199,8 @@ export function yerleriDiziye(harita) {
     }))
     .sort((a, b) => {
       if (a.burada !== b.burada) return a.burada ? -1 : 1
-      const av = a.visited ? 0 : 1
-      const bv = b.visited ? 0 : 1
-      if (av !== bv) return av - bv
+      const fark = BILGI_SIRASI[duzey(a)] - BILGI_SIRASI[duzey(b)]
+      if (fark !== 0) return fark
       return a.ad.localeCompare(b.ad, 'tr')
     })
 }

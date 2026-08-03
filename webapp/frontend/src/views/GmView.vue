@@ -34,6 +34,7 @@ import GmLogList from '@/components/gm/GmLogList.vue'
 import GmLogTabs from '@/components/gm/GmLogTabs.vue'
 import PlotPanel from '@/components/gm/PlotPanel.vue'
 import LearningPanel from '@/components/gm/LearningPanel.vue'
+import MapPanel from '@/components/game/MapPanel.vue'
 import ScenarioTransfer from '@/components/gm/ScenarioTransfer.vue'
 import { jsonYaz, gerilimTonu, yayinOnEkiniAt } from '@/components/gm/gmYardimcilar'
 
@@ -311,6 +312,14 @@ onUnmounted(() => {
             <WorldDicePanel :roll="gm.worldRoll" :history="gm.worldRollHistory" />
           </Panel>
         </div>
+
+        <!-- Harita: anlatıcı sis perdesi olmadan görür -->
+        <Panel title="Harita" icon="map" collapsible>
+          <template #actions>
+            <Badge tone="gm" size="sm" icon="visibility_off">sis perdesi yok</Badge>
+          </template>
+          <MapPanel :harita="gm.worldState?.map || {}" gm />
+        </Panel>
 
         <!-- Müdahale bestecisi -->
         <Panel tone="gm" title="Senaryoya müdahale" icon="bolt">
