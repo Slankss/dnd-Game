@@ -4,10 +4,12 @@ Akış:
 
   `ensure_open`  Anlatıcı sahneyi yazdıktan sonra tur açılır; süre sayacı
                  (settings.turn_seconds) o anda başlar.
-  `pick`         Bir oyuncu seçeneğini seçer ya da kendi hamlesini yazar.
-                 Sunucu O ANDA gerçek bir d100 atar ve sonucu döndürür —
-                 arayüz zarı animasyonla gösterir, sonuç havuza not edilir.
-                 Seçim hafızada birikir, modele GİTMEZ.
+  `pick`         Bir oyuncu SUNULAN SEÇENEKLERDEN birini seçer. Sunucu O ANDA
+                 gerçek bir d100 atar ve sonucu döndürür — arayüz zarı
+                 animasyonla gösterir, sonuç havuza not edilir. Seçim hafızada
+                 birikir, modele GİTMEZ.
+                 Serbest metin YOKTUR: hikaye yalnız sunulan tercihlerle
+                 ilerler (bkz. `pick`'teki doğrulama).
   `commit`       Herkes seçince (ya da süre dolunca / elle gönderilince) tüm
                  seçimler TEK mesajda anlatıcıya gider. Seçim yapmayanlar için
                  "ani sahne" istenir: dünya kararsızı beklemez.
@@ -35,8 +37,12 @@ from app.services.options_service import OptionsService
 from app.services.threat_service import ThreatService
 from app.services.turn_service import TurnService
 
-# Kendi hamlesini yazan oyuncu için en kısa metin.
-MIN_CUSTOM = 3
+# Oyuncu serbest metin YAZAMAZ: hikaye yalnız sunulan seçeneklerle ilerler.
+# `pick` yalnızca `option_id` kabul eder; gövdede metin gelirse reddedilir.
+SERBEST_METIN_HATASI = (
+    "Bu oyunda serbest hamle yok — sunulan seçeneklerden birini seç. "
+    "Hiçbiri uymuyorsa 'Bu turda bekle'yi kullanabilirsin."
+)
 
 
 class RoundService:
@@ -90,7 +96,10 @@ class RoundService:
 
     # ------------------------------------------------------------ seçim
     def pick(self, player, option_id=None, text=None) -> dict:
-        """Bir oyuncunun seçimi + o anda atılan zar."""
+        """Bir oyuncunun seçimi + o anda atılan zar.
+
+        `text` KABUL EDİLMEZ: senaryo yalnız sunulan tercihlerle ilerler.
+        Eski istemciler serbest metin gönderirse açık bir hatayla döner."""
         player = (player or "").strip()
         if not player:
             raise ValidationError("Karakter seçilmedi.")
@@ -122,26 +131,25 @@ class RoundService:
                     "seçim değiştirilemez."
                 )
 
-            metin = (text or "").strip()
-            secenek = None
-            if option_id:
-                secenek = world.ensure_options().find(player, str(option_id))
-                if secenek is None:
-                    raise ValidationError("Seçenek bulunamadı — sahne yenilenmiş olabilir.")
-                metin = secenek.text
-            if len(metin) < MIN_CUSTOM:
-                raise ValidationError("Hamleni yaz ya da listeden bir seçenek seç.")
+            if (text or "").strip():
+                raise ValidationError(SERBEST_METIN_HATASI)
+            if not option_id:
+                raise ValidationError(SERBEST_METIN_HATASI)
+            secenek = world.ensure_options().find(player, str(option_id))
+            if secenek is None:
+                raise ValidationError("Seçenek bulunamadı — sahne yenilenmiş olabilir.")
+            metin = secenek.text
 
             # Zar SEÇİM ANINDA atılır: arayüz animasyonu gerçek sonucu gösterir.
             roll = roll_d100()
             pick = Pick(
                 player=player,
-                option_id=(secenek.id if secenek else ""),
+                option_id=secenek.id,
                 text=metin,
-                category=(secenek.category if secenek else FREE_CATEGORY),
+                category=secenek.category,
                 roll=roll,
                 band=band_for(roll),
-                custom=secenek is None,
+                custom=False,          # serbest metin yok: her seçim havuzdan
                 ts=time.time(),
             )
             round_.add(pick)
@@ -174,7 +182,7 @@ class RoundService:
             roll = roll_d100()
             round_.add(Pick(player=player, text="(bekliyor, hamle yapmıyor)",
                             category="güvenli", roll=roll, band=band_for(roll),
-                            custom=True, ts=time.time()))
+                            custom=False, ts=time.time()))
             StateRepository.store_round(state, round_)
             self.state_repo.save(state)
             oyuncular = self.actors(world)

@@ -21,14 +21,17 @@ sadece metin üretimi için) çalıştırır.
    her oyun başka bir yerde başlar. Künyeler dolduysa oyun içi karakter oluşturma turu atlanır ve
    hikaye doğrudan başlar; künye boş bırakıldıysa anlatıcı eskisi gibi her
    karakter için 2-3 seçenekli soru sorar. Bu turda zar atılmaz.
-3. Karakterler hazır olduğunda oyun **tur bazlı** işler: anlatıcı her
+3. Karakterler hazır olduğunda oyun **tur bazlı** işler ve hikaye **yalnız
+   sunulan seçeneklerle** ilerler — oyuncu kendi planını yazamaz. Anlatıcı her
    karaktere 5-10 kategorili seçenek bırakır (riskli / güvenli / gizemli /
-   körü körüne …), oyuncular kendi seçeneklerini seçer, sunucu **seçim
+   körü körüne …; her listede en az bir düşük riskli çıkış garanti edilir),
+   oyuncular kendi seçeneklerini seçer, sunucu **seçim
    anında** 1-100 arası gerçek bir zar atar (kriptografik RNG) ve arayüz onu
    animasyonla gösterir. Seçimler hafızada birikir; **herkes seçince** (ya da
    tur süresi dolunca) hepsi TEK mesajda anlatıcıya gider. Süresi içinde
    seçim yapmayan karakter için anlatıcı **ani sahne** yazar — dünya
-   beklemez. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
+   beklemez. Hiçbir seçenek uymuyorsa tek çıkış "bu turda bekle"dir.
+   Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
 - Oturum sürekliliği Claude Code'un kendi `--resume` mekanizmasıyla sağlanır —
   sunucu konuşma geçmişini kendi başına biriktirip API'ye yeniden göndermez;
   Claude Code bunu zaten kendi tarafında tutar.

@@ -150,14 +150,6 @@ async function secenekSec(secenek) {
   }
 }
 
-async function kendiHamlesi(metin) {
-  try {
-    await oyun.pickOption(seciliOyuncu.value, { text: metin })
-  } catch {
-    /* hata store'da */
-  }
-}
-
 async function turdaBekle() {
   try {
     await oyun.waitRound(seciliOyuncu.value)
@@ -591,13 +583,14 @@ function yeniSahneyeGit() {
               :tur-acik="oyun.roundOpen"
               :son-zar="oyun.lastRoll"
               @sec="secenekSec"
-              @kendi-hamlesi="kendiHamlesi"
               @bekle="turdaBekle"
             />
           </template>
 
+          <!-- Serbest yazma alanı YALNIZ karakter oluşturma turlarında:
+               asıl hikaye sunulan seçeneklerle ilerler. -->
           <ActionComposer
-            v-else
+            v-else-if="!oyun.chargenDone"
             ref="composer"
             v-model:secili="seciliOyuncu"
             :kadro="oyun.aliveRoster"
@@ -608,6 +601,16 @@ function yeniSahneyeGit() {
             :kilitli="oyun.busy"
             @gonder="turGonder"
           />
+
+          <!-- Chargen bitti ama tur henüz açılmadı: sahne hazırlanıyor -->
+          <p
+            v-else
+            class="flex items-center justify-center gap-2 rounded-panel border border-border bg-surface px-3 py-3 text-meta text-muted"
+            role="status"
+          >
+            <Icon name="progress_activity" :size="16" class="motion-safe:animate-spin" />
+            Sahne hazırlanıyor — seçenekler birazdan gelecek.
+          </p>
 
           <!-- Yeni sahne rozeti -->
           <button

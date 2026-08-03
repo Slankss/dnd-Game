@@ -36,7 +36,9 @@ class StateRepository:
             "turn_seconds": config.TURN_SECONDS,
             # Küfür/argo dozu: kapalı | hafif | sert
             "profanity": config.PROFANITY,
-            # Tur bazlı seçenek akışı açık mı (kapalıysa serbest metin turu).
+            # Tur bazlı seçenek akışı. Kapatılamaz: senaryo yalnız sunulan
+            # tercihlerle ilerler (serbest hamle kaldırıldı). Alan, eski
+            # kayıtlarla uyum ve arayüzün okuması için duruyor.
             "round_mode": True,
         }
 

@@ -1,4 +1,10 @@
-"""Bir oyuncu turunun tam akışı.
+"""Serbest metin turu — ARTIK YALNIZ KARAKTER OLUŞTURMADA.
+
+Senaryo yalnız SUNULAN SEÇENEKLERLE ilerler (bkz. `round_service`): oyuncu
+kendi planını yazamaz. Bu yüzden `/api/message` yalnızca karakter oluşturma
+turlarında açıktır — künyesini ekrandan doldurmayan bir masa, oyun içi
+karakter oluşturma sorularını yine serbestçe cevaplayabilsin diye. Oyun asıl
+hikayeye geçtiği anda (chargen bitince) bu yol kapanır.
 
 Zincir: dünya zarı → sahne katılımı → prompt → model → state-update → kayıt →
 seçenek havuzu → öğrenme defteri.
@@ -189,6 +195,13 @@ class TurnService:
                 raise ValidationError("Önce oyunu başlatın.")
             world = StateRepository.world_of(state)
             profanity = StateRepository.settings_of(state).get("profanity") or "hafif"
+            # Senaryo yalnız sunulan seçeneklerle ilerler: serbest hamle
+            # SADECE karakter oluşturma turlarında kabul edilir.
+            if world.chargen_complete():
+                raise ValidationError(
+                    "Bu oyunda serbest hamle yok — hikaye yalnız sunulan "
+                    "seçeneklerle ilerler. Kendi karakterin için bir seçenek seç."
+                )
             # ölen karakterler adına mesaj gönderilemez — oyuncusu devralma
             # ekranından yeni bir karakter seçmeli
             valid_players = world.alive_players()

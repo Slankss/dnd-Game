@@ -302,8 +302,13 @@ class GameService:
                     raise ValidationError("Küfür ayarı: kapalı, hafif ya da sert.")
                 settings["profanity"] = doz
 
-            if "round_mode" in patch:
-                settings["round_mode"] = bool(patch.get("round_mode"))
+            if "round_mode" in patch and not patch.get("round_mode"):
+                # Tur bazlı akış artık kapatılamaz: senaryo yalnız sunulan
+                # tercihlerle ilerler, serbest yazışma kipi kaldırıldı.
+                raise ValidationError(
+                    "Serbest yazışma kipi kapalı — oyun yalnız sunulan "
+                    "seçeneklerle ilerler."
+                )
 
             state["settings"] = settings
             world = StateRepository.world_of(state)

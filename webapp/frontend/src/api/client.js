@@ -179,7 +179,9 @@ export function startGame(opts = {}) {
 }
 
 /**
- * POST /api/message — bir oyuncu turu. Model yanıtı 30-60 sn sürebilir.
+ * POST /api/message — SADECE karakter oluşturma turları için. Asıl oyunda
+ * serbest hamle yoktur; sunucu chargen bittiğinde bu ucu reddeder.
+ * Model yanıtı 30-60 sn sürebilir.
  * @param {string} player
  * @param {string} text
  * @returns {Promise<{user_entries:any[], gm_entry:any, world_state:any,
@@ -233,15 +235,16 @@ export function resetGame({ keepLearning = true } = {}, opts = {}) {
  * ========================================================================== */
 
 /**
- * POST /api/round/pick — seçimi bildir; zar SUNUCUDA o anda atılır.
+ * POST /api/round/pick — sunulan seçeneklerden birini seç; zar SUNUCUDA o anda
+ * atılır. Serbest hamle yoktur: sunucu metin gövdesini reddeder.
  * @param {string} player
- * @param {{optionId?: string, text?: string}} secim havuzdan seçenek ya da kendi hamlesi
+ * @param {{optionId: string}} secim havuzdaki seçeneğin kimliği
  * @returns {Promise<{roll:number, band:string, round:object, all_picked:boolean}>}
  */
-export function pickOption(player, { optionId = null, text = null } = {}, opts = {}) {
+export function pickOption(player, { optionId = null } = {}, opts = {}) {
   return istek('/api/round/pick', {
     method: 'POST',
-    body: { player, option_id: optionId, text },
+    body: { player, option_id: optionId },
     signal: opts.signal,
   })
 }

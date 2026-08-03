@@ -6,6 +6,9 @@ getirir:
   * sahnede olmayan/ölmüş karakterlerin listeleri düşer,
   * eksik kalanlar (5'ten az) sahneye bağlı jenerik seçeneklerle tamamlanır —
     oyuncu ekranı asla boş kalmaz, model bir turda unutsa bile oyun döner,
+  * her listede EN AZ BİR düşük riskli seçenek bulunur: senaryo yalnız sunulan
+    tercihlerle ilerlediği için (serbest hamle yok) oyuncuyu yalnızca ölümcül
+    seçenekler arasına sıkıştırmak kabul edilemez,
   * sunulan her seçenek havuz dosyasına (`data/options_pool.jsonl`) düşer,
   * anlatıcıya "son sunulanlar" özeti hazırlanır ki kendini tekrar etmesin.
 """
@@ -55,6 +58,7 @@ class OptionsService:
             options = board.for_player(player)
             if len(options) < OPTION_MIN:
                 options = self._pad(world, player, options)
+            options = self._ensure_safe_exit(world, player, options)
             board.set_player(player, options[:OPTION_MAX])
         if learning is not None:
             day = world.day if isinstance(world.day, int) else None
@@ -87,6 +91,22 @@ class OptionsService:
                 tamamlanan.append(Option(id="", category=category, text=metin, cost=cost))
             i += 1
         return normalize_list(player, [o.to_dict() for o in tamamlanan])
+
+    def _ensure_safe_exit(self, world, player: str, options: list) -> list:
+        """Her listede en az bir düşük riskli çıkış olsun.
+
+        Serbest hamle kaldırıldığı için oyuncunun tek çıkışı bu listedir;
+        hepsi 'riskli'/'körü körüne' olan bir liste, oyuncuyu kendi seçmediği
+        bir felakete zorlar. Anlatıcı böyle bir liste yazdıysa sunucu sona
+        güvenli bir seçenek ekler."""
+        guvenli_kategoriler = {"güvenli", "hazırlık", "insani"}
+        if any(o.category in guvenli_kategoriler for o in options):
+            return options
+        kategori, sablon, cost = FALLBACK_TEMPLATES[0]
+        metin = sablon.format(tehdit=self._threat(world), yer=self._where(world, player))
+        tamam = list(options[:OPTION_MAX - 1])
+        tamam.append(Option(id="", category=kategori, text=metin, cost=cost))
+        return normalize_list(player, [o.to_dict() for o in tamam])
 
     @staticmethod
     def _threat(world) -> str:
@@ -133,7 +153,10 @@ class OptionsService:
             "ve `cost` (somut bedel) olsun. Aynı listede en az ÜÇ farklı kategori "
             "bulunsun, seçenekler o karakterin künyesine/eşyasına/bulunduğu yere "
             "özel olsun ve karakterleri farklı yönlere dağıtabilsin — ama sahnenin "
-            "coğrafyası ve mevcut zorlukla bağı kopmasın."
+            "coğrafyası ve mevcut zorlukla bağı kopmasın. OYUNCULARIN SERBEST "
+            "HAMLE YAZMA HAKKI YOKTUR: hikaye yalnız bu listelerle ilerler, bu "
+            "yüzden liste sahnenin gerçek karar uzayını kapsasın ve içinde EN AZ "
+            "BİR düşük riskli seçenek (bekle/geri çekil/hazırlık) bulunsun."
         )
 
     # -------------------------------------------------------------- havuz

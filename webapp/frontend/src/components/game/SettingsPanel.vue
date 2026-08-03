@@ -41,7 +41,6 @@ const KUFUR = [
 
 const sure = computed(() => Number(props.ayarlar?.turn_seconds ?? 0))
 const kufur = computed(() => props.ayarlar?.profanity || 'hafif')
-const turModu = computed(() => props.ayarlar?.round_mode !== false)
 
 const {
   durum: muzikDurumu,
@@ -129,36 +128,6 @@ function sifirla() {
         </div>
         <p class="text-label text-faint">
           Küfür anlatıcının değil, karakterlerin ağzından çıkar; refleksleri künyeden gelir.
-        </p>
-      </section>
-
-      <!-- Akış biçimi -->
-      <section class="flex flex-col gap-2">
-        <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
-          <Icon name="playing_cards" :size="14" />
-          Akış biçimi
-        </h3>
-        <div class="flex flex-wrap gap-1.5">
-          <BaseButton
-            size="sm"
-            :variant="turModu ? 'primary' : 'subtle'"
-            :disabled="mesgul"
-            @click="$emit('ayarKaydet', { round_mode: true })"
-          >
-            Tur bazlı (seçenek havuzu)
-          </BaseButton>
-          <BaseButton
-            size="sm"
-            :variant="!turModu ? 'primary' : 'subtle'"
-            :disabled="mesgul"
-            @click="$emit('ayarKaydet', { round_mode: false })"
-          >
-            Serbest yazışma
-          </BaseButton>
-        </div>
-        <p class="text-label text-faint">
-          Tur bazlı akışta herkes kendi seçeneğini seçer, zar seçim anında atılır ve tur hepsi
-          seçtikten sonra tek seferde gönderilir.
         </p>
       </section>
 

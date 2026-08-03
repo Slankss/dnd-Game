@@ -31,6 +31,15 @@ anlatıcı sahneyi yazar ──► her karaktere 5-10 seçenek bırakır
 
 Önemli noktalar:
 
+- **Hikaye YALNIZ sunulan seçeneklerle ilerler.** Oyuncu kendi planını yazamaz:
+  `round_service.pick` yalnız `option_id` kabul eder, gövdede metin gelirse
+  reddeder; `/api/message` (serbest metin turu) yalnız karakter oluşturma
+  sürerken açıktır ve chargen bitince kapanır; `settings.round_mode` kapatılamaz.
+  Hiçbir seçenek uymuyorsa tek çıkış **"bu turda bekle"**dir.
+- Kaçış yolu kalmadığı için sunucu iki şeyi garanti eder: karakter başına en az
+  5 seçenek ve her listede **en az bir düşük riskli seçenek** (güvenli /
+  hazırlık / insani). Anlatıcı sadece ölümcül seçenekler yazarsa
+  `options_service._ensure_safe_exit` sona güvenli bir çıkış ekler.
 - **Zar seçim anında atılır** (`round_service.pick`), sunucuda, kriptografik
   RNG ile. Arayüzdeki animasyon sadece sonucu sunar; sonucu üretmez. Zar
   atıldıktan sonra seçim değiştirilemez.
@@ -45,8 +54,8 @@ anlatıcı sahneyi yazar ──► her karaktere 5-10 seçenek bırakır
   `{"skipped": true}` ile geri çevirir (kilit + `round_no` kontrolü).
 - Model çağrısı hata verirse tur **açık kalır**; seçimler ve zarlar kaybolmaz.
 
-Serbest yazışmaya dönmek isteyen masalar için `settings.round_mode = false`:
-o zaman eski `/api/message` akışı (ve "Ortak Karar" düğmesi) geçerlidir.
+`settings.round_mode` alanı eski kayıtlarla uyum için duruyor ama **kapatılamaz**:
+serbest yazışma kipi kaldırıldı, `/api/settings` bunu 400 ile reddeder.
 
 ## 2. Seçenek havuzu
 
@@ -62,6 +71,7 @@ Kurallar (motor eki, `scenario.SYSTEM_APPENDIX`):
 | Kural | Nerede zorlanır |
 |---|---|
 | Karakter başına 5-10 seçenek | `options_service.refresh` eksikleri tamamlar |
+| Her listede en az bir düşük riskli çıkış | `options_service._ensure_safe_exit` |
 | Sekiz kategoriden biri | `models/options.canon_category` (eş anlamlıları eşler) |
 | Her listede en az 3 farklı kategori | prompt kuralı + jenerik tamamlama |
 | Sahne dışındaki karaktere seçenek yok | `refresh(world, present_players)` |
@@ -71,9 +81,10 @@ Kategoriler: `güvenli`, `riskli`, `gizemli`, `körü körüne`, `kurnaz`, `insa
 `acımasız`, `hazırlık`. Kategori bir vaattir — seçimin ruhunu belirler ve zar
 yorumuna girer (`[körü körüne]` bir hamlede karakter düşünmeden atılmıştır).
 
-Oyuncu her zaman **kendi hamlesini** yazabilir; o zaman kategori `serbest`
-olur. Sunulan ve seçilen HER seçenek `data/options_pool.jsonl` dosyasına
-düşer — havuz hem tekrar denetimi hem de öğrenme için kullanılır.
+Oyuncunun serbest hamle yazma hakkı **yoktur**; kategori `serbest` yalnız eski
+kayıtlarda kalmış olabilir. Sunulan ve seçilen HER seçenek
+`data/options_pool.jsonl` dosyasına düşer — havuz hem tekrar denetimi hem de
+öğrenme için kullanılır.
 
 ## 3. Öğrenme defteri (Claude yeteneği)
 
@@ -86,7 +97,7 @@ bir eşiğe bağlıdır, az veriden büyük sonuç çıkarılmaz:
 
 - kategori payı %40'ı geçerse → "bu masa X oynuyor, aynı kalıbı tekrarlama"
 - bir kategoride felaket oranı ≥%25 → "riski ÖNCEDEN sezdir"
-- serbest metin oranı ≥%50 → "seçeneklerin sahneye bağlı değil"
+- bekleme/düşük riskli seçim oranı ≥%50 → "seçeneklerin ya cazip değil ya fazla pahalı"
 - süre 3+ kez dolduysa → "seçenekleri kısalt"
 - 12+ tur zorluk kapanmadıysa → "zorlukları kapanabilir tut"
 

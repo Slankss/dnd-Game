@@ -326,11 +326,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * POST /api/round/pick — seçeneği seç (ya da kendi hamleni yaz).
+   * POST /api/round/pick — SUNULAN seçeneklerden birini seç.
+   * Serbest hamle yoktur: sunucu yalnız `option_id` kabul eder.
    * Zar SUNUCUDA atılır ve burada `lastRoll`'a düşer; zar animasyonunu
    * OptionPool bu değeri izleyerek oynatır.
    * @param {string} player
-   * @param {{optionId?: string, text?: string}} secim
+   * @param {{optionId: string}} secim
    */
   async function pickOption(player, secim) {
     if (picking.value) return null

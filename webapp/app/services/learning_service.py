@@ -211,20 +211,17 @@ class LearningService:
                     source="otomatik", key=f"kolay:{ad}", day=day,
                 )
 
-        if toplam_secim >= 12 and serbest / max(1, toplam_secim) >= 0.5:
+        # Serbest hamle kaldırıldı: her seçim havuzdan geliyor. Bu yüzden
+        # ölçülen şey "havuzu kullanıyorlar mı" değil, havuzun ne kadar ZORLAYICI
+        # olduğu — bekleme (pas) oranı bunun göstergesi.
+        bekleme = int(store.categories.get("güvenli", {}).get("secim") or 0)
+        if toplam_secim >= 12 and bekleme / max(1, toplam_secim) >= 0.5:
             store.add_lesson(
-                "Oyuncular seçeneklerin yarısından fazlasında kendi hamlelerini "
-                "yazıyor — sunduğun seçenekler sahneye yeterince bağlı değil. "
-                "Seçenekleri o anki tehdide, oyuncunun künyesine ve elindeki "
-                "eşyaya göre somutlaştır.",
-                source="otomatik", key="havuz:zayif", day=day,
-            )
-        elif toplam_secim >= 12 and havuzdan / max(1, toplam_secim) >= 0.85:
-            store.add_lesson(
-                "Oyuncular neredeyse hep hazır seçenekten gidiyor — havuz iyi "
-                "çalışıyor ama tembelleştirmesin: her turda en az bir seçenek "
-                "gerçekten zor bir takas içersin.",
-                source="otomatik", key="havuz:guclu", day=day,
+                "Seçimlerin yarısından fazlası düşük riskli/bekleme seçenekleri — "
+                "sunduğun seçenekler ya yeterince cazip değil ya da hepsi fazla "
+                "pahalı. Her listeye gerçekten çekici, kazanç vaat eden bir "
+                "seçenek koy.",
+                source="otomatik", key="havuz:pasif", day=day,
             )
 
         zaman_asimi = int(pace.get("zaman_asimi") or 0)

@@ -143,12 +143,12 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | GET | `/api/state?since=<v>` | — | `{version, changed}` ya da `{version, changed:true, world_state, log, started, characters_confirmed, chargen_done, default_players, start_item_suggestions, custom_scenario, group_label, group_display_name, settings, round}` |
 | POST | `/api/setup-characters` | `{players:[{name,item,profession,age,strength,weakness,reflex,secret}]}` | `{world_state, characters_confirmed}` |
 | POST | `/api/start` | — | `{gm_entry, world_state, started}` |
-| POST | `/api/message` | `{player, text}` | `{user_entries, gm_entry, world_state, inventory_report, version}` |
+| POST | `/api/message` | `{player, text}` | `{user_entries, gm_entry, world_state, inventory_report, version}` — YALNIZ karakter oluşturma sürerken; chargen bitince 400 (serbest hamle yok) |
 | POST | `/api/takeover` | `{dead_player, new_character}` | `{system_entry, gm_entry, world_state}` |
 | POST | `/api/finish-chargen` | — | `{ok, world_state}` |
-| POST | `/api/settings` | `{turn_seconds?, profanity?, round_mode?}` | `{ok, settings, version, round}` |
+| POST | `/api/settings` | `{turn_seconds?, profanity?}` | `{ok, settings, version, round}` — `round_mode: false` reddedilir |
 | POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
-| POST | `/api/round/pick` | `{player, option_id?, text?}` | `{ok, pick, roll, band, round, all_picked, version}` — zar SEÇİM ANINDA atılır |
+| POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, round, all_picked, version}` — zar SEÇİM ANINDA atılır; `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
 | POST | `/api/round/wait` | `{player}` | `{ok, round, version}` |
 | GET | `/api/grid` | — | `{grid, world_state, version}` — sahne yoksa kurulur |
 | POST | `/api/grid/move` | `{player, direction}` | `{ok, result, grid, version}` — hareket algoritması: yön→koordinat→sınır→geçilebilirlik→kaldır→koordinat→ekle→sonuç |

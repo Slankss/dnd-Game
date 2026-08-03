@@ -6,6 +6,10 @@
  * gösterilir → seçim turda kilitlenir (zar atıldıktan sonra geri alınamaz).
  * Seçim modele HEMEN gitmez; herkes seçince tur toplu gönderilir.
  *
+ * SERBEST HAMLE YOKTUR: hikaye yalnız sunulan tercihlerle ilerler. Hiçbiri
+ * uymuyorsa tek çıkış "bu turda bekle"dir — sunucu her listede en az bir
+ * düşük riskli seçenek bulunmasını garanti eder.
+ *
  * Kategoriler sadece etiket değil: her biri farklı bir takas vaat eder ve
  * seçim havuza not edilir (oyun bundan öğrenir).
  */
@@ -34,18 +38,14 @@ const props = defineProps({
   sonZar: { type: Object, default: null },
 })
 
-const emit = defineEmits(['sec', 'kendiHamlesi', 'bekle'])
+const emit = defineEmits(['sec', 'bekle'])
 
-const serbestAcik = ref(false)
-const serbestMetin = ref('')
 const secilenId = ref('')
 
-/** Karakter değişince form sıfırlanır. */
+/** Karakter değişince seçim vurgusu sıfırlanır. */
 watch(
   () => props.oyuncu,
   () => {
-    serbestAcik.value = false
-    serbestMetin.value = ''
     secilenId.value = ''
   },
 )
@@ -70,13 +70,6 @@ function sec(secenek) {
   if (kilitli.value) return
   secilenId.value = secenek.id
   emit('sec', secenek)
-}
-
-function kendiHamlesiniGonder() {
-  const metin = serbestMetin.value.trim()
-  if (!metin || kilitli.value) return
-  emit('kendiHamlesi', metin)
-  serbestMetin.value = ''
 }
 </script>
 
@@ -149,54 +142,24 @@ function kendiHamlesiniGonder() {
         </li>
       </ul>
 
-      <!-- Kendi hamlesi -->
-      <div class="mt-2 flex flex-col gap-2">
+      <!-- Tek çıkış: bu turda bekle. Serbest hamle yok. -->
+      <div class="mt-2 flex flex-wrap items-center gap-2">
         <BaseButton
-          v-if="!serbestAcik"
           size="sm"
           variant="subtle"
-          icon="edit"
+          icon="hourglass_empty"
           :disabled="kilitli"
-          @click="serbestAcik = true"
+          :loading="mesgul"
+          loading-text="Zar atılıyor…"
+          @click="$emit('bekle')"
         >
-          Kendi hamleni yaz — listeyle sınırlı değilsin
+          Bu turda bekle
         </BaseButton>
-
-        <template v-else>
-          <textarea
-            v-model="serbestMetin"
-            rows="2"
-            placeholder="Ne yapıyorsun? (senaryonun dışına çıkma — anlatıcı zar ile çözecek)"
-            :disabled="kilitli"
-            class="w-full resize-none rounded-card border border-border bg-surface-2 px-3 py-2 text-meta leading-relaxed text-text placeholder:text-faint focus-visible:border-accent/60 disabled:opacity-60"
-          />
-          <div class="flex flex-wrap gap-2">
-            <BaseButton
-              size="sm"
-              variant="primary"
-              icon="casino"
-              :disabled="!serbestMetin.trim() || kilitli"
-              :loading="mesgul"
-              loading-text="Zar atılıyor…"
-              @click="kendiHamlesiniGonder"
-            >
-              Zarı at ve kilitle
-            </BaseButton>
-            <BaseButton size="sm" variant="subtle" :disabled="mesgul" @click="serbestAcik = false">
-              Vazgeç
-            </BaseButton>
-            <BaseButton
-              size="sm"
-              variant="quiet"
-              icon="hourglass_empty"
-              :disabled="kilitli"
-              @click="$emit('bekle')"
-            >
-              Bu turda bekle
-            </BaseButton>
-          </div>
-        </template>
+        <p class="text-label text-faint">
+          Hikaye yalnız sunulan seçeneklerle ilerler — kendi planını yazamazsın.
+        </p>
       </div>
+
     </template>
   </Panel>
 </template>
