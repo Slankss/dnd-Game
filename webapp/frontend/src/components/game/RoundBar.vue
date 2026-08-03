@@ -82,7 +82,9 @@ function gonder(neden) {
   emit('gonder', neden)
 }
 
-watch([hepsiSecti, sureDoldu, acik], () => {
+// Seçim SAYISI da izlenir: süre çoktan dolmuşken gelen ilk seçim de turu
+// göndermeli (yoksa tur, kimse "gönder"e basmadıkça askıda kalıyordu).
+watch([hepsiSecti, sureDoldu, acik, () => seciler.value.length], () => {
   if (!props.otomatikGonder || !acik.value) return
   if (hepsiSecti.value) gonder('elle')
   else if (sureDoldu.value && seciler.value.length) gonder('sure')

@@ -80,6 +80,13 @@ class StateRepository:
             for name in missing:
                 if initial.get(name):
                     ws[name] = initial[name]
+        # Harita da sonradan eklendi. Devam eden bir oyunda boşsa mevcut
+        # konumdan tohumlanır — yoksa harita paneli, bir sonraki tur oynanana
+        # kadar "boş" görünüyordu.
+        if ws.get("location") and not (ws.get("map") or {}).get("current"):
+            world = WorldState.from_dict(ws)
+            world.sync_map()
+            ws = state["world_state"] = world.to_dict()
         # Ayarlar ve tur kaydı sonradan eklendi: devam eden bir oyunda eksikse
         # varsayılanla doldur, yoksa tur akışı hiç açılmaz.
         settings = state.get("settings")
