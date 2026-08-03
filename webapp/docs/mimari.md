@@ -30,6 +30,12 @@ webapp/
       factions.py           # Faction — iki katmanlı görünürlük
       world.py              # WorldState — kök nesne, patch birleştirme
       worldmap.py           # WorldMap, Place — konum ve keşfedilen yerler
+      grid/                 # kare harita: grid[y][x] Cell dizisi (bkz. kare-harita.md)
+        coords.py           #   Direction — yön vektörleri
+        cell.py             #   Cell — bir koordinatın zemini + içindekiler
+        entities.py         #   Entity/Player/Npc/Item/Building
+        grid_map.py         #   GridMap — 2D dizi + varlık kaydı
+        movement.py         #   move() — 8 adımlı hareket algoritması (O(1))
       options.py            # Option, OptionBoard — seçenek havuzu (5-10)
       round.py              # Round, Pick — tur bazlı akışın kaydı
       learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
@@ -52,6 +58,7 @@ webapp/
       options_service.py    # seçenek havuzu bakımı (eksik kalanı tamamlar)
       learning_service.py   # öğrenme defteri + Claude yeteneğine yazma
       worldgen_service.py   # her oyuna farklı başlangıç ve fraksiyonlar
+      grid_service.py       # kare harita: sahne kurulumu + hareket
       setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
@@ -59,6 +66,7 @@ webapp/
       pages.py              # /, /secrets, /static/<path>
       game.py               # /api/state, /api/message, /api/start, /api/settings
       round.py              # /api/round/pick, /wait, /commit
+      grid.py               # /api/grid, /api/grid/move
       gm.py                 # /api/gm/*
       scenario.py           # /api/scenario/*, /api/game/*
     serializers.py          # public_world_state (oyuncu) / gm görünümü
@@ -94,8 +102,8 @@ taşınır; eski dosya kaldırılır (import'u sadece `server.py` kullanıyordu)
 `WorldState` alanları: `day` (int), `time_of_day`, `clock`, `season`,
 `weather`, `temperature`, `location`, `tension` (`düşük|orta|yüksek`),
 `factions`, `characters`, `npcs`, `resources`, `challenges`,
-`map`, `zombie_sightings`, `flags`, `narrator`, `options`, `world_roll`,
-`world_roll_history`.
+`map`, `grid`, `zombie_sightings`, `flags`, `narrator`, `options`,
+`world_roll`, `world_roll_history`.
 
 `state.json` kökünde ayrıca iki alan vardır: `settings`
 (`{turn_seconds, profanity, round_mode}`) ve `round` (açık turun kaydı:
@@ -118,6 +126,8 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 - `options` karakter başına TAMAMEN yenilenir (seçenekler o tura aittir) ve
   kadroda olmayan isim için yok sayılır
 - `learning.lessons_add` öğrenme defterine düşer, dünya durumunda saklanmaz
+- `grid` yaması zemin/varlık ekler, NPC oynatır; oyuncu karakterlerini
+  HAREKET ETTİREMEZ (onlar yalnız `/api/grid/move` ile oynar)
 
 ## 4. HTTP API sözleşmesi (DEĞİŞMEZ)
 
@@ -136,6 +146,8 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
 | POST | `/api/round/pick` | `{player, option_id?, text?}` | `{ok, pick, roll, band, round, all_picked, version}` — zar SEÇİM ANINDA atılır |
 | POST | `/api/round/wait` | `{player}` | `{ok, round, version}` |
+| GET | `/api/grid` | — | `{grid, world_state, version}` — sahne yoksa kurulur |
+| POST | `/api/grid/move` | `{player, direction}` | `{ok, result, grid, version}` — hareket algoritması: yön→koordinat→sınır→geçilebilirlik→kaldır→koordinat→ekle→sonuç |
 | POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` |
 | POST | `/api/gm/unlock` | `{pin}` | `{ok}` / 403 |
 | GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started, plot, round, settings, learning}` |

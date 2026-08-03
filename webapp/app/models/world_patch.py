@@ -10,7 +10,7 @@ from .challenges import Challenge
 from .factions import Faction
 from .options import normalize_list
 from .person import Person
-from .text import canonical_name
+from .text import as_int, canonical_name
 
 # Dünya saati/takvimi/havası — state-update ile güncellenen, hepsi metin alan.
 TIME_FIELDS = ("time_of_day", "clock", "season", "weather", "temperature")
@@ -69,6 +69,10 @@ class WorldPatchMixin:
         # o tura aittir, birikmezler).
         if isinstance(patch.get("options"), dict):
             self._merge_options(patch["options"])
+
+        # Kare harita: zemin değişiklikleri, yeni varlıklar, NPC hareketi.
+        if isinstance(patch.get("grid"), dict):
+            self._merge_grid(patch["grid"])
 
         if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
             seen = self.ensure_sightings()
@@ -154,6 +158,53 @@ class WorldPatchMixin:
             if not key:
                 continue
             board.set_player(key, normalize_list(key, raw_list))
+
+    def _merge_grid(self, patch: dict) -> None:
+        """Kare haritanın yaması — sahneyi anlatıcı/GM şekillendirir.
+
+        Desteklenen alanlar (hepsi opsiyonel):
+          {"terrain": [{"x":3,"y":4,"type":"duvar"}],
+           "spawn":   [{"id":"varil","name":"Yakıt varili","kind":"item","x":5,"y":6}],
+           "remove":  ["varil"],
+           "move":    [{"id":"Sevil","direction":"kuzey"}]}
+
+        Oyuncu karakterlerinin konumu buradan DEĞİŞTİRİLEMEZ: onları yalnız
+        oyuncunun kendi hamlesi (grid_service.move) hareket ettirir.
+        """
+        from .grid import KIND_PLAYER, Entity, move
+
+        grid = self.ensure_grid()
+
+        for kayit in patch.get("terrain") or []:
+            if not isinstance(kayit, dict):
+                continue
+            x, y = as_int(kayit.get("x")), as_int(kayit.get("y"))
+            tur = kayit.get("type") or kayit.get("terrain")
+            if x is None or y is None or not isinstance(tur, str):
+                continue
+            grid.set_terrain(x, y, tur, kayit.get("passable"))
+
+        for kayit in patch.get("spawn") or []:
+            if not isinstance(kayit, dict):
+                continue
+            varlik = Entity.from_dict(kayit)
+            if not varlik.id or varlik.kind == KIND_PLAYER:
+                continue  # oyuncu karakteri buradan doğmaz
+            grid.place(varlik, varlik.x, varlik.y)
+
+        for varlik_id in patch.get("remove") or []:
+            if isinstance(varlik_id, str):
+                mevcut = grid.entity(varlik_id)
+                if mevcut is not None and mevcut.kind != KIND_PLAYER:
+                    grid.remove_entity(mevcut)
+
+        for kayit in patch.get("move") or []:
+            if not isinstance(kayit, dict):
+                continue
+            varlik = grid.entity(str(kayit.get("id") or ""))
+            if varlik is None or varlik.kind == KIND_PLAYER:
+                continue
+            move(grid, varlik, kayit.get("direction"))
 
     def _merge_narrator(self, npatch: dict) -> None:
         narrator = self.ensure_narrator()

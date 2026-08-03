@@ -12,9 +12,11 @@ Altı servis, altı akış:
   * `gm`       — anlatıcı notu/müdahalesi ve elle yama
   * `scenario` — senaryo ve oyun dışa/içe aktarma
   * `learning` — öğrenme defteri (her turda beslenir, yeteneğe yazılır)
+  * `grid`     — sahnenin kare haritası (2D ızgara, O(1) hareket)
 """
 
 from app.services.gm_service import GmService
+from app.services.grid_service import GridService
 from app.services.learning_service import LearningService
 from app.services.options_service import OptionsService
 from app.services.round_service import RoundService
@@ -32,9 +34,10 @@ turn = TurnService(learning=learning, options=options)
 rounds = RoundService(learning=learning, options=options, turn=turn)
 game = GameService(learning=learning, options=options, rounds=rounds)
 gm = GmService()
+grid = GridService()
 scenario = ScenarioService()
 
 __all__ = ["GameService", "TurnService", "RoundService", "GmService",
-           "ScenarioService", "LearningService", "OptionsService",
-           "WorldGenService", "game", "turn", "rounds", "gm", "scenario",
+           "GridService", "ScenarioService", "LearningService", "OptionsService",
+           "WorldGenService", "game", "turn", "rounds", "gm", "grid", "scenario",
            "learning", "options"]

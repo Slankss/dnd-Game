@@ -10,6 +10,7 @@ from .base import DictModel
 from .challenges import Challenge
 from .conditions import build_context
 from .factions import Faction
+from .grid import GridMap
 from .options import OptionBoard
 from .person import Person
 from .presence import absent_players, bring_to_scene, present_players, resolve_presence
@@ -36,8 +37,8 @@ FLAT_FIELDS = ("day",) + TIME_FIELDS + ("location", "tension", "flags",
 
 # Kanonik alan sırası (senaryodaki INITIAL_WORLD_STATE ile aynı).
 WORLD_FIELDS = ("day",) + TIME_FIELDS + (
-    "location", "map", "factions", "characters", "npcs", "resources", "challenges",
-    "options", "zombie_sightings", "flags", "narrator", "tension",
+    "location", "map", "grid", "factions", "characters", "npcs", "resources",
+    "challenges", "options", "zombie_sightings", "flags", "narrator", "tension",
     "world_roll", "world_roll_history")
 
 
@@ -61,6 +62,7 @@ class WorldState(WorldPatchMixin, DictModel):
     resources: object = None
     challenges: dict = field(default_factory=dict)
     map: object = None
+    grid: object = None        # sahnenin kare haritası (bkz. models/grid)
     options: object = None
     zombie_sightings: object = None
     flags: object = None
@@ -90,6 +92,7 @@ class WorldState(WorldPatchMixin, DictModel):
                 world.extra[name] = raw
         for name, kind, parse in (("resources", dict, ResourcePool.from_dict),
                                   ("map", dict, WorldMap.from_dict),
+                                  ("grid", dict, GridMap.from_dict),
                                   ("options", dict, OptionBoard.from_dict),
                                   ("narrator", dict, dict),
                                   ("world_roll_history", list, list)):
@@ -109,6 +112,8 @@ class WorldState(WorldPatchMixin, DictModel):
             values["resources"] = self.resources.to_dict()
         if self.map is not None:
             values["map"] = self.map.to_dict()
+        if self.grid is not None:
+            values["grid"] = self.grid.to_dict()
         if self.options is not None:
             values["options"] = self.options.to_dict()
         values["narrator"] = self.narrator
@@ -135,6 +140,14 @@ class WorldState(WorldPatchMixin, DictModel):
             self.map = WorldMap.new()
         self._touch("map")
         return self.map
+
+    def ensure_grid(self, width: int = 0, height: int = 0, name: str = "") -> GridMap:
+        """Sahnenin kare haritası. Yoksa boş bir ızgara açılır — oyuncular
+        haritaya `grid_service` tarafından yerleştirilir."""
+        if not isinstance(self.grid, GridMap):
+            self.grid = GridMap.blank(width or 14, height or 10, name=name)
+        self._touch("grid")
+        return self.grid
 
     def ensure_options(self) -> OptionBoard:
         if not isinstance(self.options, OptionBoard):

@@ -14,10 +14,11 @@ def create_app() -> Flask:
     # (static/dist Vite çıktısı + kullanıcının audio klasörü).
     flask_app = Flask(__name__, static_folder=None)
 
-    from app.api import game, gm, pages, round, scenario
+    from app.api import game, gm, grid, pages, round, scenario
     flask_app.register_blueprint(pages.bp)
     flask_app.register_blueprint(game.bp)
     flask_app.register_blueprint(round.bp)
+    flask_app.register_blueprint(grid.bp)
     flask_app.register_blueprint(gm.bp)
     flask_app.register_blueprint(scenario.bp)
 

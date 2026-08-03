@@ -61,6 +61,14 @@ export const useGameStore = defineStore('game', () => {
   /** Sunucu saatiyle bizimki arasındaki fark (ms) — geri sayım kaymasın */
   const clockSkew = ref(0)
 
+  /* --- kare harita (ızgara) --- */
+  /** Sahnenin ızgarası: {width, height, cells, entities} */
+  const grid = shallowRef(null)
+  /** Hareket isteği uçuşta mı */
+  const moving = ref(false)
+  /** Son hareketin sonucu (başarısızsa nedeni ekranda gösterilir) */
+  const lastMove = ref(null)
+
   /* -------------------------------------------------------------- getters */
   const characters = computed(() => worldState.value?.characters ?? {})
   const npcs = computed(() => worldState.value?.npcs ?? {})
@@ -141,6 +149,8 @@ export const useGameStore = defineStore('game', () => {
     if (data.changed === false) return false
 
     worldState.value = data.world_state ?? worldState.value
+    // Izgara dünya durumunun içinde geliyor: yoklama onu da tazeler.
+    if (data.world_state?.grid) grid.value = data.world_state.grid
     if (Array.isArray(data.log)) {
       const oncekiUzunluk = log.value.length
       log.value = data.log
@@ -180,6 +190,7 @@ export const useGameStore = defineStore('game', () => {
   function turYanitiniIsle(data) {
     if (typeof data.version === 'number') version.value = data.version
     if (data.world_state) worldState.value = data.world_state
+    if (data.world_state?.grid) grid.value = data.world_state.grid
     const yeni = []
     if (Array.isArray(data.user_entries)) yeni.push(...data.user_entries)
     if (data.gm_entry) yeni.push(data.gm_entry)
@@ -387,6 +398,45 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * GET /api/grid — sahnenin ızgarasını çeker (yoksa sunucu kurar).
+   * Oyun ekranı açılırken bir kez çağrılır; sonrasında yoklama tazeler.
+   */
+  async function fetchGrid() {
+    try {
+      const data = await api.getGrid()
+      if (data.grid) grid.value = data.grid
+      if (typeof data.version === 'number') version.value = data.version
+      return data
+    } catch (e) {
+      throw hatayiKur(e)
+    }
+  }
+
+  /**
+   * POST /api/grid/move — karakteri BİR KARE hareket ettirir.
+   * Hareketi sunucu çözer; burada yalnız sonuç ve yeni ızgara benimsenir.
+   * @param {string} player
+   * @param {string} direction 'kuzey' | 'güney' | 'doğu' | 'batı' | çaprazlar
+   */
+  async function moveOnGrid(player, direction) {
+    if (moving.value) return null
+    moving.value = true
+    try {
+      const data = await api.moveOnGrid(player, direction)
+      if (data.grid) grid.value = data.grid
+      if (typeof data.version === 'number') version.value = data.version
+      lastMove.value = { ...data.result, ts: Date.now() }
+      error.value = null
+      return data
+    } catch (e) {
+      lastMove.value = { ok: false, reason: 'hata', blocked_by: e?.message || '', ts: Date.now() }
+      throw hatayiKur(e)
+    } finally {
+      moving.value = false
+    }
+  }
+
   /** POST /api/settings — tur süresi / küfür dozu / tur bazlı akış. */
   async function saveSettings(ayarlar) {
     busy.value = true
@@ -437,6 +487,8 @@ export const useGameStore = defineStore('game', () => {
       unseenCount.value = 0
       round.value = null
       lastRoll.value = null
+      grid.value = null
+      lastMove.value = null
       error.value = null
       await refresh({ force: true })
       return data
@@ -482,6 +534,9 @@ export const useGameStore = defineStore('game', () => {
     committing,
     lastRoll,
     clockSkew,
+    grid,
+    moving,
+    lastMove,
     // getters
     characters,
     npcs,
@@ -522,6 +577,8 @@ export const useGameStore = defineStore('game', () => {
     pickOption,
     waitRound,
     commitRound,
+    fetchGrid,
+    moveOnGrid,
     saveSettings,
     takeover,
     finishChargen,

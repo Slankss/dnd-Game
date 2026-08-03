@@ -47,7 +47,12 @@ sadece metin üretimi için) çalıştırır.
   yani öğrenilenler bir **Claude yeteneğine** dönüşür ve sunucunun dışında da
   yaşar. Ders üretimi kodda yapılır, ek model çağrısı yoktur.
 - **Harita** kenar çubuğunda canlı durur: grubun konumu, keşfedilen yerler,
-  tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu.
+  tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu. Harita görsel
+  olarak da çizilir ve **bilinmeyen yer detaylı görünmez**: sadece adı duyulmuş
+  bir yerin türü/tehlikesi/notu oyuncuya hiç gönderilmez.
+- **Kare harita**: bulunulan yerin taktik ızgarası (`grid[y][x]`). Karakterler
+  yön tuşları/ok tuşlarıyla birer kare hareket eder; duvar ve engeller geçilmez,
+  aynı karede birden fazla oyuncu/NPC/eşya bulunabilir (bkz. `docs/kare-harita.md`).
 - Arayüz durumu **sürüm bazlı yoklamayla** tazeler: her istek `?since=<sürüm>`
   gönderir, durum değişmediyse sunucu ağır gövdeyi hiç kurmaz. Sunucu
   yanıt vermezse yoklama durmaz, aralığı kademeli açılır (tavan 30 sn) ve
@@ -527,6 +532,7 @@ otomatik olarak onu kullanır.
 - `director.py` — koşul motoru (`matches`: gün/saat randevusu, konum, gerilim, bayrak, dünya zarı) + olay örgüsü planı (`data/plot.json`) yardımcıları. Sahne katılımının `until` koşulunu ve ileride beat tetikleyicilerini bu modül çözer
 - `docs/senarist-yetenegi.md` — senarist katmanının faz planı (hangi faz uygulandı, sırada ne var)
 - `docs/tur-akisi-ve-ogrenme.md` — tur bazlı akış, seçenek havuzu, öğrenme defteri, dünya üretimi
+- `docs/kare-harita.md` — sahnenin kare (ızgara) haritası: `grid[y][x]` Cell dizisi, O(1) hareket algoritması
 - `data/learning.json` + `data/learning_events.jsonl` — öğrenme defteri (dersler + ham olay akışı); `/api/reset` bunları BİLEREK silmez
 - `data/options_pool.jsonl` — sunulan ve seçilen tüm seçenekler, zar sonuçlarıyla
 - `../.claude/skills/kizil-cokus-anlatici/` — anlatıcı yeteneği: `SKILL.md` (elle yazılmış zanaat) + `ogrenilenler.md` (her turda sunucu yazar)

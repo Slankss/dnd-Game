@@ -265,6 +265,31 @@ export function commitRound(reason = 'elle', roundNo = null, opts = {}) {
 }
 
 /* ==========================================================================
+ * Kare harita (ızgara)
+ * ========================================================================== */
+
+/** GET /api/grid → `{grid, world_state, version}` — sahne yoksa kurulur. */
+export function getGrid(opts = {}) {
+  return istek('/api/grid', { signal: opts.signal })
+}
+
+/**
+ * POST /api/grid/move — bir karakteri BİR KARE hareket ettirir.
+ * Hareket sunucudaki algoritmayla çözülür (yön → koordinat → sınır →
+ * geçilebilirlik → kaldır → koordinat → ekle → sonuç).
+ * @param {string} player
+ * @param {'kuzey'|'güney'|'doğu'|'batı'|string} direction
+ * @returns {Promise<{ok:boolean, result:object, grid:object, version:number}>}
+ */
+export function moveOnGrid(player, direction, opts = {}) {
+  return istek('/api/grid/move', {
+    method: 'POST',
+    body: { player, direction },
+    signal: opts.signal,
+  })
+}
+
+/* ==========================================================================
  * Anlatıcı (GM) uç noktaları
  * ========================================================================== */
 
@@ -385,6 +410,8 @@ export default {
   pickOption,
   waitRound,
   commitRound,
+  getGrid,
+  moveOnGrid,
   gmUnlock,
   getGmState,
   gmNote,

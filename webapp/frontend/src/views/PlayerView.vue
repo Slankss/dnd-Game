@@ -26,6 +26,7 @@ import ActionComposer from '@/components/game/ActionComposer.vue'
 import RoundBar from '@/components/game/RoundBar.vue'
 import OptionPool from '@/components/game/OptionPool.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
+import GridPanel from '@/components/game/GridPanel.vue'
 import StoryFeed from '@/components/game/StoryFeed.vue'
 import CharacterCard from '@/components/game/CharacterCard.vue'
 import CharacterModal from '@/components/game/CharacterModal.vue'
@@ -44,7 +45,12 @@ import { colorFor } from '@/utils/characterColors'
 const oyun = useGameStore()
 const { ac: sidebariAc } = useSidebar()
 
-onMounted(() => oyun.startPolling())
+onMounted(() => {
+  oyun.startPolling()
+  // Sahne ızgarası: ilk açılışta bir kez istenir (sunucu yoksa kurar),
+  // sonrasında yoklama dünya durumuyla birlikte tazeler.
+  if (oyun.phase === 'playing') oyun.fetchGrid().catch(() => {})
+})
 onUnmounted(() => oyun.stopPolling())
 
 /* ------------------------------------------------------------- genel hal */
@@ -106,6 +112,22 @@ async function turGonder({ oyuncu, metin }) {
     oyun.markSeen()
   } catch {
     /* metin alanda kalsın ki kullanıcı tekrar deneyebilsin */
+  }
+}
+
+// Oyun başladığında (kurulumdan oyuna geçiş) ızgarayı hazırla.
+watch(
+  () => oyun.phase,
+  (asama) => {
+    if (asama === 'playing' && !oyun.grid) oyun.fetchGrid().catch(() => {})
+  },
+)
+
+async function kareHareketi(yon) {
+  try {
+    await oyun.moveOnGrid(seciliOyuncu.value, yon)
+  } catch {
+    /* hata store'da; panelde gösteriliyor */
   }
 }
 
@@ -372,6 +394,22 @@ function yeniSahneyeGit() {
         :count="Object.keys(oyun.worldMap?.places || {}).length"
       >
         <MapPanel :harita="oyun.worldMap" :yukleniyor="ilkYukleme" />
+      </SidebarSection>
+
+      <SidebarSection
+        v-if="oyun.phase === 'playing'"
+        title="Kare harita"
+        icon="grid_on"
+        :count="(oyun.grid?.entities || []).length"
+        :default-open="false"
+      >
+        <GridPanel
+          :izgara="oyun.grid"
+          :oyuncu="seciliOyuncu"
+          :mesgul="oyun.moving"
+          :son-hareket="oyun.lastMove"
+          @hareket="kareHareketi"
+        />
       </SidebarSection>
 
       <SidebarSection
