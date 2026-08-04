@@ -355,6 +355,39 @@ mekanı üst üste binerdi. Bu bir çizim kararıdır: gösterilen km değerleri
 sunucudan geldiği gibi durur. Yollar türlerine göre farklı kalınlık/desende
 çizilir, aynı çiftin ikinci yolu yaylandırılır, çökük yol kırmızı kesik çizgi.
 
+## 1g. Effort — anlatıcı her tur aynı derinlikte düşünmez
+
+`--effort` sabit değil, **tura göre** seçilir (`models/effort.decide`).
+
+Ölçüm bunu gerektirdi: aynı tur `high` ile 12 851, `medium` ile 6 932 çıktı
+jetonu harcıyor ve görünen sahne 2 045'e karşı 1 864 karakter — yani %3.
+Aradaki fark üslupta değil **defter tutmada**: `high` sunucunun `MESAFELER`
+bloğunda verdiği 80 m'yi korudu ve üç karakterin de yarasını takip etti,
+`medium` mesafeyi 50 m'ye kaydırdı. Yani üst seviyenin karşılığı ancak
+sürekliliğin pahalıya patladığı turlarda var.
+
+Üst seviyeye çıkma nedenleri — hepsi turun çözümünde sunucuda **zaten** olan
+sinyaller, modele sorulmaz:
+
+| sinyal | nereden gelir |
+| --- | --- |
+| açılış / karakter devralma | `setup_service.start`, `turn_service.takeover` |
+| karşılaşma oynanıyor | `threat_prep["encounter"].var` |
+| senarist beat'i sahneye giriyor | kuyruktan çıkan `DIREKTIF` |
+| gerilim yüksek | `world.tension` |
+| ölüme yakın karakter | ağır/enfekte yara ya da 85+ gösterge |
+| süre doldu, ani sahne yazılacak | `round_.waiting_for(...)` |
+| anlatıcı elle sahne/sürpriz yazdırdı | `gm_service` yayın kipleri |
+
+Seviye yükseldiğinde anlatıcı ekranına gerekçesiyle bir satır düşer
+(`🧠 Anlatıcı bu turda high seviyede düşünüyor (karşılaşma oynanıyor).`).
+Seviyeler `.env`'den gelir: `CLAUDE_EFFORT` taban, `CLAUDE_EFFORT_KEY` üst.
+İkisi eşitlenirse effort yine sabitlenir; tanınmayan bir değer sessizce tabana
+düşer, çünkü yazım hatası yüzünden CLI'ın çağrıyı reddetmesi turu kaybettirir.
+
+Zaman aşımı bu yüzden 300 saniyedir: ölçülen `high` turu 186.9 saniye sürdü ve
+eski 180 saniyelik tavan kritik turları düşürüyordu.
+
 ## 2. Seçenek havuzu
 
 Anlatıcı her turun sonunda state-update bloğuna `options` yazar:

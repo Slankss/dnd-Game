@@ -155,12 +155,33 @@ olursunuz. Bunu ayarlamak için `webapp/.env` dosyasında (yoksa
 `.env.example`'dan kopyalayın):
 
 ```
-CLAUDE_MODEL=sonnet   # varsayılan; 'opus' daha güçlü ama kotayı daha hızlı tüketir, 'haiku' en hafifi
-CLAUDE_EFFORT=medium  # low = daha hızlı/hafif, xhigh/max = daha derin ama yavaş
+CLAUDE_MODEL=sonnet      # varsayılan; 'opus' daha güçlü ama kotayı daha hızlı tüketir, 'haiku' en hafifi
+CLAUDE_EFFORT=medium     # sıradan turların seviyesi (low = hızlı/hafif, xhigh/max = derin ama yavaş)
+CLAUDE_EFFORT_KEY=high   # kritik turların seviyesi
+CLAUDE_TIMEOUT_SECONDS=300
 ```
 
-Bir tur genelde 20–90 saniye sürer (modelin "düşünme" derinliğine göre
-değişir) — bu play-by-post tarzı bir oyun için normal bir tempo.
+**Effort tura göre seçilir.** Aynı tur `high` ile 12 851, `medium` ile 6 932
+çıktı jetonu harcıyor ve görünen sahne yalnızca %3 uzuyor; aradaki gerçek fark
+üslupta değil defter tutmada (`high` sunucunun verdiği mesafeye sadık kaldı,
+`medium` kaydırdı). Bu yüzden üst seviyeye yalnız sürekliliğin pahalıya
+patladığı turlarda çıkılır:
+
+- açılış sahnesi ve karakter devralma,
+- bu turda fiilen bir **karşılaşma** oynanıyorsa,
+- vadesi gelen bir **senarist beat'i** sahneye giriyorsa,
+- gerilim **yüksek**se,
+- **ölüme yakın** karakter varsa (ağır/enfekte yara ya da 85+ gösterge),
+- süre dolup **ani sahne** yazılacaksa,
+- anlatıcı ekranından elle sahne/sürpriz yazdırıldığında.
+
+Kararı `models/effort.decide` verir; sinyallerin hepsi turun çözümünde
+sunucuda zaten vardır, modele sorulmaz. Seviye yükseldiğinde anlatıcı ekranına
+gerekçesiyle bir satır düşer. İkisini eşitlerseniz (`CLAUDE_EFFORT=high`)
+effort yine sabitlenir.
+
+Bir tur genelde 20–90 saniye sürer; kritik turlar `high` seviyede 180 saniyeyi
+aşabildiği için zaman aşımı 300 saniyedir.
 
 ## Ortak stok yoktur (klan/topluluk/sayım olmadan)
 

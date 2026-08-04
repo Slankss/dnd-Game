@@ -40,8 +40,15 @@ SKILL_LEARNED_FILE = SKILL_DIR / "ogrenilenler.md"
 # hesabınızın kimlik bilgileriyle çalıştırır — ayrı bir API anahtarı gerekmez.
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 MODEL = os.environ.get("CLAUDE_MODEL", "sonnet")
+# Effort TURA GÖRE seçilir (bkz. models/effort). `EFFORT` sıradan turların
+# taban seviyesi, `EFFORT_KEY` ise sahnenin sürekliliğinin pahalıya patladığı
+# turlarda (karşılaşma, senarist beat'i, yüksek gerilim, ölüme yakın karakter,
+# açılış) çıkılan seviyedir. İkisini eşitlerseniz effort yine sabitlenir.
 EFFORT = os.environ.get("CLAUDE_EFFORT", "medium")
-CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "180"))
+EFFORT_KEY = os.environ.get("CLAUDE_EFFORT_KEY", "high")
+# Ölçüm: aynı tur `high` ile 186.9 saniye sürdü — eski 180 sn'lik tavan
+# kritik turları zaman aşımına düşürüyordu.
+CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "300"))
 
 # /secrets ekranına (anlatıcı ekranı) girişi kabaca kilitler — gerçek bir
 # güvenlik önlemi değil, aynı ağdaki oyuncuların yanlışlıkla spoiler

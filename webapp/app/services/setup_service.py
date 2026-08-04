@@ -11,6 +11,7 @@ import time
 
 from scenario import CHARACTER_TEMPLATE, GROUP_DISPLAY_NAME, GROUP_LABEL
 
+from app import config
 from app.errors import ValidationError
 from app.models.learning import Learning
 from app.models.mapgen import MAP_SIZES
@@ -231,7 +232,11 @@ class GameService:
             )
             prompt = "(Oyun başlıyor. Sahneyi aç.)"
 
-            result = self.narrator.ask(prompt, extra_system, None, scenario["scenario_text"])
+            # Açılış sahnesi dünyayı kuruyor: bütün oyunun üzerine bindiği tur
+            # burası, effort'tan kısılacak yer değil (bkz. models/effort).
+            result = self.narrator.ask(prompt, extra_system, None,
+                                       scenario["scenario_text"],
+                                       effort=config.EFFORT_KEY)
 
             state["session_id"] = result.get("session_id")
             state["started"] = True

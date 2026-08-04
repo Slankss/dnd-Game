@@ -135,8 +135,13 @@ class GmService:
             publish = mode in ("sahne", "surpriz")
             prompt, extra_system = self._compose(mode, text, common_tail)
 
+            # Anlatıcının elle yazdırdığı sahne/sürpriz oyunculara GİDER —
+            # senarist beat'iyle aynı ağırlıkta, üst seviyede yazılır. "Gizli"
+            # not ise yalnız defter tutar, taban seviye yeter.
             result = self.narrator.ask(prompt, extra_system, state["session_id"],
-                                       self.scenario_repo.load()["scenario_text"])
+                                       self.scenario_repo.load()["scenario_text"],
+                                       effort=(config.EFFORT_KEY if publish
+                                               else config.EFFORT))
 
             state["session_id"] = result.get("session_id") or state["session_id"]
 

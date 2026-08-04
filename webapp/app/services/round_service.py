@@ -27,8 +27,11 @@ içindedir (mevcut TurnService davranışıyla aynı).
 
 import time
 
+from app import config
 from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
+from app.models.effort import critical_players
+from app.models.effort import decide as decide_effort
 from app.models.options import CATEGORIES, FREE_CATEGORY
 from app.models.pending import DIREKTIF, SAHNE, TEHDIT, birlestir
 from app.models.round import DONE, OPEN, SENDING, Pick, Round
@@ -481,10 +484,30 @@ class RoundService:
                 prompt_builder.distance_note(world.map, world.location),
             )
 
+            # EFFORT bu turda ne kadar düşünüleceğini belirler. Sıradan bir
+            # "kapıyı tut" turunda taban seviye yeter; sahnenin sürekliliğinin
+            # pahalıya patladığı turlarda üste çıkılır. Sinyallerin hepsi
+            # sunucuda ZATEN var — modele sormaya gerek yok.
+            karsilasma = (threat_prep or {}).get("encounter")
+            seviye, gerekce = decide_effort(
+                config.EFFORT, config.EFFORT_KEY,
+                encounter=bool(karsilasma is not None and karsilasma.var),
+                directive=bool(directive),
+                tension=world.tension,
+                critical=critical_players(ws),
+                waiting=bool(bekleyenler),
+            )
+            if gerekce:
+                self.gm_log.append({
+                    "id": None, "role": "system", "ts": ts,
+                    "text": f"🧠 Anlatıcı bu turda {seviye} seviyede düşünüyor "
+                            f"({gerekce}).",
+                })
+
             try:
                 result = self.narrator.ask(
                     prompt, extra_system, state["session_id"],
-                    self.scenario_repo.load()["scenario_text"])
+                    self.scenario_repo.load()["scenario_text"], effort=seviye)
             except Exception:
                 # Model çağrısı düştü: tur AÇIK kalsın, seçimler kaybolmasın.
                 round_.status = OPEN

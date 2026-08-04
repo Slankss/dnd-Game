@@ -23,8 +23,11 @@ import time
 
 from scenario import GROUP_DISPLAY_NAME, GROUP_LABEL
 
+from app import config
 from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
+from app.models.effort import critical_players
+from app.models.effort import decide as decide_effort
 from app.models.text import (
     DEFAULT_TURN_MINUTES,
     canonical_name,
@@ -330,8 +333,20 @@ class TurnService:
                 ]
                 prompt = f"[GRUP - ORTAK KARAR]\n{text}" if is_group else f"[OYUNCU: {player}]\n{text}"
 
+            # Serbest tur da tur bazlı akışla aynı ölçüte uyar: üst seviye
+            # yalnız sürekliliğin pahalıya patladığı turlarda (bkz.
+            # models/effort). Chargen turunda ne karşılaşma ne beat vardır.
+            tur_karsilasma = (threat_prep or {}).get("encounter")
+            seviye, _ = decide_effort(
+                config.EFFORT, config.EFFORT_KEY,
+                encounter=bool(tur_karsilasma is not None and tur_karsilasma.var),
+                directive=bool(directive),
+                tension=world.tension,
+                critical=critical_players(ws),
+            )
             result = self.narrator.ask(prompt, extra_system, state["session_id"],
-                                       self.scenario_repo.load()["scenario_text"])
+                                       self.scenario_repo.load()["scenario_text"],
+                                       effort=seviye)
 
             state["session_id"] = result.get("session_id") or state["session_id"]
             for entry in user_entries:
@@ -421,8 +436,11 @@ class TurnService:
             extra_system = turn_prompts.takeover_extra_system(
                 ws, self.game_log.read(), dead_key, new_key)
 
+            # Devralma sahnesi de açılış gibi: bir oyuncunun oyunla bağı burada
+            # yeniden kuruluyor, effort'tan kısılacak tur değil.
             result = self.narrator.ask(prompt, extra_system, state["session_id"],
-                                       self.scenario_repo.load()["scenario_text"])
+                                       self.scenario_repo.load()["scenario_text"],
+                                       effort=config.EFFORT_KEY)
 
             state["session_id"] = result.get("session_id") or state["session_id"]
 
