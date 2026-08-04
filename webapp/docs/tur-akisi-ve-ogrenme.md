@@ -313,6 +313,24 @@ Harita gezdikçe açılır: `WorldMap.go()` varılan yeri `keşfedildi` yapar ve
 `reveal_neighbours` ile **yol komşularını `duyuldu`** yapar. Yani gittiğin yer
 haritayı bir adım büyütür.
 
+**Anlatıcı ekranı haritanın TAMAMINI görür.** `/api/gm/state` sansürsüz
+`world_state` döndürdüğü için üretilen bütün mekanlar, yollar ve şehirler
+oradadır; `/api/state` ise yalnız keşfedileni taşır. Arayüzde ayrım
+`bilgiDuzeyi`'ne eklenen dördüncü düzeyle yapılır:
+
+| | Oyuncu (`/`) | Anlatıcı (`/secrets`) |
+|---|---|---|
+| `bilinmiyor` | gövdeye hiç girmez | küçük, noktalı, %40 saydam düğüm + "grup bilmiyor" rozeti |
+| `duyuldu` | silik soru işareti | aynı |
+| `görüldü` / `keşfedildi` | tam çizim | aynı |
+
+`MapCanvas` oyuncu kipinde `bilinmiyor` düğümlerini ve onlara giden yolları
+**ikinci kez** süzer (`gm` false ise). Sunucu zaten göndermiyor; bu, elle
+yüklenmiş bir kayıt bile sızmasın diye ikinci emniyet kemeri.
+
+Harita paneli anlatıcı kipinde "N mekanı grup bilmiyor" sayacını gösterir —
+GM bir bakışta dünyanın ne kadarının keşfedildiğini görür.
+
 Anlatıcının yazdığı `known: "bilinmiyor"` bunu tetiklemez — takma ad tablosu
 onu `duyuldu`ya çevirir; gerçek gizlilik yalnız üretecin `Place.hide()`
 çağrısıyla kurulur. Anlatıcı bir yeri yamalarsa o yer otomatik `duyuldu` olur:

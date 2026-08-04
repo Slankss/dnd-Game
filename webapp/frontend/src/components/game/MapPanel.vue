@@ -39,6 +39,12 @@ const yerler = computed(() =>
 const dagilmis = computed(() => partiDagilmis(props.harita))
 const kesfedilen = computed(() => yerler.value.filter((y) => y.duzey === 'keşfedildi').length)
 const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuldu').length)
+/** Grubun hiç duymadığı mekanlar — YALNIZ anlatıcı ekranında gelir. */
+const gizli = computed(() => yerler.value.filter((y) => y.duzey === 'bilinmiyor').length)
+/** Anlatıcı ekranında liste tamamdır; oyuncu ekranında zaten süzülmüş gelir. */
+const gorunenYerler = computed(() =>
+  props.gm ? yerler.value : yerler.value.filter((y) => y.duzey !== 'bilinmiyor'),
+)
 </script>
 
 <template>
@@ -79,6 +85,11 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
       <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-faint">
         <span>{{ kesfedilen }} keşfedildi</span>
         <span v-if="bilinmeyen">· {{ bilinmeyen }} yer sadece duyuldu</span>
+        <!-- Anlatıcı ekranı: harita tamamıyla üretildi, grup kaçını biliyor -->
+        <span v-if="gm && gizli" class="inline-flex items-center gap-1 text-gm">
+          <Icon name="visibility_off" :size="12" />
+          {{ gizli }} mekanı grup bilmiyor
+        </span>
         <span v-if="dagilmis" class="inline-flex items-center gap-1 text-warn">
           <Icon name="call_split" :size="12" />
           grup dağılmış
@@ -88,7 +99,7 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
       <!-- kısa liste -->
       <ul class="flex flex-col gap-1.5">
         <li
-          v-for="yer in yerler"
+          v-for="yer in gorunenYerler"
           :key="yer.ad"
           class="rounded-card border p-2"
           :class="[
@@ -120,6 +131,16 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
             </Badge>
             <Badge v-if="yer.duzey === 'görüldü'" tone="warn" size="sm" icon="visibility">
               uzaktan
+            </Badge>
+            <!-- Anlatıcı ekranı: grubun bu yerden haberi bile yok -->
+            <Badge
+              v-if="yer.duzey === 'bilinmiyor'"
+              tone="gm"
+              size="sm"
+              icon="visibility_off"
+              title="Dünyada var, oyuncu ekranında yok"
+            >
+              grup bilmiyor
             </Badge>
             <!-- Bir mekan bir kez taranır: tarandıysa arama seçeneği artık sunulmaz -->
             <Badge v-if="taranan?.[yer.ad]" tone="muted" size="sm" icon="search_off">

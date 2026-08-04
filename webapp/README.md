@@ -91,7 +91,9 @@ sadece metin üretimi için) çalıştırır.
   sunucuda Dijkstra ile çözülür ve anlatıcıya zorunlu blok olarak verilir.
   **Oyuncu haritanın tamamını görmez**: üretilen yerler "bilinmiyor" başlar ve
   gövdeye hiç girmez; gidilen her yer, yol komşularını "duyuldu" yaparak
-  haritayı bir adım büyütür. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1f.
+  haritayı bir adım büyütür. **Anlatıcı ekranı (`/secrets`) haritanın tamamını
+  görür** — grubun duymadığı mekanlar orada silik, noktalı düğümler ve "grup
+  bilmiyor" rozetiyle çizilir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1f.
 - **Zombi tehdidi gerçek bir mekanik**: her turda sunucu karşılaşma zarı atar.
   Bölge yoğunluğu (metro ~82, orman ~30), grubun gürültüsü, gece, hava ve
   özellikle **yolculuk** ihtimali belirler — yolda geçen turların ~%75'inde

@@ -38,8 +38,15 @@ const KM_OLCEK = 22
  * geldiği gibi durur, büyütmeden etkilenmez.
  */
 const SEHIR_BUYUTME = 4.2
-/** Düğüm yarıçapları — bilgi düzeyine göre. */
-export const YARICAP = { keşfedildi: 20, görüldü: 15, duyuldu: 9 }
+/**
+ * Düğüm yarıçapları — bilgi düzeyine göre.
+ *
+ * `bilinmiyor` yalnız ANLATICI ekranında çizilir: harita bütünüyle üretilmiştir
+ * ama grup o yeri henüz duymamıştır. Oyuncu gövdesine bu kayıtlar hiç girmez
+ * (sunucu `public_place` ile ayıklar), o yüzden oyuncu ekranında bu boy hiç
+ * kullanılmaz.
+ */
+export const YARICAP = { keşfedildi: 20, görüldü: 15, duyuldu: 9, bilinmiyor: 6 }
 /** Kenar boşluğu (etiketler taşmasın). */
 const KENAR = 90
 
@@ -76,7 +83,10 @@ function sirala(a, b) {
  */
 export function bilgiDuzeyi(yer) {
   const k = String(yer?.known || '').toLowerCase()
-  if (k === 'keşfedildi' || k === 'görüldü' || k === 'duyuldu') return k
+  // `bilinmiyor` = dünyada var ama grup duymadı (yalnız anlatıcı görür).
+  if (k === 'keşfedildi' || k === 'görüldü' || k === 'duyuldu' || k === 'bilinmiyor') {
+    return k
+  }
   if (yer?.visited) return 'keşfedildi'
   if (yer?.kind || yer?.status || (yer?.danger && yer.danger !== 'bilinmiyor')) return 'görüldü'
   return 'duyuldu'
@@ -84,7 +94,12 @@ export function bilgiDuzeyi(yer) {
 
 /** Bir yer hakkında gösterilecek ayrıntı var mı (yoksa kart açılmaz). */
 export function ayrintiVar(yer) {
-  return bilgiDuzeyi(yer) !== 'duyuldu'
+  return !['duyuldu', 'bilinmiyor'].includes(bilgiDuzeyi(yer))
+}
+
+/** Grup bu yeri henüz duymadı mı (anlatıcı ekranında ayrı çizilir). */
+export function grupBilmiyor(yer) {
+  return bilgiDuzeyi(yer) === 'bilinmiyor'
 }
 
 /** Koordinatı olan kayıt mı (coğrafi kip kullanılabilir mi). */
@@ -281,6 +296,10 @@ export function haritaYerlesimi(harita) {
     const stil = YOL_STILI[yol.kind] || { kalinlik: 1.6, ton: 'ara' }
     kenarlar.push({
       anahtar: `${cift}#${yol.kind}#${sira}`,
+      // Uçların adı ayrı alanlarda: süzgeç anahtarı ayrıştırmak zorunda kalmasın
+      // (yer adlarında ok işareti geçerse ayrıştırma çöker).
+      a: yol.a,
+      b: yol.b,
       x1: a.x,
       y1: a.y,
       x2: b.x,
@@ -309,6 +328,8 @@ export function haritaYerlesimi(harita) {
       if (!a || !b) continue
       kenarlar.push({
         anahtar,
+        a: ad,
+        b: hedef,
         x1: a.x,
         y1: a.y,
         x2: b.x,

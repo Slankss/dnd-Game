@@ -194,7 +194,7 @@ export const TEHLIKE_TONU = {
 }
 
 /** Bilgi düzeyi sırası — bilinen yerler listenin başında durur. */
-const BILGI_SIRASI = { keşfedildi: 0, görüldü: 1, duyuldu: 2 }
+const BILGI_SIRASI = { keşfedildi: 0, görüldü: 1, duyuldu: 2, bilinmiyor: 3 }
 
 /**
  * Harita kaydını listeye çevirir: şu an bulunulan yer BAŞA gelir, gerisi
