@@ -39,6 +39,7 @@ webapp/
         movement.py         #   move() — 8 adımlı hareket algoritması (O(1))
       options.py            # Option, OptionBoard — seçenek havuzu (5-10, spend)
       inventory.py          # sayılabilir envanter (mermi/sargı/yakıt sayaçları)
+      items.py              # sabit eşya kataloğu (yer türüne göre bulunma)
       round.py              # Round, Pick — tur bazlı akışın kaydı
       pending.py            # bekleyen yayın kuyruğu (her şey BİR SONRAKİ turda)
       learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
@@ -52,6 +53,7 @@ webapp/
       plot_repo.py          # plot.json
       learning_repo.py      # learning.json + learning_events.jsonl
       options_repo.py       # options_pool.jsonl (sunulan/seçilen seçenekler)
+      items_repo.py         # items.json (SALT OKUNUR sabit katalog)
     services/               # iş akışı — modelleri ve repo'ları orkestre eder
       narrator_client.py    # claude CLI süreci (subprocess)
       prompt_builder.py     # modele giden tüm metin blokları
@@ -65,6 +67,7 @@ webapp/
       grid_service.py       # kare harita: sahne kurulumu + hareket
       threat_service.py     # karşılaşma zarı (girdiler GEÇEN turdan devreder)
       inventory_service.py  # harcama muhasebesi: seçeneğin bedelini sunucu keser
+      items_service.py      # arama (yere göre loot) + tüketim (doyum/susuzluk)
       setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
@@ -108,7 +111,9 @@ taşınır; eski dosya kaldırılır (import'u sadece `server.py` kullanıyordu)
 `WorldState` alanları: `day` (int), `time_of_day`, `clock`, `season`,
 `weather`, `temperature`, `location`, `tension` (`düşük|orta|yüksek`),
 `factions`, `characters`, `npcs`, `resources`, `challenges`,
-`map`, `grid`, `zombie_sightings`, `flags`, `narrator`, `options`, `threat`,
+`map`, `grid`, `zombie_sightings`, `story_items` (hikayeye özel, mekaniği
+OLMAYAN eşyalar), `searched` (yer başına arama sayacı), `flags`, `narrator`,
+`options`, `threat`,
 `world_roll`, `world_roll_history`.
 
 `state.json` kökünde ayrıca üç alan vardır: `settings`
@@ -160,6 +165,7 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
 | POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, changed, round, all_picked, version}` — zar SEÇİM ANINDA ve tur başına BİR KEZ atılır; karar turu geçene kadar değiştirilebilir (`changed: true` = zar aynı kaldı); `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
 | POST | `/api/round/wait` | `{player}` | `{ok, round, version}` — bu da bir seçimdir, değiştirilebilir |
+| GET | `/api/items` | — | `{surum, kategoriler, yer_turleri, esyalar}` — SABİT eşya kataloğu (`data/items.json`), her eşyanın en olası üç yeriyle |
 | GET | `/api/grid` | — | `{grid, world_state, version}` — sahne yoksa kurulur |
 | POST | `/api/grid/move` | `{player, direction}` | `{ok, result, grid, version}` — hareket algoritması: yön→koordinat→sınır→geçilebilirlik→kaldır→koordinat→ekle→sonuç |
 | POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` — "Turu Geç"; sahne kuyruğa yazılıp bir sonraki turun başında yayınlanır |

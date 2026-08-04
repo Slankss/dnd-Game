@@ -41,6 +41,7 @@ from app.serializers import public_round, public_world_state
 from app.services import prompt_builder, turn_prompts
 from app.services.director_service import DirectorService
 from app.services.inventory_service import InventoryService
+from app.services.items_service import ItemsService, looks_like_searching
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
@@ -60,7 +61,8 @@ class RoundService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, director=None, learning=None,
-                 options=None, turn=None, threat=None, inventory=None):
+                 options=None, turn=None, threat=None, inventory=None,
+                 items=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -71,6 +73,7 @@ class RoundService:
         self.options = options or OptionsService()
         self.threat = threat or ThreatService()
         self.inventory = inventory or InventoryService()
+        self.items = items or ItemsService()
         self.turn = turn or TurnService(
             state_repo=self.state_repo, scenario_repo=self.scenario_repo,
             narrator=self.narrator, game_log=self.game_log, gm_log=self.gm_log,
@@ -366,8 +369,37 @@ class RoundService:
             # — sahne yazılmadan önce. Anlatıcı muhasebe tutmaz, ne kesildiğini
             # zorunlu bir blok olarak öğrenir. `ws` bu yüzden kesimden SONRA
             # kurulur: modele giden JSON güncel miktarları göstersin.
-            harcamalar = self.inventory.apply(world, round_.ordered_picks(oyuncular))
+            secimler = round_.ordered_picks(oyuncular)
+            harcamalar = self.inventory.apply(world, secimler)
             harcama_notu = self.inventory.note(harcamalar)
+
+            # TÜKETİM: harcanan kalem katalogda bir yiyecek/içecekse açlık ve
+            # susuzluk göstergesi sunucuda düşer — "karnınız doydu" cümlesi
+            # göstergeyi değiştirmez.
+            tuketimler = {}
+            for kayit in harcamalar:
+                etki = self.items.consume(world, kayit["player"], kayit["spent"])
+                if etki:
+                    tuketimler[kayit["player"]] = etki
+
+            # ARAMA: bir yeri arayan hamlede ne bulunacağını YER TÜRÜ ve
+            # katalog belirler (karakolda silah, metroda pek değil).
+            aramalar = []
+            for pick in secimler:
+                if looks_like_searching(pick.text):
+                    aramalar.append(
+                        self.items.search(world, pick.player, str(pick.band or "")))
+            arama_notu = self.items.search_note(aramalar)
+            for kayit in aramalar:
+                self.gm_log.append({
+                    "id": None, "role": "system", "ts": ts,
+                    "text": "🔎 " + (
+                        f"{kayit['player']} ({kayit['label']}) buldu: " + ", ".join(
+                            f"{b['adet']}× {b['ad']}" for b in kayit["found"])
+                        if kayit["found"] else
+                        f"{kayit['player']} aradı, bir şey çıkmadı ({kayit['place']})"),
+                })
+
             for kayit in harcamalar:
                 if kayit["spent"] or kayit["dry"]:
                     self.gm_log.append({
@@ -420,8 +452,17 @@ class RoundService:
                 ws, log, combined, world_entry, scene_note, directive,
                 bekleyenler, StateRepository.settings_of(state), oyuncular,
                 self.options, round_.no, self.learning.note(),
-                threat_prep["note"], harcama_notu,
-                self.inventory.stock_note(world, oyuncular),
+                threat_prep["note"],
+                "\n\n".join(x for x in (
+                    harcama_notu,
+                    self.items.consume_note(tuketimler),
+                    arama_notu,
+                ) if x),
+                "\n\n".join(x for x in (
+                    self.inventory.stock_note(world, oyuncular),
+                    self.items.catalog_note(world, oyuncular),
+                    self.items.story_note(world),
+                ) if x),
             )
 
             try:

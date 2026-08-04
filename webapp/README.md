@@ -41,7 +41,18 @@ sadece metin üretimi için) çalıştırır.
    kesildiğini zorunlu bir blokla bildirir. Mermisi bitene "ateş aç" seçeneği
    **hiç sunulmaz**; beyan unutulursa hamle metnindeki ateş izinden zar bandına
    göre 1-3 fişek otomatik düşer. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1d.
-5. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
+5. **Eşyalar iki türlüdür.** `data/items.json` içindeki **sabit katalog** her
+   oyunda aynıdır ve mekaniği vardır: 111 eşya, 11 kategori (yakın/menzilli
+   silah, mühimmat, giyim, yiyecek, içecek, tıbbi, alet, elektronik, yakıt,
+   takas). Bir yerde ne bulunacağını **yer türü** belirler — 9mm tabancanın
+   polis karakolunda ağırlığı 55, metro istasyonunda 2'dir. Oyuncular arama
+   seçeneği seçince sunucu katalogdan çeker (kaç kalem çıkacağını zar bandı
+   belirler) ve aynı yer tekrar tekrar aranırsa verim düşer. Yiyeceklerin
+   `doyum`, içeceklerin `susuzluk` değeri vardır ve göstergeyi sunucu düşürür.
+   **Hikaye eşyaları** (`story_items`) ise her oyunda farklıdır, anlatıcı
+   üretir ve *yalnızca anlatı etkisi* taşır — açlık doldurmaz, zar değiştirmez.
+   Katalog `GET /api/items` ile okunur. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1e.
+6. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
    o turda çıkan gürültü, anlatıcının bildirdiği patlama/alarm ve vadesi gelen
    senaryo beat'i `state["pending"]` kuyruğuna yazılır ve **bir sonraki turun
    başında** uygulanır. Yani tur N'de tüfek patlatan grup bedelini tur N+1'de

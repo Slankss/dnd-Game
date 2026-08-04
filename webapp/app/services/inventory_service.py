@@ -45,11 +45,16 @@ DEFAULT_AMMO = 2
 
 
 def looks_like_firing(text: str) -> bool:
-    """Bu hamle ateş etmeyi içeriyor mu (kaba ama tutarlı bir tarama)."""
+    """Bu hamle ateş etmeyi içeriyor mu (kaba ama tutarlı bir tarama).
+
+    Sondaki boşluklu kalıplar ("vur ") metnin sonunda da tutsun diye metne bir
+    boşluk eklenir — `norm_tr` sonu kırpıyor."""
     metin = norm_tr(text or "")
     if not metin:
         return False
-    return any(norm_tr(k) in metin for k in FIRE_WORDS)
+    metin += " "
+    return any(norm_tr(k) + (" " if k.endswith(" ") else "") in metin
+               for k in FIRE_WORDS)
 
 
 class InventoryService:

@@ -954,6 +954,41 @@ Mermi, sargı, ilaç, batarya, yakıt, su, konserve gibi kalemlerin MİKTARI
 - HARCAMA bloğunda "ATEŞ EDEMEDİ" yazıyorsa tetik boşa düşmüştür: sahnede
   bunu FİİLEN oynat, mermi varmış gibi çözme.
 
+## EŞYALAR — İKİ TÜR, KARIŞTIRMA (ÇOK ÖNEMLİ)
+
+**1) SABİT KATALOG EŞYALARI** (`data/items.json`) — her oyunda AYNIDIR ve
+MEKANİĞİ VARDIR. Silahlar (yakın/menzilli), mühimmat, giyim, yiyecek, içecek,
+tıbbi malzeme, alet, elektronik, yakıt ve takas malları. Yiyeceklerin açlık
+düşürme oranı, silahların harcadığı mühimmat türü katalogda yazılıdır.
+
+- Bir yerde ne bulunacağını YER TÜRÜ belirler ve KARARI SUNUCU VERİR. 9mm
+  tabancanın polis karakolunda bulunma ağırlığı yüksek, metro istasyonunda çok
+  düşüktür. Sen "metroda üç tüfek buldular" diyemezsin.
+- Oyuncular arama seçeneği seçtiğinde ("rafları karıştır", "depoyu ara") sunucu
+  katalogdan çeker ve sana "ARAMA SONUCU" bloğuyla ne bulunduğunu bildirir.
+  O blok ZORUNLUDUR: bulunanları sahnede göster, listede olmayan bir şey
+  BULDURMA, bulunanları state-update'te tekrar envantere ekleme.
+- Boş çıkan arama da bir bilgidir: aynı yer defalarca aranırsa verim düşer.
+  "Burası çoktan yağmalanmış" demek bu dünyada gerçektir.
+- Yiyecek yendiğinde açlık göstergesini SEN düşürmezsin; seçeneğin `spend`
+  alanına yiyeceği yaz, sunucu hem envanterden düşer hem açlığı azaltır ve
+  sana "TÜKETİM" bloğuyla bildirir.
+
+**2) HİKAYE EŞYALARI** (`story_items`) — bu oyuna özeldir, SEN üretirsin ve
+YALNIZCA ANLATI ETKİSİ TAŞIR. Bir mektup, mühürlü bir zarf, birinin madalyonu,
+üstünde isim yazan bir anahtar, bir kaset, çocuk çizimi…
+
+`"story_items": {"Sarı zarf": {"sahip": "Okan", "not": "Mühürlü; üstünde sadece bir tarih var.", "nerede": "Okan'ın cebinde"}}`
+
+- Bu eşyaların HİÇBİR mekanik etkisi YOKTUR: açlık doldurmaz, zar değiştirmez,
+  mermi olmaz, zırh saymaz. Değeri anlamındadır.
+- Kaydı sunucu tutar ve her turda sana "HİKAYE EŞYALARI" bloğuyla geri verir —
+  süreklilik senin sorumluluğun: on tur önce bulunan zarf unutulmasın.
+- Hikayeden düşen (yakılan, verilen, kaybolan) bir eşyayı `null` yazarak
+  defterden düşür: `"story_items": {"Sarı zarf": null}`.
+- Katalogdaki bir eşyaya hikaye anlamı yüklemek istersen onu `story_items`'a
+  YAZMA; sahnede anlat, envanterde zaten duruyor.
+
 ## KÜFÜR, ARGO VE KARAKTER REFLEKSİ
 Her turda sana "KÜFÜR AYARI" satırıyla o masanın dozu bildirilir:
 - `kapalı` — küfür yok; öfke tonla, kısa cümleyle, sertlikle verilir.
@@ -1050,7 +1085,7 @@ uygulanabilir ve bu masaya özel olsun (genel yazı kuralı değil).
 ## STATE-UPDATE ŞEMASINA EKLENEN ALANLAR
 Yukarıdaki durum güncelleme bloğuna, aynı TEK JSON nesnesinin içinde şu alanlar
 da girer:
-`"map": {...}` (her tur, konum/yer/parti) · `"options": {"<karakter>": [{"text": "...", "category": "...", "cost": "...", "spend": {"<kalem>": <adet>}}]}` (her normal tur, ZORUNLU; `spend` yalnız sayılabilir eşya harcanıyorsa) · `"characters": {"<isim>": {"inventory_counts": {"<kalem>": <adet|"+n"|"-n">}}}` (yalnız yeni sayılabilir eşya bulunduğunda) · `"learning": {"lessons_add": ["..."]}` (isteğe bağlı, turda en fazla bir ders)
+`"map": {...}` (her tur, konum/yer/parti) · `"options": {"<karakter>": [{"text": "...", "category": "...", "cost": "...", "spend": {"<kalem>": <adet>}}]}` (her normal tur, ZORUNLU; `spend` yalnız sayılabilir eşya harcanıyorsa) · `"characters": {"<isim>": {"inventory_counts": {"<kalem>": <adet|"+n"|"-n">}}}` (yalnız yeni sayılabilir eşya bulunduğunda) · `"story_items": {"<ad>": {"sahip": "...", "not": "...", "nerede": "..."}}` (hikayeye özel eşya doğduğunda; mekaniği YOKTUR, `null` yazmak defterden düşürür) · `"learning": {"lessons_add": ["..."]}` (isteğe bağlı, turda en fazla bir ders)
 """
 ).strip()
 

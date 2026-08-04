@@ -1,0 +1,2061 @@
+{
+  "surum": 1,
+  "aciklama": "Kızıl Çöküş SABİT EŞYA KATALOĞU. Bu dosya her oyunda AYNIDIR ve oyunun mekanik eşyalarını tanımlar. Hikayeye özel eşyalar burada DEĞİLDİR: onları anlatıcı üretir, yalnızca anlatı etkileri olur (bkz. world_state.story_items). Ağırlıklar 0-100 arası 'o yer türünde bulunma ağırlığı'dır; `taban` hiçbir yer eşleşmediğinde geçerlidir. `doyum` açlığı, `susuzluk` susuzluğu düşürür (0-100).",
+  "yer_turleri": {
+    "karakol": {
+      "ad": "Polis karakolu / emniyet",
+      "anahtar": [
+        "karakol",
+        "polis",
+        "emniyet",
+        "jandarma",
+        "kollukçu"
+      ]
+    },
+    "askeri": {
+      "ad": "Askeri tesis",
+      "anahtar": [
+        "askeri",
+        "kışla",
+        "karargah",
+        "karargâh",
+        "ordu",
+        "cephanelik",
+        "tabur"
+      ]
+    },
+    "hastane": {
+      "ad": "Hastane / sağlık merkezi",
+      "anahtar": [
+        "hastane",
+        "sağlık",
+        "klinik",
+        "poliklinik",
+        "revir",
+        "ambulans",
+        "morg"
+      ]
+    },
+    "eczane": {
+      "ad": "Eczane",
+      "anahtar": [
+        "eczane",
+        "ecza",
+        "kimyager"
+      ]
+    },
+    "market": {
+      "ad": "Market / bakkal",
+      "anahtar": [
+        "market",
+        "bakkal",
+        "şarküteri",
+        "manav",
+        "kasap"
+      ]
+    },
+    "bufe": {
+      "ad": "Büfe / kiosk",
+      "anahtar": [
+        "büfe",
+        "kiosk",
+        "kulübe",
+        "tekel",
+        "kantin"
+      ]
+    },
+    "avm": {
+      "ad": "AVM / mağaza",
+      "anahtar": [
+        "avm",
+        "alışveriş",
+        "mağaza",
+        "pasaj",
+        "çarşı"
+      ]
+    },
+    "okul": {
+      "ad": "Okul / üniversite / kütüphane",
+      "anahtar": [
+        "okul",
+        "üniversite",
+        "lise",
+        "yurt",
+        "kütüphane",
+        "kampüs",
+        "anaokul"
+      ]
+    },
+    "sanayi": {
+      "ad": "Sanayi / fabrika / atölye",
+      "anahtar": [
+        "sanayi",
+        "fabrika",
+        "tesis",
+        "atölye",
+        "torna",
+        "dökümhane",
+        "rafineri"
+      ]
+    },
+    "depo": {
+      "ad": "Depo / lojistik",
+      "anahtar": [
+        "depo",
+        "antrepo",
+        "ambar",
+        "lojistik",
+        "hangar",
+        "silo"
+      ]
+    },
+    "santiye": {
+      "ad": "Şantiye / hırdavat",
+      "anahtar": [
+        "şantiye",
+        "inşaat",
+        "hırdavat",
+        "yapı market",
+        "nalbur",
+        "kereste"
+      ]
+    },
+    "metro": {
+      "ad": "Metro / istasyon / tünel",
+      "anahtar": [
+        "metro",
+        "istasyon",
+        "tünel",
+        "tren",
+        "gar",
+        "raylı",
+        "peron"
+      ]
+    },
+    "otogar": {
+      "ad": "Otogar / otopark / araç",
+      "anahtar": [
+        "otogar",
+        "terminal",
+        "otopark",
+        "garaj",
+        "servis",
+        "oto",
+        "trafik"
+      ]
+    },
+    "benzinlik": {
+      "ad": "Benzinlik / akaryakıt",
+      "anahtar": [
+        "benzinlik",
+        "akaryakıt",
+        "benzin istasyonu",
+        "petrol ofisi",
+        "lpg",
+        "yakıt istasyonu"
+      ]
+    },
+    "konut": {
+      "ad": "Konut / apartman / mahalle",
+      "anahtar": [
+        "apartman",
+        "konut",
+        "ev",
+        "site",
+        "mahalle",
+        "daire",
+        "villa"
+      ]
+    },
+    "otel": {
+      "ad": "Otel / pansiyon",
+      "anahtar": [
+        "otel",
+        "pansiyon",
+        "motel",
+        "misafirhane",
+        "termal"
+      ]
+    },
+    "lokanta": {
+      "ad": "Lokanta / kafe / mutfak",
+      "anahtar": [
+        "lokanta",
+        "restoran",
+        "kafe",
+        "mutfak",
+        "yemekhane",
+        "fırın",
+        "pastane"
+      ]
+    },
+    "ciftlik": {
+      "ad": "Çiftlik / tarla / sera",
+      "anahtar": [
+        "çiftlik",
+        "tarla",
+        "sera",
+        "ahır",
+        "köy",
+        "bağ",
+        "değirmen",
+        "kümes"
+      ]
+    },
+    "dogal": {
+      "ad": "Orman / kır / kıyı",
+      "anahtar": [
+        "orman",
+        "göl",
+        "kıyı",
+        "dağ",
+        "park",
+        "dere",
+        "koru",
+        "yayla",
+        "baraj"
+      ]
+    },
+    "siginak": {
+      "ad": "Sığınak / kamp",
+      "anahtar": [
+        "sığınak",
+        "kamp",
+        "barınak",
+        "çadır",
+        "korunak",
+        "mahzen"
+      ]
+    },
+    "harabe": {
+      "ad": "Harabe / enkaz",
+      "anahtar": [
+        "harabe",
+        "yıkıntı",
+        "enkaz",
+        "terk",
+        "viran",
+        "kalıntı",
+        "maden"
+      ]
+    }
+  },
+  "kategoriler": {
+    "yakın silah": {
+      "ikon": "swords",
+      "aciklama": "Sessiz ama yakınlaşmak gerekir; yorar ve kan sıçratır."
+    },
+    "menzilli silah": {
+      "ikon": "target",
+      "aciklama": "Mesafeden çözer ama GÜRÜLTÜLÜDÜR — ses ölüleri çeker."
+    },
+    "mühimmat": {
+      "ikon": "grain",
+      "aciklama": "Sayılabilir; menzilli silahlar bunu harcar."
+    },
+    "giyim": {
+      "ikon": "checkroom",
+      "aciklama": "Isı, ısırık ve yağmura karşı; ağırlık yapar."
+    },
+    "yiyecek": {
+      "ikon": "restaurant",
+      "aciklama": "Açlığı düşürür (doyum değeri kadar)."
+    },
+    "içecek": {
+      "ikon": "water_drop",
+      "aciklama": "Susuzluğu düşürür."
+    },
+    "tıbbi": {
+      "ikon": "medical_services",
+      "aciklama": "Yara, enfeksiyon ve ağrı için."
+    },
+    "alet": {
+      "ikon": "build",
+      "aciklama": "Kapı açar, tamir eder, yol yapar."
+    },
+    "elektronik": {
+      "ikon": "bolt",
+      "aciklama": "Işık, haberleşme, güç — pil ister."
+    },
+    "yakıt": {
+      "ikon": "local_gas_station",
+      "aciklama": "Jeneratör, araç, ateş."
+    },
+    "takas": {
+      "ikon": "handshake",
+      "aciklama": "Kendi başına işe yaramaz; pazarlıkta değerlidir."
+    }
+  },
+  "esyalar": [
+    {
+      "id": "mutfak-bicagi",
+      "ad": "Mutfak bıçağı",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "ciftlik": 30,
+        "konut": 45,
+        "lokanta": 60,
+        "market": 25,
+        "otel": 30
+      }
+    },
+    {
+      "id": "av-bicagi",
+      "ad": "Av bıçağı",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 8,
+      "bulunur": {
+        "ciftlik": 35,
+        "dogal": 45,
+        "karakol": 20,
+        "konut": 15,
+        "siginak": 30
+      }
+    },
+    {
+      "id": "levye",
+      "ad": "Levye",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "depo": 40,
+        "metro": 30,
+        "otogar": 35,
+        "sanayi": 45,
+        "santiye": 60
+      },
+      "not": "Kapı açar; sessiz zorlamada işe yarar."
+    },
+    {
+      "id": "balta",
+      "ad": "Balta",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "ciftlik": 45,
+        "dogal": 55,
+        "santiye": 30,
+        "siginak": 25
+      }
+    },
+    {
+      "id": "beyzbol-sopasi",
+      "ad": "Beyzbol sopası",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "avm": 25,
+        "konut": 30,
+        "okul": 40,
+        "otel": 15
+      }
+    },
+    {
+      "id": "cop-sopasi",
+      "ad": "Polis copu",
+      "kategori": "yakın silah",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 25,
+        "avm": 20,
+        "karakol": 70
+      }
+    },
+    {
+      "id": "cekic",
+      "ad": "Çekiç",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "depo": 25,
+        "konut": 25,
+        "sanayi": 45,
+        "santiye": 60
+      },
+      "ikinci_kategori": "yakın silah"
+    },
+    {
+      "id": "balyoz",
+      "ad": "Balyoz",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 6,
+      "bulunur": {
+        "harabe": 30,
+        "sanayi": 40,
+        "santiye": 55
+      },
+      "not": "Barikat kırar ama gürültülüdür ve yorar."
+    },
+    {
+      "id": "kurek",
+      "ad": "Kürek",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "ciftlik": 55,
+        "dogal": 30,
+        "harabe": 25,
+        "santiye": 45
+      }
+    },
+    {
+      "id": "makas-bahce",
+      "ad": "Bahçe makası",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 8,
+      "bulunur": {
+        "ciftlik": 50,
+        "dogal": 30,
+        "konut": 20
+      }
+    },
+    {
+      "id": "zincir",
+      "ad": "Zincir",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 9,
+      "bulunur": {
+        "depo": 35,
+        "otogar": 40,
+        "sanayi": 45,
+        "santiye": 30
+      }
+    },
+    {
+      "id": "sungu",
+      "ad": "Süngü",
+      "kategori": "yakın silah",
+      "nadirlik": "nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 55,
+        "karakol": 15
+      }
+    },
+    {
+      "id": "kasatura",
+      "ad": "Kasatura",
+      "kategori": "yakın silah",
+      "nadirlik": "nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 45,
+        "harabe": 8,
+        "karakol": 20
+      }
+    },
+    {
+      "id": "civili-sopa",
+      "ad": "Çivili sopa",
+      "kategori": "yakın silah",
+      "nadirlik": "yaygın",
+      "taban": 7,
+      "bulunur": {
+        "harabe": 35,
+        "santiye": 25,
+        "siginak": 30
+      },
+      "not": "Birinin elde yaptığı; takılıp kalır."
+    },
+    {
+      "id": "9mm-tabanca",
+      "ad": "9mm tabanca",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 45,
+        "karakol": 55,
+        "konut": 5,
+        "metro": 2,
+        "otel": 6
+      },
+      "mermi": "9mm fişek",
+      "not": "Sesi bölgenin dikkatini toplar."
+    },
+    {
+      "id": "38-revolver",
+      "ad": ".38 revolver",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 1,
+      "bulunur": {
+        "ciftlik": 10,
+        "karakol": 30,
+        "konut": 8,
+        "otel": 4
+      },
+      "mermi": ".38 fişek"
+    },
+    {
+      "id": "av-tufegi",
+      "ad": "Av tüfeği",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "ciftlik": 45,
+        "dogal": 35,
+        "karakol": 15,
+        "konut": 10
+      },
+      "mermi": "12 kalibre saçma"
+    },
+    {
+      "id": "pompali",
+      "ad": "Pompalı tüfek",
+      "kategori": "menzilli silah",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 30,
+        "ciftlik": 12,
+        "karakol": 35
+      },
+      "mermi": "12 kalibre saçma"
+    },
+    {
+      "id": "mp5",
+      "ad": "MP5 hafif makineli",
+      "kategori": "menzilli silah",
+      "nadirlik": "çok nadir",
+      "taban": 0,
+      "bulunur": {
+        "askeri": 40,
+        "karakol": 22
+      },
+      "mermi": "9mm fişek"
+    },
+    {
+      "id": "g3-piyade",
+      "ad": "G3 piyade tüfeği",
+      "kategori": "menzilli silah",
+      "nadirlik": "çok nadir",
+      "taban": 0,
+      "bulunur": {
+        "askeri": 45,
+        "karakol": 10
+      },
+      "mermi": "7.62 fişek"
+    },
+    {
+      "id": "keskin-nisanci",
+      "ad": "Dürbünlü tüfek",
+      "kategori": "menzilli silah",
+      "nadirlik": "çok nadir",
+      "taban": 0,
+      "bulunur": {
+        "askeri": 20,
+        "ciftlik": 8,
+        "dogal": 10,
+        "karakol": 8
+      },
+      "mermi": "7.62 fişek"
+    },
+    {
+      "id": "yay",
+      "ad": "Kompozit yay",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "avm": 10,
+        "dogal": 30,
+        "okul": 12
+      },
+      "mermi": "ok",
+      "not": "SESSİZ — sürü çekmez."
+    },
+    {
+      "id": "arbalet",
+      "ad": "Arbalet",
+      "kategori": "menzilli silah",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "avm": 8,
+        "dogal": 18,
+        "konut": 6
+      },
+      "mermi": "ok",
+      "not": "Sessiz ama yeniden kurmak zaman alır."
+    },
+    {
+      "id": "sapan",
+      "ad": "Çelik sapan",
+      "kategori": "menzilli silah",
+      "nadirlik": "yaygın",
+      "taban": 6,
+      "bulunur": {
+        "ciftlik": 20,
+        "dogal": 25,
+        "konut": 25
+      },
+      "not": "Sessiz; ölüye işlemez, insana caydırıcıdır."
+    },
+    {
+      "id": "isaret-tabancasi",
+      "ad": "İşaret tabancası",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 20,
+        "depo": 20,
+        "dogal": 15,
+        "otogar": 25
+      },
+      "mermi": "işaret fişeği",
+      "not": "Işık ve ses; dikkat çeker, uzağa haber verir."
+    },
+    {
+      "id": "civi-tabancasi",
+      "ad": "Çivi tabancası",
+      "kategori": "menzilli silah",
+      "nadirlik": "nadir",
+      "taban": 3,
+      "bulunur": {
+        "sanayi": 30,
+        "santiye": 45
+      },
+      "mermi": "çivi şeridi",
+      "not": "Yakın mesafede; kompresör ister."
+    },
+    {
+      "id": "9mm-fisek",
+      "ad": "9mm fişek",
+      "kategori": "mühimmat",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 45,
+        "karakol": 55,
+        "konut": 4
+      },
+      "sayilabilir": true,
+      "adet": [
+        4,
+        14
+      ]
+    },
+    {
+      "id": "38-fisek",
+      "ad": ".38 fişek",
+      "kategori": "mühimmat",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "ciftlik": 8,
+        "karakol": 30,
+        "konut": 6
+      },
+      "sayilabilir": true,
+      "adet": [
+        3,
+        10
+      ]
+    },
+    {
+      "id": "762-fisek",
+      "ad": "7.62 fişek",
+      "kategori": "mühimmat",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 50,
+        "karakol": 12
+      },
+      "sayilabilir": true,
+      "adet": [
+        5,
+        20
+      ]
+    },
+    {
+      "id": "12-kalibre",
+      "ad": "12 kalibre saçma",
+      "kategori": "mühimmat",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 15,
+        "ciftlik": 40,
+        "dogal": 25,
+        "karakol": 25
+      },
+      "sayilabilir": true,
+      "adet": [
+        3,
+        12
+      ]
+    },
+    {
+      "id": "ok",
+      "ad": "Ok",
+      "kategori": "mühimmat",
+      "nadirlik": "nadir",
+      "taban": 3,
+      "bulunur": {
+        "avm": 10,
+        "dogal": 30,
+        "okul": 12
+      },
+      "sayilabilir": true,
+      "adet": [
+        4,
+        12
+      ],
+      "not": "Geri toplanabilir."
+    },
+    {
+      "id": "civi-seridi",
+      "ad": "Çivi şeridi",
+      "kategori": "mühimmat",
+      "nadirlik": "yaygın",
+      "taban": 5,
+      "bulunur": {
+        "sanayi": 30,
+        "santiye": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        10,
+        40
+      ]
+    },
+    {
+      "id": "isaret-fisegi",
+      "ad": "İşaret fişeği",
+      "kategori": "mühimmat",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 25,
+        "depo": 20,
+        "dogal": 12,
+        "otogar": 25
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ]
+    },
+    {
+      "id": "bos-kovan",
+      "ad": "Boş kovan",
+      "kategori": "takas",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "askeri": 30,
+        "harabe": 20,
+        "karakol": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        5,
+        25
+      ],
+      "not": "Doldurabilen biri için değerli — kendi başına işe yaramaz."
+    },
+    {
+      "id": "barut-kutusu",
+      "ad": "Barut kutusu",
+      "kategori": "mühimmat",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 20,
+        "ciftlik": 15,
+        "sanayi": 12
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "saftlama-kapsulu",
+      "ad": "Kapsül kutusu",
+      "kategori": "mühimmat",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 15,
+        "ciftlik": 12
+      },
+      "sayilabilir": true,
+      "adet": [
+        10,
+        30
+      ]
+    },
+    {
+      "id": "kalin-mont",
+      "ad": "Kalın mont",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 20,
+      "bulunur": {
+        "avm": 50,
+        "konut": 55,
+        "okul": 30,
+        "otel": 35
+      },
+      "not": "Soğuğa karşı; ısırığı biraz yavaşlatır."
+    },
+    {
+      "id": "yagmurluk",
+      "ad": "Yağmurluk",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 18,
+      "bulunur": {
+        "avm": 40,
+        "konut": 40,
+        "otogar": 30,
+        "santiye": 35
+      }
+    },
+    {
+      "id": "is-tulumu",
+      "ad": "İş tulumu",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "depo": 35,
+        "otogar": 40,
+        "sanayi": 60,
+        "santiye": 55
+      }
+    },
+    {
+      "id": "bot",
+      "ad": "Çelik burunlu bot",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "askeri": 40,
+        "avm": 25,
+        "sanayi": 45,
+        "santiye": 55
+      }
+    },
+    {
+      "id": "eldiven",
+      "ad": "Kalın deri eldiven",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "ciftlik": 40,
+        "konut": 20,
+        "sanayi": 45,
+        "santiye": 50
+      },
+      "not": "Isırığa karşı bilekleri korur; tırmanırken avuç yırtmaz."
+    },
+    {
+      "id": "kevlar-yelek",
+      "ad": "Kevlar yelek",
+      "kategori": "giyim",
+      "nadirlik": "çok nadir",
+      "taban": 0,
+      "bulunur": {
+        "askeri": 40,
+        "karakol": 45
+      }
+    },
+    {
+      "id": "kask",
+      "ad": "İş kaskı",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 8,
+      "bulunur": {
+        "depo": 20,
+        "metro": 25,
+        "sanayi": 45,
+        "santiye": 60
+      }
+    },
+    {
+      "id": "gaz-maskesi",
+      "ad": "Gaz maskesi",
+      "kategori": "giyim",
+      "nadirlik": "çok nadir",
+      "taban": 0,
+      "bulunur": {
+        "askeri": 35,
+        "karakol": 20,
+        "sanayi": 25,
+        "siginak": 20
+      },
+      "not": "Duman ve leş kokusuna karşı; nefes daraltır."
+    },
+    {
+      "id": "dizlik",
+      "ad": "Dizlik",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 7,
+      "bulunur": {
+        "avm": 20,
+        "okul": 20,
+        "santiye": 40
+      }
+    },
+    {
+      "id": "sirt-cantasi",
+      "ad": "Sırt çantası",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 18,
+      "bulunur": {
+        "avm": 45,
+        "dogal": 35,
+        "konut": 30,
+        "okul": 55,
+        "otogar": 35
+      },
+      "not": "Taşıma kapasitesi artar."
+    },
+    {
+      "id": "uyku-tulumu",
+      "ad": "Uyku tulumu",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 9,
+      "bulunur": {
+        "avm": 25,
+        "dogal": 45,
+        "konut": 15,
+        "siginak": 45
+      },
+      "not": "Soğukta uykuyu gerçekten dinlendirir."
+    },
+    {
+      "id": "kirli-uniforma",
+      "ad": "Kirli üniforma",
+      "kategori": "giyim",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "askeri": 35,
+        "hastane": 35,
+        "karakol": 40,
+        "lokanta": 30,
+        "otel": 30
+      },
+      "not": "Uzaktan yanlış tanınmayı sağlar — kurnaz bir hamlede işe yarar."
+    },
+    {
+      "id": "konserve-fasulye",
+      "ad": "Konserve fasulye",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 22,
+      "bulunur": {
+        "depo": 45,
+        "konut": 45,
+        "lokanta": 40,
+        "market": 70,
+        "siginak": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "doyum": 30
+    },
+    {
+      "id": "konserve-ton",
+      "ad": "Ton balığı konservesi",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "depo": 35,
+        "konut": 35,
+        "market": 60
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ],
+      "doyum": 26
+    },
+    {
+      "id": "et-konservesi",
+      "ad": "Et konservesi",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 8,
+      "bulunur": {
+        "askeri": 45,
+        "depo": 30,
+        "market": 40,
+        "siginak": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ],
+      "doyum": 38
+    },
+    {
+      "id": "askeri-tayin",
+      "ad": "Askeri tayın paketi",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 60,
+        "karakol": 12,
+        "siginak": 20
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ],
+      "doyum": 55,
+      "not": "Bir öğünü tamamen kapatır; tadı berbattır."
+    },
+    {
+      "id": "bisküvi",
+      "ad": "Bisküvi paketi",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 24,
+      "bulunur": {
+        "bufe": 50,
+        "konut": 35,
+        "market": 65,
+        "okul": 45,
+        "otogar": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        5
+      ],
+      "doyum": 14
+    },
+    {
+      "id": "enerji-bari",
+      "ad": "Enerji barı",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "askeri": 25,
+        "avm": 40,
+        "dogal": 25,
+        "market": 45,
+        "okul": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        6
+      ],
+      "doyum": 18
+    },
+    {
+      "id": "kuru-meyve",
+      "ad": "Kuru meyve",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 15,
+      "bulunur": {
+        "ciftlik": 55,
+        "konut": 30,
+        "market": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "doyum": 16
+    },
+    {
+      "id": "kuruyemis",
+      "ad": "Kuruyemiş",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "bufe": 35,
+        "ciftlik": 40,
+        "konut": 30,
+        "market": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "doyum": 20
+    },
+    {
+      "id": "pirinc-cuvali",
+      "ad": "Pirinç çuvalı",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "ciftlik": 40,
+        "depo": 50,
+        "lokanta": 45,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        1
+      ],
+      "doyum": 45,
+      "not": "Pişirmek gerekir: ateş, su ve zaman."
+    },
+    {
+      "id": "bulgur",
+      "ad": "Bulgur torbası",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "ciftlik": 45,
+        "depo": 40,
+        "lokanta": 35,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "doyum": 40,
+      "not": "Pişirmek gerekir."
+    },
+    {
+      "id": "bayat-ekmek",
+      "ad": "Bayat ekmek",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 18,
+      "bulunur": {
+        "konut": 35,
+        "lokanta": 60,
+        "market": 45,
+        "otel": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ],
+      "doyum": 22
+    },
+    {
+      "id": "recel-kavanozu",
+      "ad": "Reçel kavanozu",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "ciftlik": 45,
+        "konut": 45,
+        "lokanta": 30,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "doyum": 24
+    },
+    {
+      "id": "bal",
+      "ad": "Bal kavanozu",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "ciftlik": 50,
+        "konut": 25,
+        "market": 25
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        1
+      ],
+      "doyum": 28,
+      "not": "Yarayı da temizler; iki işe yarar."
+    },
+    {
+      "id": "yumurta",
+      "ad": "Yumurta",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 5,
+      "bulunur": {
+        "ciftlik": 60,
+        "lokanta": 35,
+        "market": 25
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        8
+      ],
+      "doyum": 12,
+      "not": "Çabuk bozulur; taşırken kırılır."
+    },
+    {
+      "id": "patates",
+      "ad": "Patates",
+      "kategori": "yiyecek",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "ciftlik": 65,
+        "depo": 30,
+        "lokanta": 45,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        10
+      ],
+      "doyum": 18
+    },
+    {
+      "id": "bebek-mamasi",
+      "ad": "Bebek maması",
+      "kategori": "yiyecek",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "eczane": 45,
+        "hastane": 30,
+        "konut": 35,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ],
+      "doyum": 25,
+      "not": "Hastaya ve yaralıya da verilebilir."
+    },
+    {
+      "id": "su-sisesi",
+      "ad": "Su şişesi",
+      "kategori": "içecek",
+      "nadirlik": "yaygın",
+      "taban": 30,
+      "bulunur": {
+        "avm": 45,
+        "benzinlik": 55,
+        "bufe": 55,
+        "konut": 45,
+        "market": 65,
+        "otogar": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "susuzluk": 35
+    },
+    {
+      "id": "damacana",
+      "ad": "Damacana",
+      "kategori": "içecek",
+      "nadirlik": "nadir",
+      "taban": 8,
+      "bulunur": {
+        "depo": 45,
+        "konut": 30,
+        "lokanta": 45,
+        "market": 40,
+        "otel": 35
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        1
+      ],
+      "susuzluk": 70,
+      "not": "Ağır; taşımak yavaşlatır."
+    },
+    {
+      "id": "aritma-tableti",
+      "ad": "Su arıtma tableti",
+      "kategori": "içecek",
+      "nadirlik": "nadir",
+      "taban": 4,
+      "bulunur": {
+        "askeri": 40,
+        "dogal": 20,
+        "eczane": 35,
+        "siginak": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        4,
+        20
+      ],
+      "susuzluk": 0,
+      "not": "Kirli suyu içilebilir yapar."
+    },
+    {
+      "id": "mataraya",
+      "ad": "Matara",
+      "kategori": "içecek",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "askeri": 40,
+        "dogal": 45,
+        "okul": 20,
+        "siginak": 35
+      },
+      "not": "Su taşımak için; kendisi susuzluk gidermez."
+    },
+    {
+      "id": "meyve-suyu",
+      "ad": "Meyve suyu kutusu",
+      "kategori": "içecek",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "avm": 35,
+        "bufe": 45,
+        "market": 55,
+        "okul": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        6
+      ],
+      "susuzluk": 25
+    },
+    {
+      "id": "cay-paketi",
+      "ad": "Çay paketi",
+      "kategori": "içecek",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "konut": 50,
+        "lokanta": 55,
+        "market": 45,
+        "otel": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "susuzluk": 10,
+      "not": "Kaynatmak gerekir; moral verir."
+    },
+    {
+      "id": "raki-sisesi",
+      "ad": "Rakı şişesi",
+      "kategori": "içecek",
+      "nadirlik": "nadir",
+      "taban": 8,
+      "bulunur": {
+        "konut": 35,
+        "lokanta": 45,
+        "market": 30,
+        "otel": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        1
+      ],
+      "susuzluk": 0,
+      "not": "İçmek işleri kötüleştirir; yara temizlemede işe yarar, takasta değerlidir."
+    },
+    {
+      "id": "gazoz",
+      "ad": "Gazoz",
+      "kategori": "içecek",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "benzinlik": 45,
+        "bufe": 50,
+        "market": 50,
+        "otogar": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "susuzluk": 20
+    },
+    {
+      "id": "sargi-bezi",
+      "ad": "Sargı bezi",
+      "kategori": "tıbbi",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "askeri": 45,
+        "eczane": 65,
+        "hastane": 70,
+        "karakol": 30,
+        "konut": 25
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        5
+      ]
+    },
+    {
+      "id": "antiseptik",
+      "ad": "Antiseptik",
+      "kategori": "tıbbi",
+      "nadirlik": "nadir",
+      "taban": 8,
+      "bulunur": {
+        "askeri": 30,
+        "eczane": 60,
+        "hastane": 60
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "antibiyotik",
+      "ad": "Antibiyotik kürü",
+      "kategori": "tıbbi",
+      "nadirlik": "çok nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 20,
+        "eczane": 55,
+        "hastane": 45
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "not": "Enfeksiyonu gerçekten durdurur — bu dünyada altın değerinde."
+    },
+    {
+      "id": "agri-kesici",
+      "ad": "Ağrı kesici",
+      "kategori": "tıbbi",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "eczane": 60,
+        "hastane": 55,
+        "konut": 30,
+        "market": 20
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        12
+      ]
+    },
+    {
+      "id": "dikis-seti",
+      "ad": "Dikiş seti",
+      "kategori": "tıbbi",
+      "nadirlik": "nadir",
+      "taban": 4,
+      "bulunur": {
+        "askeri": 25,
+        "eczane": 35,
+        "hastane": 55,
+        "konut": 15
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "turnike",
+      "ad": "Turnike",
+      "kategori": "tıbbi",
+      "nadirlik": "nadir",
+      "taban": 3,
+      "bulunur": {
+        "askeri": 45,
+        "hastane": 40,
+        "karakol": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "ilk-yardim-cantasi",
+      "ad": "İlk yardım çantası",
+      "kategori": "tıbbi",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "hastane": 50,
+        "karakol": 35,
+        "okul": 35,
+        "otogar": 40,
+        "sanayi": 40
+      }
+    },
+    {
+      "id": "serum",
+      "ad": "Serum seti",
+      "kategori": "tıbbi",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "eczane": 25,
+        "hastane": 55
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "eldiven-steril",
+      "ad": "Steril eldiven",
+      "kategori": "tıbbi",
+      "nadirlik": "yaygın",
+      "taban": 8,
+      "bulunur": {
+        "eczane": 45,
+        "hastane": 60
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        20
+      ]
+    },
+    {
+      "id": "termometre",
+      "ad": "Termometre",
+      "kategori": "tıbbi",
+      "nadirlik": "yaygın",
+      "taban": 7,
+      "bulunur": {
+        "eczane": 50,
+        "hastane": 45,
+        "konut": 25
+      },
+      "not": "Enfeksiyonu erken görmeyi sağlar."
+    },
+    {
+      "id": "alkol-solusyonu",
+      "ad": "Alkol solüsyonu",
+      "kategori": "tıbbi",
+      "nadirlik": "yaygın",
+      "taban": 9,
+      "bulunur": {
+        "eczane": 55,
+        "hastane": 50,
+        "konut": 20
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "sedye",
+      "ad": "Katlanır sedye",
+      "kategori": "tıbbi",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "askeri": 25,
+        "hastane": 40,
+        "okul": 12
+      },
+      "not": "Yaralıyı taşımayı mümkün kılar; iki kişi ister."
+    },
+    {
+      "id": "el-feneri",
+      "ad": "El feneri",
+      "kategori": "elektronik",
+      "nadirlik": "yaygın",
+      "taban": 22,
+      "bulunur": {
+        "depo": 40,
+        "konut": 50,
+        "market": 35,
+        "metro": 35,
+        "otogar": 40,
+        "santiye": 45
+      },
+      "not": "Pil ister; ışık hem kurtarır hem ele verir."
+    },
+    {
+      "id": "pil",
+      "ad": "Pil",
+      "kategori": "elektronik",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "avm": 45,
+        "benzinlik": 35,
+        "bufe": 40,
+        "konut": 35,
+        "market": 55
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        8
+      ]
+    },
+    {
+      "id": "telsiz",
+      "ad": "Telsiz",
+      "kategori": "elektronik",
+      "nadirlik": "nadir",
+      "taban": 3,
+      "bulunur": {
+        "askeri": 45,
+        "karakol": 50,
+        "metro": 25,
+        "otogar": 25,
+        "santiye": 30
+      },
+      "not": "Menzili sınırlı; başkaları da dinliyor olabilir."
+    },
+    {
+      "id": "radyo",
+      "ad": "Pilli radyo",
+      "kategori": "elektronik",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "konut": 40,
+        "market": 25,
+        "otogar": 30,
+        "siginak": 35
+      }
+    },
+    {
+      "id": "kablo-makarasi",
+      "ad": "Kablo makarası",
+      "kategori": "elektronik",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "depo": 35,
+        "metro": 30,
+        "sanayi": 55,
+        "santiye": 50
+      }
+    },
+    {
+      "id": "aku",
+      "ad": "Akü",
+      "kategori": "elektronik",
+      "nadirlik": "nadir",
+      "taban": 5,
+      "bulunur": {
+        "benzinlik": 45,
+        "depo": 25,
+        "otogar": 60,
+        "sanayi": 35
+      },
+      "not": "Ağır; jeneratörü ya da aracı çalıştırır."
+    },
+    {
+      "id": "jenerator",
+      "ad": "Küçük jeneratör",
+      "kategori": "elektronik",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "depo": 25,
+        "hastane": 25,
+        "sanayi": 30,
+        "santiye": 35
+      },
+      "not": "GÜRÜLTÜLÜ. Yakıt ister."
+    },
+    {
+      "id": "ip",
+      "ad": "Halat",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "ciftlik": 40,
+        "depo": 45,
+        "dogal": 40,
+        "otogar": 30,
+        "santiye": 55
+      }
+    },
+    {
+      "id": "koli-bandi",
+      "ad": "Koli bandı",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 18,
+      "bulunur": {
+        "depo": 60,
+        "market": 45,
+        "okul": 30,
+        "santiye": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tel-kesici",
+      "ad": "Tel kesici",
+      "kategori": "alet",
+      "nadirlik": "nadir",
+      "taban": 7,
+      "bulunur": {
+        "ciftlik": 35,
+        "depo": 30,
+        "sanayi": 45,
+        "santiye": 50
+      }
+    },
+    {
+      "id": "testere",
+      "ad": "El testeresi",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "ciftlik": 35,
+        "dogal": 25,
+        "sanayi": 40,
+        "santiye": 50
+      }
+    },
+    {
+      "id": "cakmak",
+      "ad": "Çakmak",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 24,
+      "bulunur": {
+        "benzinlik": 45,
+        "bufe": 55,
+        "konut": 40,
+        "lokanta": 40,
+        "market": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "kibrit",
+      "ad": "Kibrit kutusu",
+      "kategori": "alet",
+      "nadirlik": "yaygın",
+      "taban": 20,
+      "bulunur": {
+        "konut": 45,
+        "lokanta": 50,
+        "market": 45,
+        "otel": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ]
+    },
+    {
+      "id": "maymuncuk",
+      "ad": "Maymuncuk seti",
+      "kategori": "alet",
+      "nadirlik": "çok nadir",
+      "taban": 1,
+      "bulunur": {
+        "harabe": 15,
+        "karakol": 25,
+        "otogar": 18,
+        "sanayi": 20
+      },
+      "not": "Kilit açar — sessiz ve zaman ister."
+    },
+    {
+      "id": "benzin-bidonu",
+      "ad": "Benzin bidonu",
+      "kategori": "yakıt",
+      "nadirlik": "nadir",
+      "taban": 5,
+      "bulunur": {
+        "benzinlik": 65,
+        "ciftlik": 40,
+        "depo": 30,
+        "otogar": 50,
+        "sanayi": 35
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "not": "Araç, jeneratör, ateş — ve molotof."
+    },
+    {
+      "id": "mazot",
+      "ad": "Mazot bidonu",
+      "kategori": "yakıt",
+      "nadirlik": "nadir",
+      "taban": 4,
+      "bulunur": {
+        "benzinlik": 55,
+        "ciftlik": 45,
+        "sanayi": 45,
+        "santiye": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "tup",
+      "ad": "Küçük gaz tüpü",
+      "kategori": "yakıt",
+      "nadirlik": "nadir",
+      "taban": 6,
+      "bulunur": {
+        "dogal": 25,
+        "konut": 40,
+        "lokanta": 50,
+        "market": 30,
+        "siginak": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "odun",
+      "ad": "Kuru odun",
+      "kategori": "yakıt",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "ciftlik": 50,
+        "dogal": 60,
+        "harabe": 35,
+        "siginak": 35
+      },
+      "sayilabilir": true,
+      "adet": [
+        2,
+        10
+      ]
+    },
+    {
+      "id": "mum",
+      "ad": "Mum",
+      "kategori": "yakıt",
+      "nadirlik": "yaygın",
+      "taban": 14,
+      "bulunur": {
+        "konut": 50,
+        "market": 40,
+        "otel": 35,
+        "siginak": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        6
+      ]
+    },
+    {
+      "id": "sigara",
+      "ad": "Sigara paketi",
+      "kategori": "takas",
+      "nadirlik": "yaygın",
+      "taban": 16,
+      "bulunur": {
+        "benzinlik": 50,
+        "bufe": 60,
+        "konut": 30,
+        "market": 55,
+        "otel": 30
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        4
+      ],
+      "not": "Pazarlıkta paradan değerli."
+    },
+    {
+      "id": "kahve",
+      "ad": "Kahve",
+      "kategori": "takas",
+      "nadirlik": "nadir",
+      "taban": 8,
+      "bulunur": {
+        "konut": 30,
+        "lokanta": 50,
+        "market": 45,
+        "otel": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ]
+    },
+    {
+      "id": "altin-kolye",
+      "ad": "Altın kolye",
+      "kategori": "takas",
+      "nadirlik": "çok nadir",
+      "taban": 2,
+      "bulunur": {
+        "avm": 25,
+        "harabe": 15,
+        "konut": 30,
+        "otel": 25
+      }
+    },
+    {
+      "id": "cakmak-gazi",
+      "ad": "Çakmak gazı",
+      "kategori": "takas",
+      "nadirlik": "yaygın",
+      "taban": 10,
+      "bulunur": {
+        "benzinlik": 35,
+        "bufe": 45,
+        "market": 40
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "tuz",
+      "ad": "Tuz",
+      "kategori": "takas",
+      "nadirlik": "yaygın",
+      "taban": 12,
+      "bulunur": {
+        "ciftlik": 35,
+        "konut": 40,
+        "lokanta": 55,
+        "market": 50
+      },
+      "sayilabilir": true,
+      "adet": [
+        1,
+        2
+      ],
+      "not": "Et saklamanın tek yolu."
+    },
+    {
+      "id": "ilac-recetesi",
+      "ad": "İlaç reçetesi defteri",
+      "kategori": "takas",
+      "nadirlik": "nadir",
+      "taban": 3,
+      "bulunur": {
+        "eczane": 45,
+        "hastane": 40
+      },
+      "not": "Kimin neye bağımlı olduğunu gösterir."
+    },
+    {
+      "id": "harita",
+      "ad": "Bölge haritası",
+      "kategori": "takas",
+      "nadirlik": "nadir",
+      "taban": 5,
+      "bulunur": {
+        "benzinlik": 40,
+        "karakol": 35,
+        "metro": 30,
+        "okul": 25,
+        "otogar": 45
+      },
+      "not": "Yeni yerleri haritada 'duyuldu' olarak açar."
+    },
+    {
+      "id": "pil-sarj",
+      "ad": "Dinamo şarj kolu",
+      "kategori": "elektronik",
+      "nadirlik": "çok nadir",
+      "taban": 2,
+      "bulunur": {
+        "askeri": 25,
+        "avm": 15,
+        "dogal": 15,
+        "santiye": 20
+      },
+      "not": "Pilsiz ışık ve telsiz."
+    }
+  ]
+}

@@ -28,6 +28,7 @@ import OptionPool from '@/components/game/OptionPool.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
 import GridPanel from '@/components/game/GridPanel.vue'
 import ThreatPanel from '@/components/game/ThreatPanel.vue'
+import StoryItemList from '@/components/game/StoryItemList.vue'
 import StoryFeed from '@/components/game/StoryFeed.vue'
 import CharacterCard from '@/components/game/CharacterCard.vue'
 import CharacterModal from '@/components/game/CharacterModal.vue'
@@ -434,6 +435,15 @@ function yeniSahneyeGit() {
         :vurgu="kaynakVurgusu"
       >
         <ResourcePanel :kaynaklar="oyun.resources" :yukleniyor="ilkYukleme" />
+      </SidebarSection>
+
+      <SidebarSection
+        title="Hikaye eşyaları"
+        icon="local_offer"
+        :count="Object.keys(oyun.storyItems).length"
+        :default-open="false"
+      >
+        <StoryItemList :esyalar="oyun.storyItems" :yukleniyor="ilkYukleme" />
       </SidebarSection>
 
       <SidebarSection title="NPC'ler" icon="person" :count="npcSayisi" :default-open="false">

@@ -155,6 +155,77 @@ Kenar durumlar:
 - **Çift kesim**: anlatıcıya "bu kalemleri state-update'te TEKRAR düşürme"
   denir; `spend` ile `inventory_remove` üst üste binmez.
 
+## 1e. Eşyalar — sabit katalog ve hikaye eşyaları
+
+Oyunda **iki tür eşya** vardır ve ayrı durmaları bilerektir.
+
+### Sabit katalog (`data/items.json`)
+
+Her oyunda AYNIDIR ve mekaniği vardır. 111 eşya, 11 kategori (`yakın silah`,
+`menzilli silah`, `mühimmat`, `giyim`, `yiyecek`, `içecek`, `tıbbi`, `alet`,
+`elektronik`, `yakıt`, `takas`), 21 yer türü. Salt okunur içerik dosyasıdır:
+`/api/reset` silmez, tur akışı değiştirmez (`ItemsRepository` bir kez okur ve
+dosya değişmedikçe bellekte tutar).
+
+Bir eşyanın alanları:
+
+```json
+{"id": "9mm-tabanca", "ad": "9mm tabanca", "kategori": "menzilli silah",
+ "nadirlik": "nadir", "taban": 1, "mermi": "9mm fişek",
+ "bulunur": {"karakol": 55, "askeri": 45, "otel": 6, "konut": 5, "metro": 2}}
+```
+
+- **`bulunur`** = yer türüne göre bulunma ağırlığı. İstenen asimetri buradan
+  gelir: 9mm tabanca karakolda 55, metro istasyonunda 2. Eşleşmeyen yer için
+  `taban` geçerlidir.
+- **`nadirlik`** ikinci bir frendir (`RARITY_FACTOR`: yaygın 1.0 · nadir 0.55 ·
+  çok nadir 0.22) — çok nadir eşya doğru yerde bile kolay çıkmasın.
+- **`doyum` / `susuzluk`** yiyecek ve içeceklerin açlık/susuzluk düşürme oranı
+  (askeri tayın 55, konserve fasulye 30, su şişesi 35, damacana 70).
+- **`sayilabilir` + `adet`** mühimmat/erzak gibi kalemler sayaçla gelir
+  (§1d'deki `inventory_counts`).
+- **`mermi`** menzilli silahın harcadığı mühimmatın adı.
+
+**Yer türü tanıma** tehdit motoruyla aynı mantıktadır: yer ADI Türkçeye duyarlı
+normalize edilir, anahtar kelimeler kök olarak aranır, en uzun eşleşme kazanır.
+"Aile sağlığı merkezi" → `hastane`, "Eski metro istasyonu" → `metro`.
+
+**Arama** (`ItemsService.search`): hamle metninde arama izi varsa
+(`looks_like_searching`: "rafları karıştır", "depoyu ara", "çekmece"…) sunucu
+katalogdan ağırlıklı, tekrarsız çekiliş yapar. Kaç kalem çıkacağını **zar bandı**
+belirler (Felaket 0 · Kritik 2-4). Bulunanlar envantere yazılır ve anlatıcıya
+"ARAMA SONUCU" zorunlu bloğuyla bildirilir: listede olmayan bir şey buldurmak,
+bulunanı tekrar eklemek yasaktır.
+
+**Tükenme**: aynı yeri tekrar aramak verimi düşürür (`depletion_factor`: her
+aramada −0.35, taban 0.15). Her kalem yuvası bu olasılıkla korunur, yani çok
+aranan yer gerçekten kurur — sonsuz yağma çiftliği olmaz. Sayaç
+`world_state.searched` içinde durur.
+
+**Tüketim** (`ItemsService.consume`): harcanan kalem katalogda yiyecek/içecekse
+`vitals.hunger` / `vitals.thirst` sunucuda düşer ve anlatıcıya "TÜKETİM" bloğu
+gider. "Karnınız doydu" cümlesi göstergeyi değiştirmez.
+
+### Hikaye eşyaları (`world_state.story_items`)
+
+Bu oyuna özeldir, anlatıcı üretir, **yalnızca anlatı etkisi taşır**: açlık
+doldurmaz, zar değiştirmez, mermi olmaz, sayaç açılmaz.
+
+```json
+{"story_items": {"Sarı zarf": {"sahip": "Okan", "nerede": "Okan'ın cebinde",
+                               "not": "Mühürlü; üstünde sadece bir tarih var."}}}
+```
+
+- Sahibi belliyse adı envanterinde de görünür (`_merge_story_items`), ama
+  katalog aramaları onu bulamaz ve `consume` ona bakmaz — mekanik yolların
+  hepsi katalogdan geçer, katalogda olmayan eşya sessizce etkisizdir.
+- Sunucu her turda "HİKAYE EŞYALARI" bloğuyla defteri anlatıcıya geri verir:
+  on tur önce bulunan zarf unutulmasın.
+- `null` yazmak defterden düşürür (yakıldı, verildi, kayboldu).
+
+Katalog `GET /api/items` ile okunabilir; her eşyanın en olası üç yeri de
+hesaplanmış olarak döner.
+
 ## 2. Seçenek havuzu
 
 Anlatıcı her turun sonunda state-update bloğuna `options` yazar:

@@ -16,6 +16,12 @@ def get_state():
     return jsonify(services.game.snapshot(request.args.get("since")))
 
 
+@bp.get("/items")
+def get_items():
+    """Sabit eşya kataloğu — her oyunda aynıdır, salt okunur."""
+    return jsonify(services.items.public_catalog())
+
+
 @bp.post("/setup-characters")
 def setup_characters():
     body = request.get_json(force=True) or {}

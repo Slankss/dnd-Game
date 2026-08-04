@@ -34,13 +34,15 @@ NESTED_FIELDS = (("factions", Faction), ("characters", Person),
 
 # Düz okunan alanlar — sözlük/liste olsalar bile içeriğine karışılmaz.
 FLAT_FIELDS = ("day",) + TIME_FIELDS + ("location", "tension", "flags",
-                                        "zombie_sightings", "world_roll")
+                                        "zombie_sightings", "world_roll",
+                                        "story_items", "searched")
 
 # Kanonik alan sırası (senaryodaki INITIAL_WORLD_STATE ile aynı).
 WORLD_FIELDS = ("day",) + TIME_FIELDS + (
     "location", "map", "grid", "factions", "characters", "npcs", "resources",
-    "challenges", "options", "threat", "zombie_sightings", "flags", "narrator",
-    "tension", "world_roll", "world_roll_history")
+    "challenges", "options", "threat", "zombie_sightings", "story_items",
+    "searched", "flags", "narrator", "tension", "world_roll",
+    "world_roll_history")
 
 
 @dataclass
@@ -67,6 +69,11 @@ class WorldState(WorldPatchMixin, DictModel):
     options: object = None
     threat: object = None      # zombi tehdidi (gürültü, yoğunluk, karşılaşmalar)
     zombie_sightings: object = None
+    # Hikayeye özel eşyalar: anlatıcı üretir, YALNIZCA anlatı etkisi taşır
+    # ({ad: {sahip, not, gun}}). Katalog eşyalarıyla karıştırılmamalı.
+    story_items: object = None
+    # Hangi yer kaç kez arandı ({yer: sayı}) — tekrar arama verimi düşürür.
+    searched: object = None
     flags: object = None
     narrator: object = None
     world_roll: object = None
@@ -179,6 +186,19 @@ class WorldState(WorldPatchMixin, DictModel):
             self.narrator = dict(DEFAULT_NARRATOR)
         self._touch("narrator")
         return self.narrator
+
+    def ensure_story_items(self) -> dict:
+        """Hikaye eşyaları — anlatıcının ürettiği, mekaniği OLMAYAN eşyalar."""
+        if not isinstance(self.story_items, dict):
+            self.story_items = {}
+        self._touch("story_items")
+        return self.story_items
+
+    def ensure_searched(self) -> dict:
+        if not isinstance(self.searched, dict):
+            self.searched = {}
+        self._touch("searched")
+        return self.searched
 
     def ensure_sightings(self) -> list:
         if not isinstance(self.zombie_sightings, list):
