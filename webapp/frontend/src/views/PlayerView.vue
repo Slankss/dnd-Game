@@ -142,6 +142,10 @@ const havuzAcik = computed(
 const seciliSecim = computed(() => oyun.pickOf(seciliOyuncu.value))
 const seciliSecenekler = computed(() => oyun.optionsFor(seciliOyuncu.value))
 
+/** "Karar Ver" popup'ı — sahnenin ALTINDAKİ butonla açılır, istendiğinde
+ * kapatılıp anlatıcı metni tekrar okunduktan sonra yeniden açılabilir. */
+const kararModalAcik = ref(false)
+
 async function secenekSec(secenek) {
   try {
     await oyun.pickOption(seciliOyuncu.value, { optionId: secenek.id })
@@ -543,49 +547,17 @@ function yeniSahneyeGit() {
         <div
           class="sticky top-[var(--spacing-topbar)] z-20 -mx-3 flex flex-col gap-2 bg-bg/95 px-3 py-2 backdrop-blur-sm sm:-mx-4 sm:px-4"
         >
-          <!-- Tur bazlı akış: tur çubuğu + seçilen karakterin seçenek havuzu -->
-          <template v-if="havuzAcik">
-            <RoundBar
-              :tur="oyun.round"
-              :kayma="oyun.clockSkew"
-              :gonderiliyor="oyun.committing"
-              @gonder="turuGonder"
-            />
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
-              <button
-                v-for="ad in oyun.aliveRoster"
-                :key="ad"
-                type="button"
-                class="inline-flex h-7 items-center gap-1.5 rounded-chip border px-2.5 text-label transition-colors duration-[var(--duration-fast)]"
-                :class="
-                  seciliOyuncu === ad
-                    ? 'border-accent/60 bg-accent-soft text-text'
-                    : 'border-border bg-surface-2 text-muted hover:text-text'
-                "
-                :aria-pressed="seciliOyuncu === ad"
-                @click="seciliOyuncu = ad"
-              >
-                <span
-                  class="size-1.5 rounded-full"
-                  :style="{ backgroundColor: colorFor(ad) }"
-                  aria-hidden="true"
-                />
-                {{ ad }}
-                <Icon v-if="oyun.pickOf(ad)" name="check" :size="13" class="text-ok" />
-              </button>
-            </div>
-            <OptionPool
-              :oyuncu="seciliOyuncu"
-              :secenekler="seciliSecenekler"
-              :secim="seciliSecim"
-              :mesgul="oyun.picking"
-              :tur-acik="oyun.roundOpen"
-              :son-zar="oyun.lastRoll"
-              @sec="secenekSec"
-              @bekle="turdaBekle"
-            />
-          </template>
+          <!-- Tur bazlı akış: sadece tur çubuğu burada durur. Karakter seçimi
+               ve "Karar Ver" butonu sahnenin ALTINDA (bkz. StoryFeed slotu) —
+               seçenek listesi akışın içine karışmasın, ayrı bir popup'ta
+               açılsın diye. -->
+          <RoundBar
+            v-if="havuzAcik"
+            :tur="oyun.round"
+            :kayma="oyun.clockSkew"
+            :gonderiliyor="oyun.committing"
+            @gonder="turuGonder"
+          />
 
           <!-- Serbest yazma alanı YALNIZ karakter oluşturma turlarında:
                asıl hikaye sunulan seçeneklerle ilerler. -->
@@ -628,6 +600,67 @@ function yeniSahneyeGit() {
           :girdiler="oyun.logNewestFirst"
           :yukleniyor="oyun.loading"
           :bekleniyor="oyun.sending"
+        >
+          <!-- Sahnenin ALTINDA: karakter seçimi + Karar Ver butonu. Seçenek
+               listesinin kendisi burada değil, ayrı bir popup'ta (aşağıdaki
+               OptionPool) — bu yüzden akış her zaman sade bir okuma alanı
+               kalır, oyuncu istediği kadar geri kapatıp tekrar okuyabilir. -->
+          <template v-if="havuzAcik" #en-yeni-altina>
+            <div class="flex flex-col gap-2 rounded-panel border border-border bg-surface px-3 py-2.5">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
+                <button
+                  v-for="ad in oyun.aliveRoster"
+                  :key="ad"
+                  type="button"
+                  class="inline-flex h-7 items-center gap-1.5 rounded-chip border px-2.5 text-label transition-colors duration-[var(--duration-fast)]"
+                  :class="
+                    seciliOyuncu === ad
+                      ? 'border-accent/60 bg-accent-soft text-text'
+                      : 'border-border bg-surface-2 text-muted hover:text-text'
+                  "
+                  :aria-pressed="seciliOyuncu === ad"
+                  @click="seciliOyuncu = ad"
+                >
+                  <span
+                    class="size-1.5 rounded-full"
+                    :style="{ backgroundColor: colorFor(ad) }"
+                    aria-hidden="true"
+                  />
+                  {{ ad }}
+                  <Icon v-if="oyun.pickOf(ad)" name="check" :size="13" class="text-ok" />
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <BaseButton
+                  :variant="seciliSecim ? 'subtle' : 'primary'"
+                  icon="playing_cards"
+                  :disabled="!seciliOyuncu"
+                  @click="kararModalAcik = true"
+                >
+                  {{ seciliSecim ? 'Kararını Gör' : 'Karar Ver' }}
+                </BaseButton>
+                <Icon v-if="seciliSecim" name="check_circle" :size="16" class="text-ok" />
+                <span v-else-if="seciliSecenekler.length" class="text-label text-faint">
+                  {{ seciliSecenekler.length }} seçenek bekliyor
+                </span>
+              </div>
+            </div>
+          </template>
+        </StoryFeed>
+
+        <!-- Karar Ver popup'ı: kapatmak seçimi iptal etmez, sadece gizler. -->
+        <OptionPool
+          v-if="havuzAcik"
+          v-model="kararModalAcik"
+          :oyuncu="seciliOyuncu"
+          :secenekler="seciliSecenekler"
+          :secim="seciliSecim"
+          :mesgul="oyun.picking"
+          :tur-acik="oyun.roundOpen"
+          :son-zar="oyun.lastRoll"
+          @sec="secenekSec"
+          @bekle="turdaBekle"
         />
 
         <p class="flex items-center justify-center gap-3 pb-4 text-label text-faint">

@@ -57,6 +57,7 @@ PORT = int(os.environ.get("PORT", "5050"))
 TURN_SECONDS = int(os.environ.get("TURN_SECONDS", "180"))
 # Küfür/argo dozu: "kapalı" | "hafif" | "sert"
 PROFANITY = os.environ.get("PROFANITY", "hafif")
-# Karakter başına sunulacak seçenek sayısı (senaryo kuralı: en az 5, en çok 10)
-OPTIONS_MIN = 5
-OPTIONS_MAX = 10
+# Karakter başına sunulacak seçenek sayısı (senaryo kuralı: en az 3, en çok 8,
+# sabit değil). Gerçek kaynak app/models/options.py'deki OPTION_MIN/MAX'tır.
+OPTIONS_MIN = 3
+OPTIONS_MAX = 8

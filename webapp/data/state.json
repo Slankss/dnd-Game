@@ -1,35 +1,72 @@
 {
   "world_state": {
     "challenges": {
-      "Turuncu Alev": {
-        "description": "Güneydeki normalde karanlık sırtlarda görülen kontrollü, sabit alev — kaynağı ve niyeti bilinmiyor.",
-        "severity": "orta",
-        "clock": "~6 saat (şafağa kadar görünür)",
-        "progress": "Henüz araştırılmadı, sadece uzaktan görüldü.",
+      "Vadi Ambarı Alevi": {
+        "description": "Yarım gün yürüyüş mesafesindeki tek bilinen erzak kaynağı yönünden büyük bir patlama oldu, alev şiddetlendi.",
+        "severity": "kritik",
+        "clock": "şafağa ~3 saat 5 dk (yaklaşık 06:30)",
+        "progress": "70 - büyük patlama oldu, çatı büyük ihtimalle çökmüş, yağma tamamlanmak üzere",
         "status": "açık",
-        "consequence": "Şafaktan sonra alev sönebilir/kaynak taşınabilir, ipucu kaybolur; ya da alevi fark eden başka bir grup (Kızıl Şafak, Leş Avcıları) bölgeye önce ulaşır.",
-        "gm_notes": "Alev aslında Laboratuvar Kalıntısı'na ait bir işaret ateşi - deneysel bir sinyal sistemi; tesadüfen ya da bilerek yakılmış olabilir, henüz karar verilmedi. İlerleyen turlarda ipucu bırak."
+        "consequence": "Ambar bu gece içinde tamamen kullanılamaz hale gelebilir; grubun bildiği tek erzak kaynağı fiilen kaybolmuş olacak.",
+        "gm_notes": "Patlama, çeteninkinden bir yakıt/gaz kabının ısıyla infilak etmesinden kaynaklandı. Şafağa kadar geriye pek bir şey kalmayabilir; Doğu şu an yerinden ayrılamıyor çünkü daha yakın bir tehditle karşı karşıya."
+      },
+      "Duvar Dibinde Hareket": {
+        "description": "Doğu'nun kendi sesiyle uyanan iki Taze Ölü, bekçi evinin savunma duvarına doğru sendeleyerek geliyor.",
+        "severity": "yüksek",
+        "clock": "birkaç dakika, çok yakın",
+        "progress": "100 - iki taze ölü de etkisiz hale getirildi",
+        "status": "çözüldü",
+        "consequence": "Duvar aşılmadı, bekçi evi güvende kaldı, ama çatışma sesi civara biraz yayıldı.",
+        "gm_notes": ""
+      },
+      "Kabuklu Koşucu Saldırısı": {
+        "description": "Göğsünde kemik zırh çıkıntıları olan, olağanüstü hızlı bir mutant Doğu'ya doğru düz bir çizgide koşuyor.",
+        "severity": "kritik",
+        "clock": "saniyeler, şu an göğüs göğüse",
+        "progress": "100 - yaratık öldürüldü",
+        "status": "çözüldü",
+        "consequence": "Doğrudan tehdit sona erdi, ama iki silah sesi civara yayıldı.",
+        "gm_notes": ""
+      },
+      "Dışarıda Toplanan Sürü": {
+        "description": "Silah sesleri ve kan kokusuyla çekilen karışık bir sürü bekçi evine doğru yaklaşıyor, rüzgâr altından geliyorlar - kokuyu almışlar.",
+        "severity": "kritik",
+        "clock": "birkaç dakika, mesafe hızla kapanıyor (87 metre)",
+        "progress": "50 - sürünün büyüklüğü ve türü netleşti: ~20 ölü (11 hareketsiz bekleyen, 4 sürünen, 5 hızlı)",
+        "status": "açık",
+        "consequence": "Hızlı olanlar öne geçip ilk teması dakikalar içinde sağlayabilir; barikat tam kapanmadığı için risk büyük.",
+        "gm_notes": "Grup onları önce fark etti, kısa bir hazırlık payı var."
+      },
+      "Üst Kattaki Ses": {
+        "description": "Bekçi evinin üst katından gelen belirsiz bir ayak sürtme/kayma sesi - kaynağı bilinmiyor.",
+        "severity": "orta",
+        "clock": "belirsiz, yakın",
+        "progress": "0 - henüz kaynağı belirlenmedi",
+        "status": "açık",
+        "consequence": "Görmezden gelinirse üst kat beklenmedik bir tehdide dönüşebilir.",
+        "gm_notes": ""
       }
     },
     "characters": {
-      "Okan": {
-        "profession": "Hemşire",
-        "age": "43",
-        "strength": "Soğukkanlı sürücü",
-        "weakness": "Bir bacağı sakat",
-        "secret": null,
-        "background": "43 yaşında, Hemşire",
-        "traits": "Güçlü yanı: Soğukkanlı sürücü · Zayıf yanı: Bir bacağı sakat",
-        "status": "İyi",
+      "Doğu": {
+        "profession": "Asker",
+        "age": "27",
+        "strength": "Keskin Zeka",
+        "weakness": "Çabuk sinirlenir",
+        "reflex": "Küfreder ve üstüne yürür",
+        "secret": "Kıyametin başladığı zamanlarda emir komuta dengesinin düzenini bozduğu için çıkan kaosta kardeşini katlettiler. Bu durumun ardından cinnet geçirdiğim için 3 yüksek rütbeli askeri aylaklara yedirdim ve bunu soğukkanlılıkla izledim.",
+        "background": "27 yaşında, Asker",
+        "traits": "Güçlü yanı: Keskin Zeka · Zayıf yanı: Çabuk sinirlenir · Refleksi: Küfreder ve üstüne yürür",
+        "status": "Yaralı",
         "alive": true,
         "wounds": [],
         "vitals": {
-          "fatigue": 15,
-          "hunger": 20,
-          "thirst": 20,
-          "stress": 10,
-          "awake_hours": 3,
-          "condition": "Dinç"
+          "fatigue": 43,
+          "hunger": 29,
+          "thirst": 31,
+          "stress": 62,
+          "awake_hours": 3.9,
+          "condition": "Pencerede, dışarıdaki sürüyü fark etmiş durumda, kısa bir hazırlık payı var"
         },
         "presence": {
           "state": "sahnede",
@@ -38,112 +75,78 @@
           "since_day": null,
           "since_clock": null
         },
-        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+        "location": "Sulama barajı bekçi evi (vadinin doğusu)",
         "inventory": [
-          "Tabanca (2 mermi)",
-          "Küçük ilk yardım çantası",
-          "Birkaç ağrı kesici tablet"
-        ],
-        "relationships": {},
-        "notes": "",
-        "lost_items": []
-      },
-      "Emir": {
-        "profession": "Polis",
-        "age": "52",
-        "strength": "Keskin göz ve kulak",
-        "weakness": "Ağzından laf kaçırır",
-        "secret": null,
-        "background": "52 yaşında, Polis",
-        "traits": "Güçlü yanı: Keskin göz ve kulak · Zayıf yanı: Ağzından laf kaçırır",
-        "status": "İyi",
-        "alive": true,
-        "wounds": [],
-        "vitals": {
-          "fatigue": 15,
-          "hunger": 20,
-          "thirst": 20,
-          "stress": 10,
-          "awake_hours": 3,
-          "condition": "Dinç"
-        },
-        "presence": {
-          "state": "sahnede",
-          "note": "",
-          "until": null,
-          "since_day": null,
-          "since_clock": null
-        },
-        "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-        "inventory": [
-          "Kevlar yelek",
-          "El feneri",
-          "Kelepçe"
+          "Tabanca (16 mermi)",
+          "Cep dürbünü",
+          "Taktik bıçak"
         ],
         "relationships": {},
         "notes": "",
         "lost_items": []
       }
     },
-    "clock": "02:30",
+    "clock": "03:35",
     "day": 97,
     "factions": {
+      "Pale Market": {
+        "disposition": "temkinli",
+        "known": "bilinmiyor",
+        "notes": "İlaç stoku bir güç aracı; kimi kurtaracaklarına siyasi olarak karar veriyorlar.",
+        "public_notes": "İlaç ve tedavi dağıttığı söylenen küçük bir ekip."
+      },
       "Arınma Cemaati": {
         "disposition": "temkinli",
         "known": "bilinmiyor",
         "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
         "public_notes": "Katı hiyerarşili, kaynak zengini kamp."
       },
-      "Garnizon Komutanlığı": {
-        "disposition": "şüpheci",
-        "known": "bilinmiyor",
-        "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
-        "public_notes": "Kuzeydeki askeri üs, sıkıyönetim."
-      },
-      "Kalan Umut": {
-        "disposition": "dostane",
-        "known": "bilinmiyor",
-        "notes": "Yardıma muhtaç; korunma karşılığı her şeyi verir, sömürülmeye açık.",
-        "public_notes": "Mülteci koalisyonu, savunmasız."
-      },
-      "Kızıl Şafak Tarikatı": {
-        "disposition": "düşmanca",
-        "known": "bilinmiyor",
-        "notes": "Mutasyonu kutsayan fanatikler; gruba 'arınmamış' gözüyle bakıyorlar.",
-        "public_notes": "Mutasyonu kutsayan fanatikler."
-      },
-      "Laboratuvar Kalıntısı": {
+      "The Tannery": {
         "disposition": "bilinmiyor",
         "known": "bilinmiyor",
-        "notes": "Mutasyonun kaynağına dair bilgi burada; sakinlerinin niyeti henüz belirsiz.",
-        "public_notes": "Güneydeki tesis, gizemli sakinler."
+        "notes": "Mutasyonun kaynağına dair veri onlarda; canlı denek arıyorlar ve bunu saklıyorlar.",
+        "public_notes": "Bir tesise kapanmış, dışarıyla konuşmayan bir grup."
       },
-      "Leş Avcıları": {
+      "The Garrison": {
+        "disposition": "temkinli",
+        "known": "bilinmiyor",
+        "notes": "İz bırakmıyorlar çünkü peşlerinde bir şey var; durdukları yere onu da getiriyorlar.",
+        "public_notes": "Hiçbir yerde iki geceden fazla kalmayan bir konvoy."
+      },
+      "The Kennel": {
         "disposition": "fırsatçı",
         "known": "bilinmiyor",
-        "notes": "Güç dengesine bakar; zayıf görürse saldırır, güçlü görürse takas eder.",
-        "public_notes": "Fırsatçı bağımsız çeteler."
+        "notes": "Fiyatı güç dengesine göre belirliyor; zayıf gördüğünü kazıklıyor, borçlandırıp bağlıyor.",
+        "public_notes": "Her şeyi takas eden gezici bir pazar."
+      },
+      "Harvest": {
+        "disposition": "bilinmiyor",
+        "known": "bilinmiyor",
+        "notes": "Bilgi topluyor ve satıyor; kimin nerede olduğunu ilk onlar öğreniyor.",
+        "public_notes": "Bölgede yayın yapan, herkesi dinleyen bir ağ."
       }
     },
     "flags": {
       "chargen_done": true
     },
-    "location": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+    "location": "Sulama barajı bekçi evi (vadinin doğusu)",
     "narrator": {
-      "plot_summary": "Okan ve Emir eski metro istasyonunda ikili halde hayatta kalıyor. Güneyde beklenmedik bir sinyal ateşi belirdi; kaynağı Laboratuvar Kalıntısı'na bağlı olabilir. Oyuncular gidip gitmeme kararıyla karşı karşıya.",
+      "plot_summary": "Doğu, sulama barajı bekçi evinde tek başına nöbet tutarken, grubun tek bilinen erzak kaynağı olan Vadi Ambarı yönünden beklenmedik bir alev yükseldiğini fark etti. Kaynağı belirsiz; şafağa kadar bir karar vermesi gerekiyor.",
       "puzzles": {
-        "Turuncu Alev'in Kaynağı": {
-          "description": "Normalde ıssız güney sırtlarında beliren kontrollü ateşin kim/ne tarafından yakıldığı bilinmiyor.",
+        "Alevin Kaynağı": {
+          "description": "Vadi Ambarı yönünden yükselen turuncu alev - kim ya da ne sebep oldu bilinmiyor.",
           "status": "çözülmedi",
-          "progress": 0,
-          "clues_found": [],
-          "next_step": "Alevin bulunduğu bölgeye yaklaşmak ya da uzaktan gözlemleyip desen aramak.",
-          "solution": "Laboratuvar Kalıntısı sakinleri periyodik olarak bölgeyi 'işaretlemek' için sinyal ateşleri yakıyor - amaçları hâlâ belirsiz, dost mu tuzak mı olduğu ilerleyen keşiflerle ortaya çıkacak.",
+          "progress": 15,
+          "clues_found": [
+            "Büyük bir patlama görüldü, alev birden şiddetlendi"
+          ],
+          "next_step": "Şafağa kadar ambara gidip gidilemeyeceğine ya da yakındaki tehditle önce ilgilenmeye karar vermek",
+          "solution": "Fırsatçı küçük bir çete (Kennel bağlantılı) ambarı basmış, ısınmak için ateş yakmışlar ve şafağa kadar yağmayı tamamlamayı planlıyorlar.",
           "notes": ""
         }
       },
       "upcoming_events": {
-        "yakında": "Alevi fark eden başka bir fraksiyon (Leş Avcıları ya da Kızıl Şafak devriyesi) bölgeye yaklaşabilir."
+        "yakında": "Ambar tam yağmalanırsa erzak kaynağı kaybolur; şafağa kadar müdahale penceresi açık."
       }
     },
     "npcs": {},
@@ -295,11 +298,1068 @@
       "Taze Ölü",
       "Koşucu"
     ],
-    "tension": "orta"
+    "map": {
+      "current": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "places": {
+        "Eski metro istasyonu (çöküş bölgesi, Demirkale)": {
+          "kind": "",
+          "known": "keşfedildi",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [
+            "Sulama barajı bekçi evi (vadinin doğusu)"
+          ],
+          "discovered_day": 97,
+          "visited": true
+        },
+        "Sulama barajı bekçi evi (vadinin doğusu)": {
+          "kind": "kırsal yapı",
+          "known": "keşfedildi",
+          "status": "grubun sığınağı",
+          "danger": "temkinli",
+          "notes": "Taş ev, temiz su, geniş görüş açısı, kısa bir savunma duvarı.",
+          "links": [
+            "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+            "Vadi Ambarı"
+          ],
+          "discovered_day": 97,
+          "visited": true
+        },
+        "Vadi Ambarı": {
+          "kind": "depo",
+          "known": "keşfedildi",
+          "status": "büyük patlama oldu, çatı çökmüş, alev şiddetli",
+          "danger": "tehlikeli",
+          "notes": "Grubun bildiği tek yakın erzak kaynağı; yarım gün yürüyüş mesafesinde.",
+          "links": [
+            "Sulama barajı bekçi evi (vadinin doğusu)"
+          ],
+          "discovered_day": 97,
+          "visited": true
+        }
+      },
+      "party": {
+        "Doğu": "Sulama barajı bekçi evi (vadinin doğusu)"
+      }
+    },
+    "tension": "yüksek",
+    "options": {
+      "Doğu": [
+        {
+          "id": "Doğu-1",
+          "text": "Barikatı son bir kez güçlendirmeye çalış, kapının açık kalan aralığını kapat.",
+          "category": "hazırlık",
+          "cost": "zaman, yaralı kolla zorlanırsın, sürü bu sırada yaklaşmaya devam eder"
+        },
+        {
+          "id": "Doğu-2",
+          "text": "Tabancanı hazır tut, pencereden gözetlemeye devam ederek yaklaşan hızlı olanları önceden fark edip nişan alacak konum bul.",
+          "category": "güvenli",
+          "cost": "mermi az, doğru anı kaçırma riski"
+        },
+        {
+          "id": "Doğu-3",
+          "text": "Üst kattaki sesi şimdilik göz ardı et, tüm dikkatini aşağıya ve kapıya ver.",
+          "category": "güvenli",
+          "cost": "üst kat tehdidi çözümsüz kalır"
+        },
+        {
+          "id": "Doğu-4",
+          "text": "Vakit varken arka bir çıkıştan sessizce kaçmayı dene, sürüden uzaklaş.",
+          "category": "riskli",
+          "cost": "bilinmeyen bir rotaya çıkmak, ambar planından vazgeçmek, yaralı haldesin"
+        },
+        {
+          "id": "Doğu-5",
+          "text": "Üst kata çıkıp sesin kaynağını hemen öğrenmeye çalış, sürü gelmeden bunu çöz.",
+          "category": "kurnaz",
+          "cost": "zaman, aşağıdaki savunmayı zayıflatır"
+        }
+      ]
+    },
+    "grid": {
+      "version": 1,
+      "name": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "width": 15,
+      "height": 11,
+      "cells": [
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "zemin",
+            "passable": true
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ],
+        [
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          },
+          {
+            "terrain": "duvar",
+            "passable": false
+          }
+        ]
+      ],
+      "entities": [
+        {
+          "id": "Doğu",
+          "name": "Doğu",
+          "kind": "player",
+          "x": 1,
+          "y": 5,
+          "blocking": false,
+          "data": {}
+        }
+      ]
+    },
+    "world_roll": {
+      "roll": 81,
+      "band": "Baskı",
+      "hint": "aktif zorluk belirgin ilerler (süre kısalır, sayı artar, mesafe kapanır) ya da yeni zorluk doğar",
+      "ts": "2026-08-03 22:12:28"
+    },
+    "world_roll_history": [
+      {
+        "roll": 90,
+        "band": "Kriz",
+        "ts": "2026-08-03 21:49:39"
+      },
+      {
+        "roll": 36,
+        "band": "Sızıntı",
+        "ts": "2026-08-03 21:54:31"
+      },
+      {
+        "roll": 42,
+        "band": "Sızıntı",
+        "ts": "2026-08-03 21:57:50"
+      },
+      {
+        "roll": 35,
+        "band": "Durgun",
+        "ts": "2026-08-03 22:03:48"
+      },
+      {
+        "roll": 88,
+        "band": "Baskı",
+        "ts": "2026-08-03 22:06:09"
+      },
+      {
+        "roll": 72,
+        "band": "Baskı",
+        "ts": "2026-08-03 22:10:04"
+      },
+      {
+        "roll": 81,
+        "band": "Baskı",
+        "ts": "2026-08-03 22:12:28"
+      }
+    ],
+    "threat": {
+      "noise": 100,
+      "heat": 20,
+      "quiet_turns": 0,
+      "travelling": false,
+      "last_minutes": 10,
+      "last_location": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "density": {
+        "Eski metro istasyonu (çöküş bölgesi, Demirkale)": 25.1,
+        "Sulama barajı bekçi evi (vadinin doğusu)": 100.0,
+        "Vadi Ambarı": 49.9
+      },
+      "last": {
+        "gun": 97,
+        "saat": "03:35",
+        "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+        "severity": "kalabalık",
+        "count": 20,
+        "types": [
+          "Sarmaşık",
+          "Sürüngen",
+          "Koşucu"
+        ],
+        "distance": 87,
+        "chance": 88,
+        "roll": 12,
+        "travelling": false,
+        "var": true
+      },
+      "migrations": [
+        {
+          "target": "Vadi Ambarı",
+          "gain": 51.1,
+          "from": [
+            {
+              "place": "Sulama barajı bekçi evi (vadinin doğusu)",
+              "amount": 23.9
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 18.6
+            }
+          ],
+          "background": 8.5,
+          "type": "patlama"
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 2.5,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 1.5
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 0.6
+            }
+          ],
+          "background": 0.4
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 31.2,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 18.2
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 7.8
+            }
+          ],
+          "background": 5.2
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 2.5,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 1.5
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 0.6
+            }
+          ],
+          "background": 0.4
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 31.2,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 18.2
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 7.8
+            }
+          ],
+          "background": 5.2
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 1.7,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 1.0
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 0.4
+            }
+          ],
+          "background": 0.3
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 13.8,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 8.0
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 3.5
+            }
+          ],
+          "background": 2.3
+        },
+        {
+          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "gain": 0.3,
+          "from": [
+            {
+              "place": "Vadi Ambarı",
+              "amount": 0.2
+            },
+            {
+              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "amount": 0.1
+            }
+          ],
+          "background": 0.1
+        }
+      ],
+      "history": [
+        {
+          "gun": 97,
+          "saat": "02:45",
+          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "severity": "küme",
+          "count": 6,
+          "types": [
+            "Taze Ölü"
+          ],
+          "distance": 64,
+          "chance": 34,
+          "roll": 20,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "03:00",
+          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "severity": "küme",
+          "count": 6,
+          "types": [
+            "Çığlıkçı",
+            "Taze Ölü"
+          ],
+          "distance": 65,
+          "chance": 63,
+          "roll": 26,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "03:15",
+          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "severity": "tekil",
+          "count": 4,
+          "types": [
+            "Taze Ölü",
+            "Çığlıkçı"
+          ],
+          "distance": 53,
+          "chance": 88,
+          "roll": 60,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "03:35",
+          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "severity": "kalabalık",
+          "count": 20,
+          "types": [
+            "Sarmaşık",
+            "Sürüngen",
+            "Koşucu"
+          ],
+          "distance": 87,
+          "chance": 88,
+          "roll": 12,
+          "travelling": false,
+          "var": true
+        }
+      ],
+      "encounters": 4,
+      "contacts": 4
+    }
   },
-  "next_id": 2,
-  "session_id": "677bed3d-89e6-4d7a-8c84-c2c75653bb0b",
+  "next_id": 18,
+  "session_id": "d3a6eb2f-52e4-4ba8-948b-100ea08df62b",
   "characters_confirmed": true,
   "started": true,
-  "version": 3
+  "settings": {
+    "turn_seconds": 600,
+    "profanity": "hafif",
+    "round_mode": true
+  },
+  "round": {
+    "no": 8,
+    "status": "acik",
+    "seconds": 600,
+    "opened_ts": 1785784419.369987,
+    "deadline_ts": 1785785019.369987,
+    "picks": {}
+  },
+  "version": 20
 }

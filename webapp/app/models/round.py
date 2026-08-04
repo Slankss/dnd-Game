@@ -3,7 +3,7 @@
 Eskiden her mesaj anında modele gidiyordu: ilk yazan turu açıyor, diğerleri
 onun sahnesine yetişmeye çalışıyordu. Artık bir tur şöyle işler:
 
-  1. Anlatıcı sahneyi yazar ve her karaktere 5-10 seçenek bırakır.
+  1. Anlatıcı sahneyi yazar ve her karaktere 3-8 seçenek bırakır (sabit değil).
   2. Tur AÇILIR (`acik`). Her oyuncu kendi seçeneğini seçer ya da kendi
      hamlesini yazar; seçim anında sunucu o oyuncunun zarını atar (gerçek
      d100) ve sonucu geri döndürür — arayüz zarı orada animasyonla gösterir.

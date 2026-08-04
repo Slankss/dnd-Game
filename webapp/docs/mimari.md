@@ -37,7 +37,7 @@ webapp/
         entities.py         #   Entity/Player/Npc/Item/Building
         grid_map.py         #   GridMap — 2D dizi + varlık kaydı
         movement.py         #   move() — 8 adımlı hareket algoritması (O(1))
-      options.py            # Option, OptionBoard — seçenek havuzu (5-10)
+      options.py            # Option, OptionBoard — seçenek havuzu (3-8, sabit değil)
       round.py              # Round, Pick — tur bazlı akışın kaydı
       learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
       plot.py               # Plot, Beat (senarist katmanı)

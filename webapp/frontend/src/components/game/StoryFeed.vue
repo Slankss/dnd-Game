@@ -8,6 +8,11 @@
  *
  * Uzun oturumlarda akış binlerce girdiye çıkabiliyor; varsayılan olarak son
  * 40 girdi çizilir, gerisi "daha eskisini göster" ile açılır.
+ *
+ * `#en-yeni-altina` slotu, en yeni (ilk) girdinin HEMEN ALTINA içerik enjekte
+ * etmek için var — PlayerView bunu "Karar Ver" butonu için kullanır: buton
+ * sahnenin altında dursun, seçenek listesi ise akışın içine karışmasın diye
+ * ayrı bir popup'ta açılır.
  */
 import { ref, computed, watch } from 'vue'
 import BaseButton from '../ui/BaseButton.vue'
@@ -68,13 +73,22 @@ const kalan = computed(() => Math.max(0, props.girdiler.length - gosterilecek.va
       text="İlk anlatıcı metni geldiğinde burada görünecek. En yeni sahne her zaman en üstte durur."
     />
 
-    <!-- akış -->
-    <StoryEntry
-      v-for="(girdi, i) in gorunen"
-      :key="girdi.id ?? `${girdi.ts}-${i}`"
-      :girdi="girdi"
-      :ilk="i === 0 && !bekleniyor"
-    />
+    <!-- akış: en yeni girdi + hemen altına enjekte edilen içerik (Karar Ver
+         butonu gibi), sonra geri kalan geçmiş -->
+    <template v-if="gorunen.length">
+      <StoryEntry
+        :key="gorunen[0].id ?? `${gorunen[0].ts}-0`"
+        :girdi="gorunen[0]"
+        :ilk="!bekleniyor"
+      />
+      <slot name="en-yeni-altina" />
+      <StoryEntry
+        v-for="(girdi, i) in gorunen.slice(1)"
+        :key="girdi.id ?? `${girdi.ts}-${i + 1}`"
+        :girdi="girdi"
+        :ilk="false"
+      />
+    </template>
 
     <div v-if="kalan > 0" class="flex justify-center py-1">
       <BaseButton size="sm" variant="subtle" icon="history" @click="gosterilecek += ADIM">

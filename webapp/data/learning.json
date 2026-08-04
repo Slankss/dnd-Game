@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "updated": "2026-08-03 22:13:39",
+  "games": 2,
+  "turns": 8,
+  "picks": 10,
+  "categories": {
+    "güvenli": {
+      "secim": 5,
+      "zar_toplam": 300,
+      "felaket": 1,
+      "kritik": 0,
+      "basari": 3,
+      "basarisiz": 0
+    },
+    "serbest": {
+      "secim": 2,
+      "zar_toplam": 0,
+      "felaket": 0,
+      "kritik": 0,
+      "basari": 0,
+      "basarisiz": 0
+    },
+    "körü körüne": {
+      "secim": 1,
+      "zar_toplam": 97,
+      "felaket": 0,
+      "kritik": 1,
+      "basari": 0,
+      "basarisiz": 0
+    },
+    "riskli": {
+      "secim": 2,
+      "zar_toplam": 86,
+      "felaket": 0,
+      "kritik": 0,
+      "basari": 1,
+      "basarisiz": 1
+    }
+  },
+  "bands": {
+    "Güçlü Başarı": 3,
+    "Kritik": 1,
+    "Felaket": 1,
+    "Başarısız": 1,
+    "Başarı": 1,
+    "Kısmi Başarı": 1
+  },
+  "pace": {
+    "havuzdan": 10,
+    "serbest": 0,
+    "kisa_secim": 10,
+    "zaman_asimi": 2,
+    "sure_toplam": 708.0,
+    "sure_adet": 8,
+    "ortalama_saniye": 88.5
+  },
+  "players": {
+    "Celil": {
+      "secim": 1,
+      "kategoriler": {
+        "güvenli": 1
+      }
+    },
+    "Doğu": {
+      "secim": 8,
+      "kategoriler": {
+        "serbest": 2,
+        "körü körüne": 1,
+        "güvenli": 3,
+        "riskli": 2
+      }
+    },
+    "__grup_ortak_karar__": {
+      "secim": 1,
+      "kategoriler": {
+        "güvenli": 1
+      }
+    }
+  },
+  "events": {
+    "karsilasma": 4,
+    "zombi": 36,
+    "cozulen_zorluk": 2
+  },
+  "used_starts": [
+    "Üniversite ziraat fakültesi serası",
+    "Sulama barajı bekçi evi (vadinin doğusu)"
+  ],
+  "used_factions": [
+    "The Ledger",
+    "Verdigris",
+    "Leş Avcıları",
+    "Ninefold",
+    "Kızıl Şafak Tarikatı",
+    "Pale Market",
+    "Arınma Cemaati",
+    "The Tannery",
+    "The Garrison",
+    "The Kennel",
+    "Harvest"
+  ],
+  "lessons": [
+    {
+      "key": "baslangic:Üniversite ziraat fakültesi serası",
+      "text": "'Üniversite ziraat fakültesi serası' başlangıcı kullanıldı; bir sonraki oyun başka bir başlangıç noktasıyla açılsın.",
+      "source": "otomatik",
+      "weight": 1,
+      "day": null,
+      "in_prompt": false,
+      "ts": "2026-08-03 21:02:29"
+    },
+    {
+      "key": "baslangic:Sulama barajı bekçi evi (vadinin doğusu)",
+      "text": "'Sulama barajı bekçi evi (vadinin doğusu)' başlangıcı kullanıldı; bir sonraki oyun başka bir başlangıç noktasıyla açılsın.",
+      "source": "otomatik",
+      "weight": 1,
+      "day": null,
+      "in_prompt": false,
+      "ts": "2026-08-03 21:44:46"
+    }
+  ]
+}

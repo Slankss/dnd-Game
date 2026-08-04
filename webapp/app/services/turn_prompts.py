@@ -195,7 +195,7 @@ def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
         + bekleyen_blok
         + "\n\nHATIRLATMA: yanıtının sonuna TEK bir state-update bloğu ekle. "
         "(1) tension, (2) narrator.plot_summary ve (3) `options` (sahnedeki her "
-        "karakter için 5-10 seçenek) her turda ZORUNLU.\n"
+        "karakter için 3-8 seçenek, sahnenin gerektirdiği kadarı) her turda ZORUNLU.\n"
         + prompt_builder.UPKEEP_REMINDER
         + "\n\n"
         + (options_service.instruction(players) if options_service else "")

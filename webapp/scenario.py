@@ -414,24 +414,28 @@ Her normal oyun turunda (karakter oluşturma ve saf sohbet turları hariç)
    ilaç, bulunan eşya, kazanılan/kaybedilen zaman, bozulan ilişki. Bunlar
    state-update'te de kayıtlı olmalı; anlattığın her değişiklik kaydedilmeli.
 3. **DURUM** — aktif zorluğun güncel, ölçülebilir hali (kalan süre, kalan
-   sayı, mesafe, dayanıklılık). Oyuncu nerede olduğunu net bilmeli.
-4. **KARAR** — sahneyi somut bir seçimle kapat. Sonda kısa bir blok ver:
+   sayı, mesafe, dayanıklılık). Oyuncu nerede olduğunu net bilmeli. Sahneyi
+   bu durum cümlesiyle kapat:
 
    **DURUM:** <tek cümlede aktif tehdit + somut parametre>
-   **SEÇENEKLER:**
-   A) <somut eylem> — bedeli/riski: <somut>
-   B) <somut eylem> — bedeli/riski: <somut>
-   C) <somut eylem> — bedeli/riski: <somut>
-   (Oyuncular SADECE sunulan seçeneklerden birini seçebilir; serbest hamle yoktur.)
 
-Bu metin bloğu sahnenin okunabilir özetidir; asıl seçenek listesi ayrıca
-state-update'in `options` alanına KARAKTER BAŞINA yazılır (bkz. MOTOR EKİ →
-'SEÇENEK HAVUZU'). İkisi çelişmesin.
+   Bunun ALTINA harf harf bir seçenek listesi (A/B/C…) YAZMA ve hiçbir
+   seçeneğe "bedeli/riski: ..." gibi bir etiket iliştirme — asıl seçenek
+   kartları ayrıca state-update'in `options` alanına KARAKTER BAŞINA
+   yazılır (bkz. MOTOR EKİ → 'SEÇENEK HAVUZU') ve arayüzde oyuncuya SADECE
+   oradan gösterilir. Metnin içine ikinci, etiketli bir liste eklemek hem
+   tekrar hem de gizli kalması gereken bir sınıflandırmayı (güvenli/riskli
+   vb.) oyuncuya açık etmek olur.
+4. **KARAR** — sahneyi somut bir karar anında bırak; DURUM cümlesi zaten bu
+   anı çerçeveler, ayrıca bir kapanış listesi gerekmez.
 
-Seçenekler gerçekten FARKLI takaslar sunsun (hız-güvenlik, kaynak-zaman,
-gizlilik-güç); üçü de aynı şeyin süslü hali olmasın. Oyuncuların serbest hamle
-yazma hakkı YOKTUR — bu yüzden liste sahnenin gerçek karar uzayını kapsamak
-ZORUNDADIR: farklı yönler, farklı bedeller ve en az bir düşük riskli çıkış.
+Seçenekler (yalnız `options` alanında) gerçekten FARKLI takaslar sunsun
+(hız-güvenlik, kaynak-zaman, gizlilik-güç); hiçbiri aynı şeyin süslü hali
+olmasın. Oyuncuların serbest hamle yazma hakkı YOKTUR — bu yüzden liste
+sahnenin gerçek karar uzayını kapsamak ZORUNDADIR: farklı yönler, farklı
+bedeller ve en az bir düşük riskli çıkış. Bedel/risk farkı seçeneğin kendi
+`text`'inden ve sahnenin anlatısından SEZİLSİN — ayrı bir etiketle
+söylenmez (ayrıntı için MOTOR EKİ → 'SEÇENEK HAVUZU').
 
 Duygusal/atmosferik anlatım hâlâ olsun ama SÜSLEME İÇİN DEĞİL, bilgi
 taşımak için: her betimleme oyuncuya karar verdirecek bir veri versin.
@@ -842,17 +846,33 @@ SAHNEDE olan HER oyuncu karakteri için ayrı bir liste yazmak ZORUNDASIN:
 
 `"options": {"<karakter>": [{"text": "...", "category": "riskli", "cost": "..."}, ...]}`
 
-1. **Sayı**: karakter başına EN AZ 5, EN ÇOK 10 seçenek. Beşten az yazarsan
-   sunucu aradaki farkı jenerik seçeneklerle doldurur ve sahne zayıflar.
-2. **Kategori** (`category`) şu sekizden biri olmalı: `güvenli` (riski düşük,
-   yavaş) · `riskli` (yüksek kazanç/yüksek bedel) · `gizemli` (bilinmeyene
-   dokunur) · `körü körüne` (düşünmeden atılmak; sonuç neredeyse tamamen zara
-   kalır) · `kurnaz` (hile, dolambaç) · `insani` (başkasını korur, bedeli kendi
-   üstlenir) · `acımasız` (kazancı başkasının bedeliyle alır) · `hazırlık`
-   (şimdi kaybettirir, sonra kazandırır). Her listede EN AZ ÜÇ FARKLI kategori
-   bulunsun; hepsi "riskli" olan bir liste seçim değildir.
+1. **Sayı SABİT DEĞİL**: karakter başına EN AZ 3, EN ÇOK 8 seçenek — bu bir
+   HEDEF değil bir ARALIKTIR. Sahne o anda mantıken kaç farklı, birbirinden
+   gerçekten ayrışan karara izin veriyorsa o kadarını yaz. Sadece 3 tane akla
+   yatkın alternatif varsa 3'te bırak; sayıyı doldurmak için anlamsız,
+   birbirinin neredeyse aynısı ya da o sahnede işe yaramayacak bir seçenek
+   UYDURMA. Gerçekten 4, 5, 6, 7 ya da 8 farklı yaklaşım varsa hepsini yaz.
+   İkiden az yazarsan (ya da hiç yazmazsan) sunucu aradaki farkı jenerik
+   seçeneklerle doldurur ve sahne zayıflar — bu yüzden en az 3'ü sen üret.
+2. **Kategori ve bedel OYUNCUYA GÖSTERİLMEZ**: `category` şu sekizden biri
+   olmalı: `güvenli` (riski düşük, yavaş) · `riskli` (yüksek kazanç/yüksek
+   bedel) · `gizemli` (bilinmeyene dokunur) · `körü körüne` (düşünmeden
+   atılmak; sonuç neredeyse tamamen zara kalır) · `kurnaz` (hile, dolambaç)
+   · `insani` (başkasını korur, bedeli kendi üstlenir) · `acımasız` (kazancı
+   başkasının bedeliyle alır) · `hazırlık` (şimdi kaybettirir, sonra
+   kazandırır). `category` ve `cost` SADECE sistem içi alanlardır — sunucu
+   bunları arayüzde oyuncuya HİÇ GÖSTERMEZ, sadece öğrenme/anlatıcı ekranı
+   için tutulur. Bu yüzden `text` alanının İÇİNE 'Güvenli', 'Riskli', 'En iyi
+   seçenek', 'Önerilen' gibi bir etiket, puan ya da ipucu YAZMA — metin sade
+   bir eylem tarifi olsun, kendi kendini etiketlemesin ya da derecelendirmesin.
+   Bir seçeneğin ne kadar riskli olduğu oyuncuya SADECE o eylemin ne
+   olduğundan ve sahnenin bağlamından sezdirilsin. Yine de her listede EN AZ
+   ÜÇ FARKLI kategori bulunsun (hepsi "riskli" olan bir liste seçim değildir)
+   — bu çeşitlilik SENİN görmen için, oyuncu kategori adını asla görmez.
 3. **Bedel** (`cost`) kısa ve SOMUT olsun: "2 fişek + gürültü", "yarım saat",
-   "Sevil'in güvenini yakar". Bedelsiz seçenek yazma.
+   "Sevil'in güvenini yakar". Bedelsiz seçenek yazma — ama bunu ayrı bir
+   etiket gibi düşünme, `text` zaten o bedeli ima eden somut bir eylem
+   tarifi olmalı; `cost` alanı bunun kısa bir sistem notudur.
 4. **Kişiye özel**: seçenekler o karakterin künyesine (meslek, güçlü/zayıf yan,
    refleks), elindeki eşyaya, bulunduğu yere ve sahnedeki rolüne göre yazılır.
 5. **Uzunluk serbest**: bazıları tek satırlık refleks, bazıları üç cümlelik plan
@@ -861,7 +881,9 @@ SAHNEDE olan HER oyuncu karakteri için ayrı bir liste yazmak ZORUNDASIN:
    yönlere götürebilir (biri nöbete, biri bodruma, biri telsize). Ama hiçbiri
    sahnenin coğrafyasından, mevcut zorluktan ve kaynak gerçekliğinden kopmasın.
 7. **Tekrar etme**: sana son sunulan seçeneklerin listesi verilir; aynı seçeneği
-   kelimesi kelimesine tekrar yazma.
+   kelimesi kelimesine tekrar yazma — ve aynı listenin içinde de birbirinin
+   neredeyse aynısı iki seçenek olmasın, her biri gerçekten farklı bir eylem/
+   strateji sunsun.
 8. Sahne dışındaki (uyuyan/uzakta/esir) ve ölmüş karakterlere seçenek YAZMA.
 9. Oyuncu her zaman kendi hamlesini yazabilir; bu listeni geçersiz kılmaz.
 
@@ -1033,7 +1055,7 @@ INITIAL_WORLD_STATE = {
     # clock/progress alanlarını günceller. Oyunculara da gösterilir; sadece
     # her zorluğun `gm_notes` alanı anlatıcı ekranına özeldir.
     "challenges": {},
-    # Karakter başına sunulan seçenek havuzu (5-10 adet) — her turun sonunda
+    # Karakter başına sunulan seçenek havuzu (3-8 adet, sabit değil) — her turun sonunda
     # anlatıcı tarafından yenilenir.
     "options": {},
     "zombie_sightings": ["Taze Ölü", "Koşucu"],

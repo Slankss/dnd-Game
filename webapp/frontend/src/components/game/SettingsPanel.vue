@@ -31,6 +31,7 @@ const SURELER = [
   { deger: 120, etiket: '2 dk' },
   { deger: 180, etiket: '3 dk' },
   { deger: 300, etiket: '5 dk' },
+  { deger: 600, etiket: '10 dk' },
 ]
 
 const KUFUR = [

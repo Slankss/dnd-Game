@@ -1,7 +1,9 @@
 """Seçenek havuzu — her karaktere sunulan, kategorili hamle seçenekleri.
 
-Anlatıcı her turun sonunda her oyuncu karakteri için 5-10 seçenek üretir ve
-bunları state-update bloğunun `options` alanına yazar. Seçenekler:
+Anlatıcı her turun sonunda her oyuncu karakteri için 3-8 seçenek üretir ve
+bunları state-update bloğunun `options` alanına yazar. Sayı SABİT DEĞİLDİR:
+sahne mantıken kaç farklı karara izin veriyorsa o kadar seçenek yazılır —
+3 yeterliyse 3, 8 gerekiyorsa 8. Seçenekler:
 
   * **karakter başınadır** — herkes kendi listesini görür, aynı turda farklı
     yönlere dağılabilirler,
@@ -12,16 +14,18 @@ bunları state-update bloğunun `options` alanına yazar. Seçenekler:
     plan da olabilir; sahne neyi gerektiriyorsa.
 
 Bu modül yalnız VERİYİ tanımlar: normalize eder, kategoriyi kanonlaştırır,
-sayıyı 5-10 aralığına oturtur. Turun akışı `services/round_service.py`'de.
+sayıyı 3-8 aralığına oturtur. Turun akışı `services/round_service.py`'de.
 """
 
 from dataclasses import dataclass, field
 
 from .text import norm_tr
 
-# Karakter başına sunulan seçenek sayısı — senaryo kuralı.
-OPTION_MIN = 5
-OPTION_MAX = 10
+# Karakter başına sunulan seçenek sayısı — senaryo kuralı. Bu SADECE bir taban/
+# tavandır (oyuncu ekranı asla 3'ten az ya da 8'den çok görmesin diye); model
+# aradaki sayıyı sahnenin gerçek karar uzayına göre serbestçe seçer.
+OPTION_MIN = 3
+OPTION_MAX = 8
 
 # Kanonik kategoriler ve anlatıcıya verilen tanımları. Sıra, arayüzdeki
 # gösterim sırasıdır.

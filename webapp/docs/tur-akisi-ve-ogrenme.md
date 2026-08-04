@@ -13,7 +13,7 @@ Eskiden her mesaj anında modele gidiyordu: ilk yazan turu açıyor, diğerleri
 onun sahnesine yetişmeye çalışıyordu. Artık bir tur şöyle işler:
 
 ```
-anlatıcı sahneyi yazar ──► her karaktere 5-10 seçenek bırakır
+anlatıcı sahneyi yazar ──► her karaktere 3-8 seçenek bırakır (sabit değil)
         │
         ▼
    TUR AÇILIR  (state["round"].status = "acik", süre sayacı başlar)
@@ -70,7 +70,7 @@ Kurallar (motor eki, `scenario.SYSTEM_APPENDIX`):
 
 | Kural | Nerede zorlanır |
 |---|---|
-| Karakter başına 5-10 seçenek | `options_service.refresh` eksikleri tamamlar |
+| Karakter başına 3-8 seçenek (sabit değil) | `options_service.refresh` eksikleri tamamlar |
 | Her listede en az bir düşük riskli çıkış | `options_service._ensure_safe_exit` |
 | Sekiz kategoriden biri | `models/options.canon_category` (eş anlamlıları eşler) |
 | Her listede en az 3 farklı kategori | prompt kuralı + jenerik tamamlama |

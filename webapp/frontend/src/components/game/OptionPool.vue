@@ -1,6 +1,12 @@
 <script setup>
 /**
- * Seçenek havuzu — bir karakterin bu turdaki 5-10 seçeneği.
+ * Seçenek havuzu — bir karakterin bu turdaki 3-8 seçeneği (sayı sabit değil;
+ * sahne kaç farklı akla yatkın karara izin veriyorsa o kadarı gelir).
+ *
+ * POPUP olarak açılır: sahnenin altındaki "Karar Ver" butonu bunu tetikler
+ * (bkz. PlayerView). Oyuncu istediği an kapatıp anlatıcı metnini tekrar
+ * okuyabilir, sonra aynı butonla yeniden açıp karar verebilir — bu yüzden
+ * kapatmak seçimi iptal etmez, sadece pencereyi gizler.
  *
  * Akış: karakter seçilir → kart seçilir → sunucu zarı ATAR → zar animasyonla
  * gösterilir → seçim turda kilitlenir (zar atıldıktan sonra geri alınamaz).
@@ -10,20 +16,23 @@
  * uymuyorsa tek çıkış "bu turda bekle"dir — sunucu her listede en az bir
  * düşük riskli seçenek bulunmasını garanti eder.
  *
- * Kategoriler sadece etiket değil: her biri farklı bir takas vaat eder ve
- * seçim havuza not edilir (oyun bundan öğrenir).
+ * Her seçeneğin sunucu tarafında bir `category`/`cost` alanı vardır (öğrenme
+ * katmanı ve anlatıcı ekranı bundan ders çıkarır) ama bu OYUNCUYA ASLA
+ * GÖSTERİLMEZ — "Güvenli"/"Riskli"/"Önerilen" gibi hiçbir etiket, puan ya da
+ * ipucu burada render edilmez; oyuncu bir seçeneğin ne getireceğini SADECE
+ * `text`'in kendisinden ve sahnenin bağlamından çıkarabilmeli.
  */
 import { ref, computed, watch } from 'vue'
-import Panel from '../ui/Panel.vue'
-import Badge from '../ui/Badge.vue'
+import Modal from '../ui/Modal.vue'
 import Icon from '../ui/Icon.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import DiceRoll from './DiceRoll.vue'
-import { KATEGORI_TONU, KATEGORI_IKONU } from './gameFormat'
 import { colorFor } from '@/utils/characterColors'
 
 const props = defineProps({
+  /** Popup açık mı */
+  modelValue: { type: Boolean, default: false },
   /** Seçim yapan karakter */
   oyuncu: { type: String, default: '' },
   /** [{id, text, category, cost}] */
@@ -38,7 +47,7 @@ const props = defineProps({
   sonZar: { type: Object, default: null },
 })
 
-const emit = defineEmits(['sec', 'bekle'])
+const emit = defineEmits(['update:modelValue', 'sec', 'bekle'])
 
 const secilenId = ref('')
 
@@ -62,10 +71,6 @@ const zar = computed(() => {
   return null
 })
 
-const kategoriSayisi = computed(
-  () => new Set(props.secenekler.map((s) => s.category)).size,
-)
-
 function sec(secenek) {
   if (kilitli.value) return
   secilenId.value = secenek.id
@@ -74,17 +79,21 @@ function sec(secenek) {
 </script>
 
 <template>
-  <Panel icon="playing_cards" :title="`${oyuncu || 'Karakter'} — seçenekler`">
-    <template #actions>
-      <Badge v-if="secenekler.length" tone="muted" size="sm">
-        {{ secenekler.length }} seçenek · {{ kategoriSayisi }} kategori
-      </Badge>
-    </template>
-
+  <Modal
+    :model-value="modelValue"
+    size="lg"
+    icon="playing_cards"
+    :title="
+      secenekler.length
+        ? `${oyuncu || 'Karakter'} — seçenekler (${secenekler.length})`
+        : `${oyuncu || 'Karakter'} — seçenekler`
+    "
+    @update:model-value="$emit('update:modelValue', $event)"
+  >
     <!-- Seçim yapıldıysa: zar + kilit -->
     <div
       v-if="secildi"
-      class="mb-3 flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface-2 p-2.5"
+      class="flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface-2 p-2.5"
     >
       <span
         class="size-2.5 shrink-0 rounded-full"
@@ -92,14 +101,6 @@ function sec(secenek) {
         aria-hidden="true"
       />
       <DiceRoll :deger="zar?.roll ?? null" :bant="zar?.band ?? ''" :anahtar="zar?.ts ?? 0" />
-      <Badge
-        v-if="secim.category"
-        :tone="KATEGORI_TONU[secim.category] || 'neutral'"
-        :icon="KATEGORI_IKONU[secim.category] || 'bolt'"
-        size="sm"
-      >
-        {{ secim.category }}
-      </Badge>
       <p class="w-full text-meta text-text">{{ secim.text }}</p>
       <p class="flex items-center gap-1.5 text-label text-faint">
         <Icon name="lock" :size="13" />
@@ -125,25 +126,13 @@ function sec(secenek) {
             :disabled="kilitli"
             @click="sec(secenek)"
           >
-            <span class="flex flex-wrap items-center gap-1.5">
-              <Badge
-                :tone="KATEGORI_TONU[secenek.category] || 'neutral'"
-                :icon="KATEGORI_IKONU[secenek.category] || 'bolt'"
-                size="sm"
-              >
-                {{ secenek.category }}
-              </Badge>
-              <span v-if="secenek.cost" class="text-label text-faint">
-                bedel: {{ secenek.cost }}
-              </span>
-            </span>
             <span class="text-meta leading-relaxed text-text">{{ secenek.text }}</span>
           </button>
         </li>
       </ul>
 
       <!-- Tek çıkış: bu turda bekle. Serbest hamle yok. -->
-      <div class="mt-2 flex flex-wrap items-center gap-2">
+      <div v-if="secenekler.length" class="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <BaseButton
           size="sm"
           variant="subtle"
@@ -159,7 +148,6 @@ function sec(secenek) {
           Hikaye yalnız sunulan seçeneklerle ilerler — kendi planını yazamazsın.
         </p>
       </div>
-
     </template>
-  </Panel>
+  </Modal>
 </template>
