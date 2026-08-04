@@ -14,6 +14,7 @@ from scenario import CHARACTER_TEMPLATE, GROUP_DISPLAY_NAME, GROUP_LABEL
 from app.errors import ValidationError
 from app.models.learning import Learning
 from app.models.person import SHEET_FIELDS, Person, build_background, build_traits
+from app.models.text import strip_option_block
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
@@ -175,8 +176,10 @@ class GameService:
                     "doldurdu. Karakter oluşturma sorusu SORMA, seçenek sunma. "
                     "Açılış sahnesinde herkesi künyesine uygun biçimde tanıt ve "
                     "doğrudan asıl hikayeye geç: açılış olayını somut bir ZORLUĞA "
-                    "dönüştürüp `challenges` altına kaydet ve DURUM/SEÇENEKLER "
-                    "bloğuyla bitir. Durum güncelleme bloğunda `flags.chargen_done` "
+                    "dönüştürüp `challenges` altına kaydet ve tek satırlık DURUM "
+                    "özetiyle bitir. Metne SEÇENEK LİSTESİ YAZMA (A/B/C, "
+                    "'SEÇENEKLER:'); kararlar yalnız `options` alanına gider. "
+                    "Durum güncelleme bloğunda `flags.chargen_done` "
                     "alanını true yap ve her karaktere mesleğine uyan 1-2 mütevazı "
                     "eşyayı `inventory_add` ile ekle. Bu turda zar mekaniği YOK."
                 )
@@ -225,6 +228,10 @@ class GameService:
 
             raw_text = result.get("result", "")
             gm_text, patches = state_update.extract(raw_text)
+            # Künyeler hazırsa açılış sahnesi doğrudan oyuna girer: karar
+            # seçenekleri metinde değil, seçenek havuzunda gösterilir.
+            if sheets_done:
+                gm_text = strip_option_block(gm_text)
             gun = world.day if isinstance(world.day, int) else None
             for patch in patches:
                 world.merge_patch(patch)

@@ -25,13 +25,22 @@ sadece metin üretimi için) çalıştırır.
    sunulan seçeneklerle** ilerler — oyuncu kendi planını yazamaz. Anlatıcı her
    karaktere 5-10 kategorili seçenek bırakır (riskli / güvenli / gizemli /
    körü körüne …; her listede en az bir düşük riskli çıkış garanti edilir),
-   oyuncular kendi seçeneklerini seçer, sunucu **seçim
-   anında** 1-100 arası gerçek bir zar atar (kriptografik RNG) ve arayüz onu
-   animasyonla gösterir. Seçimler hafızada birikir; **herkes seçince** (ya da
-   tur süresi dolunca) hepsi TEK mesajda anlatıcıya gider. Süresi içinde
-   seçim yapmayan karakter için anlatıcı **ani sahne** yazar — dünya
-   beklemez. Hiçbir seçenek uymuyorsa tek çıkış "bu turda bekle"dir.
-   Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
+   oyuncular kendi seçeneklerini bir **popup**'tan seçer (seçince pencere
+   kapanır, karar panelde seçili kalır), sunucu **seçim anında** 1-100 arası
+   gerçek bir zar atar (kriptografik RNG) ve arayüz onu animasyonla gösterir.
+   **Turu oyuncu geçirir**: herkes seçse bile tur kendiliğinden ilerlemez,
+   "Turu Geç" düğmesine basılana kadar herkes kararını değiştirebilir (zar tur
+   başına bir kez atılır, karar değişince yenilenmez). Tur geçilince tüm
+   seçimler TEK mesajda anlatıcıya gider. Süresi içinde seçim yapmayan karakter
+   için anlatıcı **ani sahne** yazar — dünya beklemez. Hiçbir seçenek uymuyorsa
+   tek çıkış "bu turda bekle"dir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
+4. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
+   o turda çıkan gürültü, anlatıcının bildirdiği patlama/alarm ve vadesi gelen
+   senaryo beat'i `state["pending"]` kuyruğuna yazılır ve **bir sonraki turun
+   başında** uygulanır. Yani tur N'de tüfek patlatan grup bedelini tur N+1'de
+   öder; oyuncu kararıyla aynı anda ortaya çıkan bir sürprizle cezalandırılmaz.
+   Sahne metni de yalnızca yaşananları anlatır: karar seçenekleri metne değil,
+   yalnızca seçenek paneline yazılır (sunucu metindeki listeleri keser).
 - Oturum sürekliliği Claude Code'un kendi `--resume` mekanizmasıyla sağlanır —
   sunucu konuşma geçmişini kendi başına biriktirip API'ye yeniden göndermez;
   Claude Code bunu zaten kendi tarafında tutar.

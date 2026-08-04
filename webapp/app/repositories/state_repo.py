@@ -10,6 +10,7 @@ import threading
 from pathlib import Path
 
 from .. import config
+from ..models.pending import PendingQueue
 from ..models.round import Round
 from ..models.world import TIME_FIELDS, WorldState
 from .scenario_repo import ScenarioRepository
@@ -51,6 +52,9 @@ class StateRepository:
             "started": False,
             "settings": self.default_settings(),
             "round": Round().to_dict(),
+            # Bir turda tetiklenip BİR SONRAKİ turun başında devreye girecek
+            # kayıtlar (sahne yayını, tehdit devri, senarist direktifi).
+            "pending": PendingQueue().to_dict(),
         }
 
     # ------------------------------------------------------------- okuma
@@ -98,6 +102,10 @@ class StateRepository:
             settings.setdefault(name, value)
         if not isinstance(state.get("round"), dict):
             state["round"] = Round().to_dict()
+        # Bekleyen yayın kuyruğu da sonradan eklendi; devam eden oyunda boş
+        # başlar (o oyunun ilk turu ertelenmiş bir sahne bulmaz).
+        if not isinstance(state.get("pending"), dict):
+            state["pending"] = PendingQueue().to_dict()
         return state
 
     # -------------------------------------------------------- tur kaydı
@@ -108,6 +116,15 @@ class StateRepository:
     @staticmethod
     def store_round(state: dict, round_: Round) -> None:
         state["round"] = round_.to_dict()
+
+    # ------------------------------------------------- bekleyen yayınlar
+    @staticmethod
+    def pending_of(state: dict) -> PendingQueue:
+        return PendingQueue.from_dict(state.get("pending"))
+
+    @staticmethod
+    def store_pending(state: dict, queue: PendingQueue) -> None:
+        state["pending"] = queue.to_dict()
 
     @staticmethod
     def settings_of(state: dict) -> dict:

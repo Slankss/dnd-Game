@@ -3,7 +3,9 @@
 Her turda sırayla:
 
   1. Gürültü ve bölge dikkati, geçen oyun-içi zamana göre söner.
-  2. Oyuncuların hamlesinden gürültü ve YOLCULUK niyeti okunur.
+  2. BİR ÖNCEKİ turdan devredilen gürültü, yolculuk niyeti ve olaylar
+     (patlama/alarm) devreye girer. Bu turda çıkan ses bu turun zarını
+     etkilemez — sonuçları bir sonraki tura yazılır (bkz. `models/pending.py`).
   3. Bulunulan yerin (ya da yolun) yoğunluğuyla karşılaşma zarı atılır.
   4. Sonuç anlatıcıya ZORUNLU bir blok olarak verilir: kaç zombi, hangi
      türler, ne mesafede, hangi yönden, kim önce fark etti.
@@ -59,14 +61,37 @@ class ThreatService:
         place = (world_map.places or {}).get(world.location)
         return getattr(place, "kind", "") or ""
 
+    # ---------------------------------------------------------------- devir
+    @staticmethod
+    def read_inputs(action_text: str = "", events=None) -> dict:
+        """Bu turda tetiklenen tehdit girdileri — BİR SONRAKİ tura yazılır.
+
+        Gürültü ve yolculuk niyeti oyuncuların seçimlerinden, olaylar
+        anlatıcının state-update'inden okunur. Hiçbiri bu turda uygulanmaz:
+        ses çıkardığın tur değil, ONDAN SONRAKİ tur tehlikelidir
+        (bkz. `models/pending.py`)."""
+        ham = events if isinstance(events, list) else ([events] if isinstance(events, dict) else [])
+        return {
+            "noise": noise_from_text(action_text),
+            "travel": looks_like_travel(action_text),
+            "events": [o for o in ham if isinstance(o, dict)],
+        }
+
     # ---------------------------------------------------------------- tur
-    def prepare(self, world, action_text: str = "", minutes: int = 0) -> dict:
-        """Turun BAŞINDA çağrılır: söndür, oku, zar at.
+    def prepare(self, world, action_text: str = "", minutes: int = 0,
+                carry: dict = None) -> dict:
+        """Turun BAŞINDA çağrılır: söndür, devri uygula, zar at.
+
+        `carry` verilirse (tur bazlı akışın normal hali) gürültü/yolculuk/olay
+        girdileri BİR ÖNCEKİ turdan gelir — bu turda çıkan ses bu turun zarını
+        etkilemez. `carry` verilmezse girdiler `action_text`'ten okunur
+        (karakter oluşturma turları ve eski çağrı yolları).
 
         Dönen sözlük prompt bloğunu ve karşılaşmayı taşır; karşılaşma turun
         SONUNDA `commit` ile deftere işlenir (model yanıt vermezse tehdit
         kaydı bozulmasın)."""
         threat = self.state_of(world)
+        devir = carry if isinstance(carry, dict) else None
 
         # 1) sönüm — BİR ÖNCEKİ turda gerçekten geçen oyun-içi süre kadar
         gecen = threat.last_minutes or minutes or 0
@@ -76,8 +101,8 @@ class ThreatService:
         graf = self.graph(world)
         threat.diffuse(graf, max(0.0, gecen / 60.0))
 
-        # 2) hamleden gürültü + yolculuk niyeti
-        gurultu = noise_from_text(action_text)
+        # 2) devreye giren gürültü + yolculuk niyeti (geçen turdan devredilen)
+        gurultu = int(devir.get("noise") or 0) if devir else noise_from_text(action_text)
         goc = None
         if gurultu:
             threat.add_noise(gurultu)
@@ -85,14 +110,23 @@ class ThreatService:
             if gurultu >= MIGRATION_NOISE_MIN and world.location:
                 goc = threat.attract(
                     world.location, gurultu * EVENT_PULL["gürültü"], graf)
-        # Yolculuk bayrağı YAPIŞKAN DEĞİLDİR: ya bu turda yola çıkma niyeti
-        # var, ya da grup geçen turda gerçekten yer değiştirmiştir. Aksi halde
-        # bir kez yola çıkan grup, sığınağa varsa bile sonsuza dek "yolda"
-        # sayılıyor ve her tur sürüyle karşılaşıyordu.
+
+        # 2b) geçen turda bildirilen OLAYLAR (patlama/alarm/yangın) şimdi
+        # devreye girer: ölüler o bölgeye komşularından çekilir.
+        for olay in (devir.get("events") if devir else None) or []:
+            kayit = self.apply_event(world, olay)
+            if kayit:
+                goc = kayit
+
+        # Yolculuk bayrağı YAPIŞKAN DEĞİLDİR: ya geçen turda yola çıkma niyeti
+        # vardı, ya da grup gerçekten yer değiştirmiştir. Aksi halde bir kez
+        # yola çıkan grup, sığınağa varsa bile sonsuza dek "yolda" sayılıyor
+        # ve her tur sürüyle karşılaşıyordu.
         simdiki_yer = world.location or ""
         yer_degisti = bool(threat.last_location and simdiki_yer
                            and threat.last_location != simdiki_yer)
-        yolculuk = looks_like_travel(action_text) or yer_degisti
+        niyet = bool(devir.get("travel")) if devir else looks_like_travel(action_text)
+        yolculuk = niyet or yer_degisti
 
         # 3) yoğunluk ve zar
         if yolculuk:
@@ -167,7 +201,9 @@ class ThreatService:
         """Anlatıcıya giden ZORUNLU tehdit bloğu."""
         bant = density_band(density)
         satirlar = [
-            "ZOMBİ TEHDİDİ (sunucu zarı — bu blok ZORUNLUDUR, sahnede FİİLEN oynat):",
+            "ZOMBİ TEHDİDİ (sunucu zarı — bu blok ZORUNLUDUR, sahnede FİİLEN oynat).",
+            "Bu blok GEÇEN turda olanların sonucudur: geçen turun gürültüsü, "
+            "yola çıkma niyeti ve bildirilen olaylar şimdi devreye girdi.",
             f"- Bölge yoğunluğu: {place} · {density}/100 ({bant}) · "
             f"grup gürültüsü {threat.noise}/100 · bölgenin dikkati {threat.heat}/100",
         ]

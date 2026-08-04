@@ -13,20 +13,25 @@ Eskiden her mesaj anında modele gidiyordu: ilk yazan turu açıyor, diğerleri
 onun sahnesine yetişmeye çalışıyordu. Artık bir tur şöyle işler:
 
 ```
-anlatıcı sahneyi yazar ──► her karaktere 5-10 seçenek bırakır
-        │
+   TURUN BAŞI  (round_service.ensure_open)
+        │  bekleyen sahne YAYINLANIR: dünya yaması uygulanır, sahne akışa
+        │  düşer, yeni seçenek havuzu doğar   (release → _publish_scene)
         ▼
    TUR AÇILIR  (state["round"].status = "acik", süre sayacı başlar)
         │
-        ├── Okan seçer  → sunucu d100 atar → zar animasyonla gösterilir → kilit
+        ├── Okan seçer  → sunucu turun d100'ünü atar → animasyon
+        │   Okan fikrini değiştirir → AYNI zar, yeni karar
         ├── Emir seçer  → kendi zarı
         └── Celil seçmez → süre dolar
         │
         ▼
-   TUR GÖNDERİLİR (tek mesaj, tüm seçimler + zarlar birlikte)
-        │
+   "TURU GEÇ"  (oyuncu basar; ya da süre dolarsa sayaç gönderir)
+        │  tüm seçimler TEK mesajda anlatıcıya gider
         ▼
-   anlatıcı hepsini aynı sahnede çözer ──► yeni seçenekler ──► yeni tur
+   anlatıcı sahneyi yazar ──► sahne KUYRUĞA yazılır (yayınlanmaz)
+        │  bu turda tetiklenenler de kuyruğa: gürültü, yolculuk, olaylar, beat
+        ▼
+   BİR SONRAKİ TURUN BAŞI ──► hepsi devreye girer
 ```
 
 Önemli noktalar:
@@ -41,21 +46,78 @@ anlatıcı sahneyi yazar ──► her karaktere 5-10 seçenek bırakır
   hazırlık / insani). Anlatıcı sadece ölümcül seçenekler yazarsa
   `options_service._ensure_safe_exit` sona güvenli bir çıkış ekler.
 - **Zar seçim anında atılır** (`round_service.pick`), sunucuda, kriptografik
-  RNG ile. Arayüzdeki animasyon sadece sonucu sunar; sonucu üretmez. Zar
-  atıldıktan sonra seçim değiştirilemez.
+  RNG ile. Arayüzdeki animasyon sadece sonucu sunar; sonucu üretmez.
+- **Karar değiştirilebilir, zar değiştirilemez.** Oyuncu turu geçene kadar
+  başka bir seçeneğe geçebilir; turda **son seçtiği** karar işlenir. Zar tur
+  başına ve oyuncu başına BİR KEZ atılır (`round_service._turn_roll`) — aksi
+  halde beğenilmeyen zarı yenilemek için seçenek değiştirmek serbest kalırdı.
+  Sunucu yanıtındaki `changed: true` bunu istemciye bildirir; arayüz zar
+  animasyonunu yeniden oynatmaz.
 - **Seçimler hafızada birikir**, modele gitmez. Model çağrısı yalnızca tur
   kapanırken bir kez yapılır — hem tutarlı bir sahne çıkar hem de kota yanar.
-- **Herkes seçince tur kendiliğinden gönderilir.** Kimse beklemek zorunda
-  değilse "Turu şimdi gönder" düğmesi de vardır.
-- **Süre dolarsa** (`settings.turn_seconds`, 0 = süresiz) tur yine gönderilir
-  ve seçim yapmayanlar için anlatıcıdan **ani sahne** istenir: kararsızlığın
-  kendisi bir olaya dönüşür, dünya beklemez.
+- **Turu oyuncu geçirir.** Herkes seçse bile tur kendiliğinden ilerlemez;
+  `RoundBar`'daki **"Turu Geç"** düğmesine basılması gerekir. Masa kararları
+  konuşabilsin ve isteyen son ana kadar fikrini değiştirebilsin diye.
+- **Tek istisna süredir**: `settings.turn_seconds` (0 = süresiz) dolduğunda tur
+  kendiliğinden gönderilir ve seçim yapmayanlar için anlatıcıdan **ani sahne**
+  istenir: kararsızlığın kendisi bir olaya dönüşür, dünya beklemez.
 - Aynı turu iki tarayıcı birden göndermeye kalkarsa sunucu ikincisini
   `{"skipped": true}` ile geri çevirir (kilit + `round_no` kontrolü).
 - Model çağrısı hata verirse tur **açık kalır**; seçimler ve zarlar kaybolmaz.
 
 `settings.round_mode` alanı eski kayıtlarla uyum için duruyor ama **kapatılamaz**:
 serbest yazışma kipi kaldırıldı, `/api/settings` bunu 400 ile reddeder.
+
+## 1b. Tur geçişi — hiçbir şey tetiklendiği turda devreye girmez
+
+Kural: **bir turda üretilen her şey bir sonraki turun başında devreye girer.**
+Oyuncu, kararını verdiği anda o karara sebep olmayan bir sürprizle
+cezalandırılmasın; "ne oldu" bilgisi her zaman turun BAŞINDA gelsin.
+
+Kuyruk `state["pending"]` altında düz JSON olarak durur (`models/pending.py`),
+üç tür kayıt taşır:
+
+| Tür | Ne zaman yazılır | Ne zaman devreye girer |
+|---|---|---|
+| `sahne` | Anlatıcı tur N'i çözdükten sonra (`commit`) | Tur N+1'in başında yayınlanır (`release` → `_publish_scene`) |
+| `tehdit` | Tur N'de çıkan gürültü, yolculuk niyeti ve anlatıcının bildirdiği olaylar | Tur N+1'in karşılaşma zarına girer (`threat_service.prepare(carry=…)`) |
+| `direktif` | Tur N'de vadesi gelen senarist beat'i (`director.take_due`) | Tur N+1'in sahnesini şekillendirir (`director.find`) |
+
+Sonuçları:
+
+- **Sahne yayını turun başındadır.** `commit` sahneyi yayınlamaz, kuyruğa yazar;
+  yayını `ensure_open` yapar. İkisi aynı istekte peş peşe çalıştığı için oyuncu
+  bekleme hissetmez — ama sunucu tur ortasında ölürse sahne kaybolmaz, ilk
+  `/api/state` yoklamasında yayınlanır.
+- **Gürültü bir tur sonra ödenir.** Tur N'de tüfek patlatan grup tur N'de değil,
+  tur N+1'de sürüyle karşılaşır. Anlatıcıya giden tehdit bloğu bunu açıkça
+  söyler: "bu blok GEÇEN turda olanların sonucudur".
+- **Anlatıcının bildirdiği olaylar da ertelenir.** `threat.events` yaması
+  (patlama/alarm/yangın) `world_patch._merge_threat` içinde uygulanmaz;
+  `defer_events` listesine biriktirilip kuyruğa yazılır, göç bir sonraki turun
+  başında olur.
+- Yayın sırasında beklenmedik bir hata çıkarsa sahne düşer ama **sessizce
+  değil**: akışa bir sistem satırı yazılır ve oyun tıkanmaz.
+
+## 1c. Anlatıcı metninde seçenek listesi yasak
+
+Sahne metni yalnızca **yaşananları ve sonuçlarını** anlatır. Karar seçenekleri
+metinde değil, yalnızca seçenek panelinde gösterilir — aksi halde aynı liste iki
+yerde okunuyor ve metindeki liste ile havuzdaki liste birbirini tutmuyordu.
+
+İki katmanlı savunma:
+
+1. **Prompt**: `scenario.SYSTEM_APPENDIX` → "ANLATICI METNİ — SEÇENEK LİSTESİ
+   YASAK" ve `SCENARIO_TEXT` → SAHNE YAPISI 4. madde (sahne tek satırlık bir
+   **DURUM** özetiyle biter).
+2. **Sunucu**: `models/text.strip_option_block` sahne metninin sonundaki
+   "SEÇENEKLER:" başlığını, madde madde (A)/B)/1.) yazılmış alternatifleri ve
+   "(Oyuncular sadece sunulan seçeneklerden…)" kuyruğunu keser. Karakter
+   oluşturma turlarında kesme YAPILMAZ — orada liste meşrudur, oyuncu yazarak
+   seçer.
+
+Metnin tamamı seçenekten ibaretse hiçbir şey kesilmez: boş sahne yayınlamaktansa
+kuralı ihlal eden sahneyi yayınlamak yeğdir.
 
 ## 2. Seçenek havuzu
 

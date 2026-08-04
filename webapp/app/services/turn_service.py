@@ -25,7 +25,12 @@ from scenario import GROUP_DISPLAY_NAME, GROUP_LABEL
 
 from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
-from app.models.text import DEFAULT_TURN_MINUTES, canonical_name, elapsed_minutes
+from app.models.text import (
+    DEFAULT_TURN_MINUTES,
+    canonical_name,
+    elapsed_minutes,
+    strip_option_block,
+)
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
@@ -109,15 +114,24 @@ class TurnService:
     # ------------------------------------------------------- ortak tur sonu
     def finish_turn(self, state, world, raw_text, beat=None, plot=None,
                     plan_olaylari=None, picks=None, kind="tur", seconds=None,
-                    entry_kind=None, threat_prep=None) -> dict:
+                    entry_kind=None, threat_prep=None, defer_events=None) -> dict:
         """Model yanıtından sonrası — serbest tur ve tur bazlı akış için ORTAK.
 
         Yapılanlar sırayla: state-update ayrıştır → dünyaya uygula → göstergeler
         ve enfeksiyonlar → harita eşle → anlatıcı kaydı → senarist muhasebesi →
         seçenek havuzu → öğrenme defteri.
+
+        `defer_events` bir liste ise anlatıcının bildirdiği tehdit olayları
+        (patlama/alarm) burada UYGULANMAZ, o listeye biriktirilir: etkileri
+        bir sonraki turun başında devreye girer (bkz. `models/pending.py`).
         """
         onceki = world_stats(world)
         gm_text, patches = state_update.extract(raw_text)
+        # Anlatıcı metni yalnız yaşananları anlatır: karar seçenekleri sahne
+        # metninde değil, yalnızca seçenek havuzunda gösterilir. Karakter
+        # oluşturma turlarında liste meşrudur (oyuncu oradan yazarak seçer).
+        if world.chargen_complete():
+            gm_text = strip_option_block(gm_text)
 
         # Göstergeler zar gibi sunucunun sorumluluğunda: anlatıcının elle
         # yazdığı değerler (uyudu/yedi/içti) korunur, geri kalanı bu turda
@@ -126,7 +140,7 @@ class TurnService:
         vitals_touched = {}
         gun = world.day if isinstance(world.day, int) else None
         for patch in patches:
-            world.merge_patch(patch, vitals_touched)
+            world.merge_patch(patch, vitals_touched, defer_events)
             self.learning.absorb_patch(patch, day=gun)
         turn_minutes = elapsed_minutes(clock_before, world.clock_snapshot())
         world.apply_vitals_drift(turn_minutes, vitals_touched)

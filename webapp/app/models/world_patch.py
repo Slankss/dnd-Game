@@ -21,9 +21,15 @@ TENSION_LEVELS = ("düşük", "orta", "yüksek")
 class WorldPatchMixin:
     """`WorldState`'in yama tarafı. Tek başına kullanılmaz."""
 
-    def merge_patch(self, patch: dict, vitals_touched: dict = None) -> None:
+    def merge_patch(self, patch: dict, vitals_touched: dict = None,
+                    defer_events: list = None) -> None:
         """`vitals_touched` verilirse, anlatıcının bu turda elle yazdığı
-        gösterge alanları {isim: {alan}} olarak oraya biriktirilir."""
+        gösterge alanları {isim: {alan}} olarak oraya biriktirilir.
+
+        `defer_events` verilirse anlatıcının bildirdiği tehdit OLAYLARI
+        (patlama/alarm/yangın) burada UYGULANMAZ, o listeye biriktirilir:
+        bir olayın etkisi tetiklendiği turda değil, bir sonraki turun başında
+        devreye girer (bkz. `models/pending.py`)."""
         # Model gün sayısını bazen "98" diye string yazıyor; eskiden bu sessizce
         # yok sayılıp başlıktaki gün sayacı hiç ilerlemiyordu.
         day = patch.get("day")
@@ -76,7 +82,7 @@ class WorldPatchMixin:
 
         # Tehdit: anlatıcının bildirdiği gürültü ve yoğunluk değişimi.
         if isinstance(patch.get("threat"), dict):
-            self._merge_threat(patch["threat"])
+            self._merge_threat(patch["threat"], defer_events)
 
         if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
             seen = self.ensure_sightings()
@@ -210,7 +216,7 @@ class WorldPatchMixin:
                 continue
             move(grid, varlik, kayit.get("direction"))
 
-    def _merge_threat(self, patch: dict) -> None:
+    def _merge_threat(self, patch: dict, defer_events: list = None) -> None:
         """`threat` yaması — anlatıcı yalnız ÜÇ şeyi bildirir:
 
           {"noise_add": 25}                      bu turda çıkan gürültü
@@ -242,6 +248,15 @@ class WorldPatchMixin:
         if isinstance(olaylar, dict):
             olaylar = [olaylar]
         if isinstance(olaylar, list):
+            # Ertelenen olaylar: tetiklendikleri turda göç yapılmaz, kayıt
+            # kuyruğa yazılır ve bir sonraki turun başında uygulanır.
+            if defer_events is not None:
+                for olay in olaylar:
+                    if isinstance(olay, dict):
+                        yer = str(olay.get("place") or self.location or "").strip()
+                        if yer:
+                            defer_events.append(dict(olay, place=yer))
+                return
             graf = self.ensure_map().adjacency()
             for olay in olaylar:
                 if not isinstance(olay, dict):
