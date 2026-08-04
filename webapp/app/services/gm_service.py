@@ -16,6 +16,7 @@ from app.repositories.plot_repo import PlotRepository
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
 from app.services import prompt_builder, state_update
+from app.services.items_service import ItemsService
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 
@@ -30,7 +31,7 @@ class GmService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, pin=None, plot_repo=None,
-                 learning=None):
+                 learning=None, items=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -38,6 +39,7 @@ class GmService:
         self.game_log = game_log or log_repo.game_log()
         self.gm_log = gm_log or log_repo.gm_log()
         self.learning = learning or LearningService()
+        self.items = items or ItemsService()
         self.pin = pin if pin is not None else config.GM_PIN
 
     def _check(self, pin) -> None:
@@ -293,6 +295,29 @@ class GmService:
         return prompt, extra_system
 
     # ----------------------------------------------------------- /api/gm/patch
+    # ------------------------------------------------------ eşya kataloğu
+    def items_catalog(self, pin) -> dict:
+        """Anlatıcı ekranının okuduğu katalog (PIN'li)."""
+        self._check(pin)
+        return self.items.public_catalog()
+
+    def add_item(self, pin, item) -> dict:
+        """Kataloga KALICI eşya ekler.
+
+        Eklenen eşya `data/items.json`'a yazılır: oyunun içeriğine girer, tek
+        bir oyunun durumuna değil. Yeni oyun kurulsa, `/api/reset` çekilse bile
+        durur ve o andan itibaren her oyunda aranırken çıkabilir."""
+        self._check(pin)
+        kayit = self.items.add_item(item)
+        self.gm_log.append({
+            "id": None,
+            "role": "system",
+            "text": f"🧰 Kataloga kalıcı eşya eklendi: {kayit['ad']} "
+                    f"({kayit['kategori']}) — bu eşya bundan sonra TÜM oyunlarda var.",
+            "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        })
+        return {"ok": True, "item": kayit, "catalog": self.items.public_catalog()}
+
     def patch(self, pin, patch) -> dict:
         """Anlatıcının doğrudan (model çağrısı olmadan) dünya durumunu düzenlemesi:
         fraksiyon tavrı, zorluk saati, bulmaca ilerlemesi vb. Anında uygulanır."""

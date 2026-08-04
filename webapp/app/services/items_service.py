@@ -17,8 +17,11 @@ yokturlar ve hiçbir mekanik etkileri olmaz (bkz. `world_patch._merge_story_item
 Kilit ÇAĞIRANDA (round_service).
 """
 
+import re
 import secrets
 
+from app.errors import ValidationError
+from app.models.items import RARITY_FACTOR
 from app.models.text import norm_tr
 from app.repositories.items_repo import ItemsRepository
 
@@ -265,6 +268,104 @@ class ItemsService:
             yama["thirst"] = max(0, int(vitals.thirst or 0) - int(susuzluk))
         if yama:
             vitals.merge_patch(yama)
+
+    # ------------------------------------------------------- katalog yazma
+    def add_item(self, ham: dict) -> dict:
+        """Anlatıcı ekranından yeni bir eşya ekler — KALICI, tüm oyunlar için.
+
+        Eklenen eşya `data/items.json`'a yazılır; oyunun içeriğine girer, tek
+        bir oyunun durumuna değil. Yeni oyun kurulsa, state sıfırlansa bile
+        durur.
+
+        Doğrulama burada: katalog elle düzenlenebilen bir içerik dosyası ama
+        arayüzden gelen kayıt bozuk olamaz — bozuk bir kayıt her oyunda her
+        aramayı etkilerdi.
+        """
+        ham = ham if isinstance(ham, dict) else {}
+        katalog = self.catalog
+
+        ad = str(ham.get("ad") or "").strip()
+        if not ad:
+            raise ValidationError("Eşyanın adı gerekli.")
+        if len(ad) > 60:
+            raise ValidationError("Eşya adı en fazla 60 karakter olabilir.")
+        if any(norm_tr(i.ad) == norm_tr(ad) for i in katalog.items):
+            raise ValidationError(f"'{ad}' katalogda zaten var.")
+
+        kategori = str(ham.get("kategori") or "").strip()
+        if kategori not in katalog.kategoriler:
+            gecerli = ", ".join(katalog.kategoriler)
+            raise ValidationError(f"Kategori şunlardan biri olmalı: {gecerli}")
+
+        nadirlik = str(ham.get("nadirlik") or "yaygın").strip()
+        if nadirlik not in RARITY_FACTOR:
+            raise ValidationError("Nadirlik: yaygın, nadir ya da çok nadir.")
+
+        bulunur = {}
+        for yer, agirlik in (ham.get("bulunur") or {}).items():
+            if yer not in katalog.yer_turleri:
+                raise ValidationError(f"Tanınmayan yer türü: {yer}")
+            sayi = self._sayi(agirlik, 0, 100, f"{yer} ağırlığı")
+            if sayi:
+                bulunur[yer] = sayi
+        taban = self._sayi(ham.get("taban"), 0, 100, "taban ağırlık")
+        if not bulunur and not taban:
+            raise ValidationError(
+                "Eşya hiçbir yerde bulunamaz — en az bir yer türüne ağırlık "
+                "ver ya da taban ağırlığı gir.")
+
+        kayit = {
+            "id": self._yeni_id(katalog, ad),
+            "ad": ad,
+            "kategori": kategori,
+            "nadirlik": nadirlik,
+            "taban": taban,
+            "bulunur": dict(sorted(bulunur.items())),
+        }
+        mermi = str(ham.get("mermi") or "").strip()
+        if mermi:
+            kayit["mermi"] = mermi
+        if ham.get("sayilabilir"):
+            kayit["sayilabilir"] = True
+            alt = self._sayi(ham.get("adet_min"), 1, 999, "en az adet") or 1
+            ust = self._sayi(ham.get("adet_max"), 1, 999, "en çok adet") or alt
+            kayit["adet"] = [alt, max(alt, ust)]
+        doyum = self._sayi(ham.get("doyum"), 0, 100, "doyum")
+        if doyum:
+            kayit["doyum"] = doyum
+        susuzluk = self._sayi(ham.get("susuzluk"), 0, 100, "susuzluk")
+        if susuzluk:
+            kayit["susuzluk"] = susuzluk
+        aciklama = str(ham.get("not") or "").strip()
+        if aciklama:
+            kayit["not"] = aciklama[:240]
+
+        self.repo.append_item(kayit)
+        return kayit
+
+    @staticmethod
+    def _sayi(value, alt: int, ust: int, alan: str) -> int:
+        if value in (None, ""):
+            return 0
+        try:
+            sayi = int(float(str(value).replace(",", ".")))
+        except (TypeError, ValueError):
+            raise ValidationError(f"{alan} sayı olmalı.") from None
+        if not (alt <= sayi <= ust):
+            raise ValidationError(f"{alan} {alt}-{ust} arasında olmalı.")
+        return sayi
+
+    @staticmethod
+    def _yeni_id(katalog, ad: str) -> str:
+        """Addan türeyen, katalogda tekrar etmeyen kimlik."""
+        temel = re.sub(r"[^a-z0-9]+", "-", norm_tr(ad)).strip("-") or "esya"
+        mevcut = {i.id for i in katalog.items}
+        if temel not in mevcut:
+            return temel
+        i = 2
+        while f"{temel}-{i}" in mevcut:
+            i += 1
+        return f"{temel}-{i}"
 
     # --------------------------------------------------------------- katalog
     def public_catalog(self) -> dict:

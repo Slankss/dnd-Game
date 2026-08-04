@@ -54,7 +54,10 @@ sadece metin üretimi için) çalıştırır.
    `doyum`, içeceklerin `susuzluk` değeri vardır ve göstergeyi sunucu düşürür.
    **Hikaye eşyaları** (`story_items`) ise her oyunda farklıdır, anlatıcı
    üretir ve *yalnızca anlatı etkisi* taşır — açlık doldurmaz, zar değiştirmez.
-   Katalog `GET /api/items` ile okunur. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1e.
+   Katalog `GET /api/items` ile okunur; anlatıcı ekranındaki **Eşya kataloğu**
+   panelinden görülebilir ve **kalıcı olarak** genişletilebilir — oradan
+   eklenen eşya `data/items.json`'a yazılır ve bundan sonraki tüm oyunlarda
+   bulunabilir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1e.
 6. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
    o turda çıkan gürültü, anlatıcının bildirdiği patlama/alarm ve vadesi gelen
    senaryo beat'i `state["pending"]` kuyruğuna yazılır ve **bir sonraki turun

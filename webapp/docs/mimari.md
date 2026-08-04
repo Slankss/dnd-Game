@@ -53,7 +53,7 @@ webapp/
       plot_repo.py          # plot.json
       learning_repo.py      # learning.json + learning_events.jsonl
       options_repo.py       # options_pool.jsonl (sunulan/seçilen seçenekler)
-      items_repo.py         # items.json (SALT OKUNUR sabit katalog)
+      items_repo.py         # items.json (sabit katalog; tek yazan GM ekranı)
     services/               # iş akışı — modelleri ve repo'ları orkestre eder
       narrator_client.py    # claude CLI süreci (subprocess)
       prompt_builder.py     # modele giden tüm metin blokları
@@ -166,6 +166,8 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, changed, round, all_picked, version}` — zar SEÇİM ANINDA ve tur başına BİR KEZ atılır; karar turu geçene kadar değiştirilebilir (`changed: true` = zar aynı kaldı); `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
 | POST | `/api/round/wait` | `{player}` | `{ok, round, version}` — bu da bir seçimdir, değiştirilebilir |
 | GET | `/api/items` | — | `{surum, kategoriler, yer_turleri, esyalar}` — SABİT eşya kataloğu (`data/items.json`), her eşyanın en olası üç yeriyle |
+| GET | `/api/gm/items?pin` | — | aynı katalog, anlatıcı ekranı için |
+| POST | `/api/gm/items` | `{pin, item}` | `{ok, item, catalog}` — kataloga KALICI eşya ekler: `data/items.json`'a yazılır, tüm oyunlarda geçerli olur |
 | GET | `/api/grid` | — | `{grid, world_state, version}` — sahne yoksa kurulur |
 | POST | `/api/grid/move` | `{player, direction}` | `{ok, result, grid, version}` — hareket algoritması: yön→koordinat→sınır→geçilebilirlik→kaldır→koordinat→ekle→sonuç |
 | POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` — "Turu Geç"; sahne kuyruğa yazılıp bir sonraki turun başında yayınlanır |

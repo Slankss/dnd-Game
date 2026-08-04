@@ -40,7 +40,7 @@ turn = TurnService(learning=learning, options=options, threat=threat)
 rounds = RoundService(learning=learning, options=options, turn=turn, threat=threat,
                       items=items)
 game = GameService(learning=learning, options=options, rounds=rounds)
-gm = GmService()
+gm = GmService(items=items)
 grid = GridService()
 scenario = ScenarioService()
 

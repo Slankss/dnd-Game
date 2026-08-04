@@ -244,8 +244,23 @@ doldurmaz, zar değiştirmez, mermi olmaz, sayaç açılmaz.
   on tur önce bulunan zarf unutulmasın.
 - `null` yazmak defterden düşürür (yakıldı, verildi, kayboldu).
 
-Katalog `GET /api/items` ile okunabilir; her eşyanın en olası üç yeri de
-hesaplanmış olarak döner.
+### Katalogu görmek ve genişletmek
+
+Katalog iki yerden okunur: `GET /api/items` (herkese açık) ve
+`GET /api/gm/items` (PIN'li, anlatıcı ekranı). İkisi de her eşyanın en olası üç
+yerini hesaplanmış olarak döner.
+
+Anlatıcı ekranındaki **Eşya kataloğu** paneli listeyi kategoriye/yere/ada göre
+süzer ve yeni eşya eklemeyi sağlar (`POST /api/gm/items`). **Eklenen eşya
+KALICIDIR**: `data/items.json`'a yazılır, yani oyunun durumuna değil içeriğine
+girer. Sunucu yeniden başlasa, `/api/reset` çekilse, yeni oyun kurulsa bile
+durur ve o andan itibaren her oyunda aranırken çıkabilir.
+
+Doğrulama sunucudadır (`ItemsService.add_item`) — bozuk bir kayıt tek bir oyunu
+değil hepsini etkilerdi: ad zorunlu ve tekil, kategori/nadirlik/yer türü
+katalogda tanımlı olmalı, ağırlıklar 0-100, ve eşyanın en az bir yerde ya da
+`taban` ile bulunabilir olması gerekir. Kimlik addan türetilir ve çakışırsa
+sayı eklenir.
 
 ## 2. Seçenek havuzu
 
