@@ -4,11 +4,14 @@ Anlatıcı her turun sonunda `options` yazar; bu servis onu OYNANABİLİR hale
 getirir:
 
   * sahnede olmayan/ölmüş karakterlerin listeleri düşer,
-  * eksik kalanlar (5'ten az) sahneye bağlı jenerik seçeneklerle tamamlanır —
+  * eksik kalanlar (3'ten az) sahneye bağlı jenerik seçeneklerle tamamlanır —
     oyuncu ekranı asla boş kalmaz, model bir turda unutsa bile oyun döner,
   * her listede EN AZ BİR düşük riskli seçenek bulunur: senaryo yalnız sunulan
     tercihlerle ilerlediği için (serbest hamle yok) oyuncuyu yalnızca ölümcül
     seçenekler arasına sıkıştırmak kabul edilemez,
+  * bulunulan mekan henüz taranmadıysa listede MUTLAKA bir "burayı tara"
+    seçeneği olur; mekan bir kez tarandıysa tarama seçeneklerinin hepsi
+    elenir (bir mekan bir kez taranır),
   * sunulan her seçenek havuz dosyasına (`data/options_pool.jsonl`) düşer,
   * anlatıcıya "son sunulanlar" özeti hazırlanır ki kendini tekrar etmesin.
 """
@@ -21,6 +24,8 @@ from app.models.options import (
     normalize_list,
 )
 from app.repositories.options_repo import OptionsPoolRepository
+from app.services.inventory_service import InventoryService, looks_like_firing
+from app.services.items_service import ItemsService, looks_like_searching
 
 # Eksik seçenekleri tamamlarken kullanılan kalıplar. Sahneye bağlanabilmesi
 # için {tehdit} ve {yer} yer tutucularını alırlar.
@@ -45,8 +50,10 @@ FALLBACK_TEMPLATES = [
 
 
 class OptionsService:
-    def __init__(self, pool_repo=None):
+    def __init__(self, pool_repo=None, inventory=None, items=None):
         self.pool = pool_repo or OptionsPoolRepository()
+        self.inventory = inventory or InventoryService()
+        self.items = items or ItemsService()
 
     # ------------------------------------------------------------- bakım
     def refresh(self, world, players, learning=None, turn=None):
@@ -56,6 +63,12 @@ class OptionsService:
         board.keep_only(players)
         for player in players:
             options = board.for_player(player)
+            # Önce karşılanamayanları ele, SONRA eksikleri tamamla: süzgeç
+            # listeyi OPTION_MIN'in altına düşürürse boşluk jeneriklerle kapanır.
+            options = self._affordable(world, player, options)
+            # Tarama tek seferliktir: taranmamış mekanda seçenek GARANTİ edilir,
+            # taranmış mekanda TAMAMEN kaldırılır.
+            options = self._search_gate(world, player, options)
             if len(options) < OPTION_MIN:
                 options = self._pad(world, player, options)
             options = self._ensure_safe_exit(world, player, options)
@@ -64,6 +77,66 @@ class OptionsService:
             day = world.day if isinstance(world.day, int) else None
             learning.record_offered(board, day=day, turn=turn)
         return board
+
+    def _affordable(self, world, player: str, options: list) -> list:
+        """Karakterin ödeyemeyeceği seçenekleri listeden çıkarır.
+
+        Mermisi bitene "ateş aç" seçeneği SUNULMAZ: tutarsızlık sonradan tamir
+        edilmez, doğmadan önlenir. İki durumda eleme yapılır:
+
+          * seçeneğin `spend` beyanı karakterin sayacından fazlaysa,
+          * seçenek ateş etmeyi içeriyor ama karakterde hiç cephane yoksa
+            (anlatıcı `spend` yazmayı unutmuş olabilir).
+
+        Soyut bedeller ("yarım saat", "kol gücü") ve sayaçla takip edilmeyen
+        eşyalar eleme sebebi değildir — yoksa liste boşalırdı.
+        """
+        person = (world.characters or {}).get(player)
+        if person is None or not options:
+            return options
+        cephane_var = self.inventory.has_ammo(person)
+        kalanlar = []
+        for option in options:
+            if not self.inventory.can_afford(person, option.spend):
+                continue
+            if not cephane_var and not option.spend and looks_like_firing(option.text):
+                continue
+            kalanlar.append(option)
+        if not kalanlar:
+            # Hepsi elendi: boş liste göndermektense elemeyi geri al ve
+            # `_pad`/`_ensure_safe_exit` devreye girsin.
+            return []
+        return kalanlar
+
+    def _search_gate(self, world, player: str, options: list) -> list:
+        """Mekan tarama seçeneğini açar ya da tamamen kapatır.
+
+        Kural: **bir mekan bir kez taranır.**
+
+          * Bulunulan yer henüz taranmadıysa listede MUTLAKA bir tarama
+            seçeneği olur — anlatıcı yazmadıysa sunucu ekler. Oyuncu serbest
+            hamle yazamadığı için, bu seçenek sunulmazsa mekanı arama imkanı
+            hiç doğmaz.
+          * Yer bir kez tarandıysa tarama seçeneklerinin HEPSİ elenir. Aynı
+            depoyu her tur yeniden yağmalamak oyunun ekonomisini bozuyordu ve
+            "burayı zaten aradık" cümlesi oyuncuya sürekli tekrar ettiriliyordu.
+        """
+        yer = self.items.place_of(world, player)
+        if not yer:
+            return options
+        if self.items.already_searched(world, yer):
+            return [o for o in options if not looks_like_searching(o.text)]
+        if any(looks_like_searching(o.text) for o in options):
+            return options
+        # Anlatıcı tarama seçeneği yazmamış: sunucu ekler ki mekan aranabilsin.
+        tamam = list(options[:OPTION_MAX - 1])
+        tamam.append(Option(
+            id="", category="hazırlık",
+            text=(f"{yer} içini baştan aşağı tara: dolapları, çekmeceleri, "
+                  "arka odaları ve kimsenin bakmadığı yerleri karıştır."),
+            cost="20-30 dakika + çıkardığın gürültü",
+        ))
+        return normalize_list(player, [o.to_dict() for o in tamam])
 
     def _pad(self, world, player: str, options: list) -> list:
         """Eksik seçenekleri sahneye bağlı jeneriklerle tamamlar."""
@@ -149,7 +222,11 @@ class OptionsService:
             f"`options` alanına şu karakterlerin HER BİRİ için ayrı liste yaz: {isimler}. "
             f"Her seçenekte `text` (somut hamle), `category` "
             "(güvenli/riskli/gizemli/körü körüne/kurnaz/insani/acımasız/hazırlık) "
-            "ve `cost` (somut bedel) olsun.\n"
+            "ve `cost` (somut bedel) olsun. Bedel SAYILABİLİR bir eşya "
+            "harcıyorsa (fişek, sargı, batarya, yakıt, su, konserve…) ayrıca "
+            '`spend` yaz: `"spend": {"9mm fişek": 2}`. Sunucu envanteri buradan '
+            "keser; yazmazsan miktar tutmaz. Karakterde o kadarı yoksa o "
+            "seçeneği HİÇ YAZMA (sunucu zaten eler).\n"
             f"1. **SAYI SABİT DEĞİL**: karakter başına EN AZ {OPTION_MIN}, EN ÇOK "
             f"{OPTION_MAX} seçenek — ama bu bir HEDEF değil bir ARALIKTIR. Sahne "
             "mantıken kaç farklı, gerçekten birbirinden ayrışan karara izin "

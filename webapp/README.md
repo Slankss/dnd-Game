@@ -25,13 +25,46 @@ sadece metin üretimi için) çalıştırır.
    sunulan seçeneklerle** ilerler — oyuncu kendi planını yazamaz. Anlatıcı her
    karaktere 5-10 kategorili seçenek bırakır (riskli / güvenli / gizemli /
    körü körüne …; her listede en az bir düşük riskli çıkış garanti edilir),
-   oyuncular kendi seçeneklerini seçer, sunucu **seçim
-   anında** 1-100 arası gerçek bir zar atar (kriptografik RNG) ve arayüz onu
-   animasyonla gösterir. Seçimler hafızada birikir; **herkes seçince** (ya da
-   tur süresi dolunca) hepsi TEK mesajda anlatıcıya gider. Süresi içinde
-   seçim yapmayan karakter için anlatıcı **ani sahne** yazar — dünya
-   beklemez. Hiçbir seçenek uymuyorsa tek çıkış "bu turda bekle"dir.
-   Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
+   oyuncular kendi seçeneklerini bir **popup**'tan seçer (seçince pencere
+   kapanır, karar panelde seçili kalır), sunucu **seçim anında** 1-100 arası
+   gerçek bir zar atar (kriptografik RNG) ve arayüz onu animasyonla gösterir.
+   **Turu oyuncu geçirir**: herkes seçse bile tur kendiliğinden ilerlemez,
+   "Turu Geç" düğmesine basılana kadar herkes kararını değiştirebilir (zar tur
+   başına bir kez atılır, karar değişince yenilenmez). Tur geçilince tüm
+   seçimler TEK mesajda anlatıcıya gider. Süresi içinde seçim yapmayan karakter
+   için anlatıcı **ani sahne** yazar — dünya beklemez. Hiçbir seçenek uymuyorsa
+   tek çıkış "bu turda bekle"dir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
+4. **Envanteri anlatıcı değil sunucu tutar.** Mermi, sargı, batarya gibi
+   sayılabilir kalemlerin miktarı `inventory_counts` altında sayı olarak durur.
+   Bir seçenek sayılabilir bir şey harcıyorsa bunu `spend` alanında beyan eder
+   (`{"9mm fişek": 2}`), sunucu turun çözümünde keser ve anlatıcıya ne
+   kesildiğini zorunlu bir blokla bildirir. Mermisi bitene "ateş aç" seçeneği
+   **hiç sunulmaz**; beyan unutulursa hamle metnindeki ateş izinden zar bandına
+   göre 1-3 fişek otomatik düşer. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1d.
+5. **Eşyalar iki türlüdür.** `data/items.json` içindeki **sabit katalog** her
+   oyunda aynıdır ve mekaniği vardır: 111 eşya, 11 kategori (yakın/menzilli
+   silah, mühimmat, giyim, yiyecek, içecek, tıbbi, alet, elektronik, yakıt,
+   takas). Bir yerde ne bulunacağını **yer türü** belirler — 9mm tabancanın
+   polis karakolunda ağırlığı 55, metro istasyonunda 2'dir. Oyuncular arama
+   seçeneği seçince sunucu katalogdan çeker (kaç kalem çıkacağını zar bandı
+   belirler). **Bir mekan bir kez taranır**: taranmamış yerde listede mutlaka
+   bir "burayı tara" seçeneği olur, o yer tarandıktan sonra arama seçeneği bir
+   daha sunulmaz (haritada "tarandı" rozeti görünür). Yeni malzeme ancak yeni
+   bir yere giderek bulunur. Yiyeceklerin
+   `doyum`, içeceklerin `susuzluk` değeri vardır ve göstergeyi sunucu düşürür.
+   **Hikaye eşyaları** (`story_items`) ise her oyunda farklıdır, anlatıcı
+   üretir ve *yalnızca anlatı etkisi* taşır — açlık doldurmaz, zar değiştirmez.
+   Katalog `GET /api/items` ile okunur; anlatıcı ekranındaki **Eşya kataloğu**
+   panelinden görülebilir ve **kalıcı olarak** genişletilebilir — oradan
+   eklenen eşya `data/items.json`'a yazılır ve bundan sonraki tüm oyunlarda
+   bulunabilir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1e.
+6. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
+   o turda çıkan gürültü, anlatıcının bildirdiği patlama/alarm ve vadesi gelen
+   senaryo beat'i `state["pending"]` kuyruğuna yazılır ve **bir sonraki turun
+   başında** uygulanır. Yani tur N'de tüfek patlatan grup bedelini tur N+1'de
+   öder; oyuncu kararıyla aynı anda ortaya çıkan bir sürprizle cezalandırılmaz.
+   Sahne metni de yalnızca yaşananları anlatır: karar seçenekleri metne değil,
+   yalnızca seçenek paneline yazılır (sunucu metindeki listeleri keser).
 - Oturum sürekliliği Claude Code'un kendi `--resume` mekanizmasıyla sağlanır —
   sunucu konuşma geçmişini kendi başına biriktirip API'ye yeniden göndermez;
   Claude Code bunu zaten kendi tarafında tutar.
@@ -49,10 +82,18 @@ sadece metin üretimi için) çalıştırır.
   `.claude/skills/kizil-cokus-anlatici/ogrenilenler.md` dosyasına da yazılır —
   yani öğrenilenler bir **Claude yeteneğine** dönüşür ve sunucunun dışında da
   yaşar. Ders üretimi kodda yapılır, ek model çağrısı yoktur.
-- **Harita** kenar çubuğunda canlı durur: grubun konumu, keşfedilen yerler,
-  tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu. Harita görsel
-  olarak da çizilir ve **bilinmeyen yer detaylı görünmez**: sadece adı duyulmuş
-  bir yerin türü/tehlikesi/notu oyuncuya hiç gönderilmez.
+- **Harita oyun başında bütünüyle üretilir**: 2-5 şehir, her birine bağlı
+  kategorili mekanlar (karakol, hastane, market, depo…), koordinatları,
+  aralarındaki **yollar** ve **mesafeler**. Büyüklüğü ayarlardan seçilir
+  (küçük/orta/büyük) ve oyun başladıktan sonra değişmez. İki yer arasında
+  birden fazla güzergâh olabilir — kısa ve açık anayol mu, uzun ve sessiz
+  patika mı; tıkalı yol yavaşlatır, çökük yol hiç geçilmez. Rota ve mesafe
+  sunucuda Dijkstra ile çözülür ve anlatıcıya zorunlu blok olarak verilir.
+  **Oyuncu haritanın tamamını görmez**: üretilen yerler "bilinmiyor" başlar ve
+  gövdeye hiç girmez; gidilen her yer, yol komşularını "duyuldu" yaparak
+  haritayı bir adım büyütür. **Anlatıcı ekranı (`/secrets`) haritanın tamamını
+  görür** — grubun duymadığı mekanlar orada silik, noktalı düğümler ve "grup
+  bilmiyor" rozetiyle çizilir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1f.
 - **Zombi tehdidi gerçek bir mekanik**: her turda sunucu karşılaşma zarı atar.
   Bölge yoğunluğu (metro ~82, orman ~30), grubun gürültüsü, gece, hava ve
   özellikle **yolculuk** ihtimali belirler — yolda geçen turların ~%75'inde
@@ -114,12 +155,33 @@ olursunuz. Bunu ayarlamak için `webapp/.env` dosyasında (yoksa
 `.env.example`'dan kopyalayın):
 
 ```
-CLAUDE_MODEL=sonnet   # varsayılan; 'opus' daha güçlü ama kotayı daha hızlı tüketir, 'haiku' en hafifi
-CLAUDE_EFFORT=medium  # low = daha hızlı/hafif, xhigh/max = daha derin ama yavaş
+CLAUDE_MODEL=sonnet      # varsayılan; 'opus' daha güçlü ama kotayı daha hızlı tüketir, 'haiku' en hafifi
+CLAUDE_EFFORT=medium     # sıradan turların seviyesi (low = hızlı/hafif, xhigh/max = derin ama yavaş)
+CLAUDE_EFFORT_KEY=high   # kritik turların seviyesi
+CLAUDE_TIMEOUT_SECONDS=300
 ```
 
-Bir tur genelde 20–90 saniye sürer (modelin "düşünme" derinliğine göre
-değişir) — bu play-by-post tarzı bir oyun için normal bir tempo.
+**Effort tura göre seçilir.** Aynı tur `high` ile 12 851, `medium` ile 6 932
+çıktı jetonu harcıyor ve görünen sahne yalnızca %3 uzuyor; aradaki gerçek fark
+üslupta değil defter tutmada (`high` sunucunun verdiği mesafeye sadık kaldı,
+`medium` kaydırdı). Bu yüzden üst seviyeye yalnız sürekliliğin pahalıya
+patladığı turlarda çıkılır:
+
+- açılış sahnesi ve karakter devralma,
+- bu turda fiilen bir **karşılaşma** oynanıyorsa,
+- vadesi gelen bir **senarist beat'i** sahneye giriyorsa,
+- gerilim **yüksek**se,
+- **ölüme yakın** karakter varsa (ağır/enfekte yara ya da 85+ gösterge),
+- süre dolup **ani sahne** yazılacaksa,
+- anlatıcı ekranından elle sahne/sürpriz yazdırıldığında.
+
+Kararı `models/effort.decide` verir; sinyallerin hepsi turun çözümünde
+sunucuda zaten vardır, modele sorulmaz. Seviye yükseldiğinde anlatıcı ekranına
+gerekçesiyle bir satır düşer. İkisini eşitlerseniz (`CLAUDE_EFFORT=high`)
+effort yine sabitlenir.
+
+Bir tur genelde 20–90 saniye sürer; kritik turlar `high` seviyede 180 saniyeyi
+aşabildiği için zaman aşımı 300 saniyedir.
 
 ## Ortak stok yoktur (klan/topluluk/sayım olmadan)
 

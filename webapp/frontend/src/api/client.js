@@ -341,6 +341,26 @@ export function gmPatch(pin, patch, opts = {}) {
   return istek('/api/gm/patch', { method: 'POST', body: { pin, patch }, signal: opts.signal })
 }
 
+/**
+ * GET /api/gm/items → `{surum, kategoriler, yer_turleri, esyalar}`
+ * Sabit eşya kataloğu — her oyunda aynı olan mekanik eşyalar.
+ * @param {string} pin
+ */
+export function gmItems(pin, opts = {}) {
+  return istek(`/api/gm/items?pin=${encodeURIComponent(pin)}`, { signal: opts.signal })
+}
+
+/**
+ * POST /api/gm/items → `{ok, item, catalog}`
+ * Kataloga KALICI eşya ekler: data/items.json'a yazılır ve o andan itibaren
+ * TÜM oyunlarda geçerli olur (oyunun durumuna değil, içeriğine girer).
+ * @param {string} pin
+ * @param {object} item {ad, kategori, nadirlik, taban, bulunur, …}
+ */
+export function gmAddItem(pin, item, opts = {}) {
+  return istek('/api/gm/items', { method: 'POST', body: { pin, item }, signal: opts.signal })
+}
+
 /* ==========================================================================
  * Senaryo / oyun dışa-içe aktarma
  * ========================================================================== */
@@ -420,6 +440,8 @@ export default {
   gmNote,
   gmLesson,
   gmPatch,
+  gmItems,
+  gmAddItem,
   exportScenario,
   importScenario,
   resetScenarioDefault,

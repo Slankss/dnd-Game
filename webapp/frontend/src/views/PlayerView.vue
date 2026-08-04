@@ -28,6 +28,7 @@ import OptionPool from '@/components/game/OptionPool.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
 import GridPanel from '@/components/game/GridPanel.vue'
 import ThreatPanel from '@/components/game/ThreatPanel.vue'
+import StoryItemList from '@/components/game/StoryItemList.vue'
 import StoryFeed from '@/components/game/StoryFeed.vue'
 import CharacterCard from '@/components/game/CharacterCard.vue'
 import CharacterModal from '@/components/game/CharacterModal.vue'
@@ -141,10 +142,6 @@ const havuzAcik = computed(
 
 const seciliSecim = computed(() => oyun.pickOf(seciliOyuncu.value))
 const seciliSecenekler = computed(() => oyun.optionsFor(seciliOyuncu.value))
-
-/** "Karar Ver" popup'ı — sahnenin ALTINDAKİ butonla açılır, istendiğinde
- * kapatılıp anlatıcı metni tekrar okunduktan sonra yeniden açılabilir. */
-const kararModalAcik = ref(false)
 
 async function secenekSec(secenek) {
   try {
@@ -403,7 +400,12 @@ function yeniSahneyeGit() {
         icon="map"
         :count="Object.keys(oyun.worldMap?.places || {}).length"
       >
-        <MapPanel :harita="oyun.worldMap" :tehdit="oyun.threat" :yukleniyor="ilkYukleme" />
+        <MapPanel
+          :harita="oyun.worldMap"
+          :tehdit="oyun.threat"
+          :taranan="oyun.searchedPlaces"
+          :yukleniyor="ilkYukleme"
+        />
       </SidebarSection>
 
       <SidebarSection
@@ -438,6 +440,15 @@ function yeniSahneyeGit() {
         :vurgu="kaynakVurgusu"
       >
         <ResourcePanel :kaynaklar="oyun.resources" :yukleniyor="ilkYukleme" />
+      </SidebarSection>
+
+      <SidebarSection
+        title="Hikaye eşyaları"
+        icon="local_offer"
+        :count="Object.keys(oyun.storyItems).length"
+        :default-open="false"
+      >
+        <StoryItemList :esyalar="oyun.storyItems" :yukleniyor="ilkYukleme" />
       </SidebarSection>
 
       <SidebarSection title="NPC'ler" icon="person" :count="npcSayisi" :default-open="false">
@@ -601,12 +612,12 @@ function yeniSahneyeGit() {
           :yukleniyor="oyun.loading"
           :bekleniyor="oyun.sending"
         >
-          <!-- Sahnenin ALTINDA: karakter seçimi + Karar Ver butonu. Seçenek
-               listesinin kendisi burada değil, ayrı bir popup'ta (aşağıdaki
-               OptionPool) — bu yüzden akış her zaman sade bir okuma alanı
-               kalır, oyuncu istediği kadar geri kapatıp tekrar okuyabilir. -->
+          <!-- Sahnenin ALTINDA: karakter seçimi + karar paneli. OptionPool
+               kendi "Kararını seç" düğmesini ve popup'ını kendi içinde
+               taşıyor — kapatmak seçimi iptal etmez, "Turu Geç"e kadar
+               kararını istediği kadar değiştirebilirsin. -->
           <template v-if="havuzAcik" #en-yeni-altina>
-            <div class="flex flex-col gap-2 rounded-panel border border-border bg-surface px-3 py-2.5">
+            <div class="flex flex-col gap-2">
               <div class="flex flex-wrap items-center gap-1.5">
                 <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
                 <button
@@ -631,37 +642,19 @@ function yeniSahneyeGit() {
                   <Icon v-if="oyun.pickOf(ad)" name="check" :size="13" class="text-ok" />
                 </button>
               </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <BaseButton
-                  :variant="seciliSecim ? 'subtle' : 'primary'"
-                  icon="playing_cards"
-                  :disabled="!seciliOyuncu"
-                  @click="kararModalAcik = true"
-                >
-                  {{ seciliSecim ? 'Kararını Gör' : 'Karar Ver' }}
-                </BaseButton>
-                <Icon v-if="seciliSecim" name="check_circle" :size="16" class="text-ok" />
-                <span v-else-if="seciliSecenekler.length" class="text-label text-faint">
-                  {{ seciliSecenekler.length }} seçenek bekliyor
-                </span>
-              </div>
+              <OptionPool
+                :oyuncu="seciliOyuncu"
+                :secenekler="seciliSecenekler"
+                :secim="seciliSecim"
+                :mesgul="oyun.picking"
+                :tur-acik="oyun.roundOpen"
+                :son-zar="oyun.lastRoll"
+                @sec="secenekSec"
+                @bekle="turdaBekle"
+              />
             </div>
           </template>
         </StoryFeed>
-
-        <!-- Karar Ver popup'ı: kapatmak seçimi iptal etmez, sadece gizler. -->
-        <OptionPool
-          v-if="havuzAcik"
-          v-model="kararModalAcik"
-          :oyuncu="seciliOyuncu"
-          :secenekler="seciliSecenekler"
-          :secim="seciliSecim"
-          :mesgul="oyun.picking"
-          :tur-acik="oyun.roundOpen"
-          :son-zar="oyun.lastRoll"
-          @sec="secenekSec"
-          @bekle="turdaBekle"
-        />
 
         <p class="flex items-center justify-center gap-3 pb-4 text-label text-faint">
           <span class="inline-flex items-center gap-1.5">
@@ -694,6 +687,7 @@ function yeniSahneyeGit() {
       v-model="ayarlarAcik"
       :mesgul="oyun.busy"
       :ayarlar="oyun.settings"
+      :basladi="oyun.phase === 'playing'"
       @sifirla="oyunuSifirla"
       @ayar-kaydet="ayarKaydet"
     />

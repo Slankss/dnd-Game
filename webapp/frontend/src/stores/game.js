@@ -111,6 +111,10 @@ export const useGameStore = defineStore('game', () => {
   const options = computed(() => worldState.value?.options ?? {})
   /** Zombi tehdidi: {noise, heat, density, last, travelling…} */
   const threat = computed(() => worldState.value?.threat ?? null)
+  /** Hikayeye özel eşyalar: {ad: {sahip, not, nerede, gun}} — mekaniği YOK */
+  const storyItems = computed(() => worldState.value?.story_items ?? {})
+  /** Taranmış mekanlar: {yer: {found}} — bir mekan bir kez taranır */
+  const searchedPlaces = computed(() => worldState.value?.searched ?? {})
 
   /** Bir karakterin bu turdaki seçenekleri */
   function optionsFor(ad) {
@@ -327,9 +331,14 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * POST /api/round/pick — SUNULAN seçeneklerden birini seç.
-   * Serbest hamle yoktur: sunucu yalnız `option_id` kabul eder.
-   * Zar SUNUCUDA atılır ve burada `lastRoll`'a düşer; zar animasyonunu
-   * OptionPool bu değeri izleyerek oynatır.
+   *
+   * Serbest hamle yoktur: sunucu yalnız `option_id` kabul eder. Seçim TURU
+   * İLERLETMEZ; oyuncu turu geçene kadar kararını değiştirebilir ve sunucu
+   * son seçimi işler.
+   *
+   * Zar SUNUCUDA ve tur başına BİR KEZ atılır; burada `lastRoll`'a düşer ve
+   * animasyonu OptionPool oynatır. Karar DEĞİŞTİRİLDİĞİNDE (`data.changed`)
+   * zar aynı kaldığı için animasyon yeniden tetiklenmez.
    * @param {string} player
    * @param {{optionId: string}} secim
    */
@@ -340,12 +349,14 @@ export const useGameStore = defineStore('game', () => {
       const data = await api.pickOption(player, secim)
       if (typeof data.version === 'number') version.value = data.version
       turuBenimse(data.round)
-      lastRoll.value = {
-        player,
-        roll: data.roll,
-        band: data.band,
-        category: data.pick?.category ?? 'serbest',
-        ts: Date.now(),
+      if (!data.changed) {
+        lastRoll.value = {
+          player,
+          roll: data.roll,
+          band: data.band,
+          category: data.pick?.category ?? 'serbest',
+          ts: Date.now(),
+        }
       }
       error.value = null
       return data
@@ -556,6 +567,8 @@ export const useGameStore = defineStore('game', () => {
     worldMap,
     options,
     threat,
+    storyItems,
+    searchedPlaces,
     optionsFor,
     pickOf,
     waiting,

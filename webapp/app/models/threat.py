@@ -194,6 +194,26 @@ class Encounter:
                 "chance": self.chance, "roll": self.roll,
                 "travelling": self.travelling, "sign": self.sign}
 
+    @classmethod
+    def from_dict(cls, data) -> "Encounter":
+        """Bekleyen yayın kuyruğundan geri okuma: bir turda atılan zar, sahne
+        bir sonraki turun başında yayınlanana kadar JSON olarak bekler."""
+        data = data if isinstance(data, dict) else {}
+        turler = data.get("types")
+        return cls(
+            var=bool(data.get("var")),
+            severity=str(data.get("severity") or "iz"),
+            count=int(data.get("count") or 0),
+            distance=int(data.get("distance") or 0),
+            types=turler if isinstance(turler, list) else [],
+            approach=str(data.get("approach") or ""),
+            noticed_first=bool(data.get("noticed_first", True)),
+            chance=int(data.get("chance") or 0),
+            roll=int(data.get("roll") or 0),
+            travelling=bool(data.get("travelling")),
+            sign=str(data.get("sign") or ""),
+        )
+
 
 # `DictModel` tabanı kullanılmıyor: tehdit kaydı tamamen sunucunun ürettiği bir
 # alandır, anlatıcının serbest yazdığı bir yapı değil. Sade bir dataclass hem

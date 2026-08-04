@@ -9,7 +9,7 @@
  * zorlukların `gm_notes` alanı, karakter sırları, anlatıcı defteri ve dünya
  * zarı. Oyuncu gövdesi (`/api/state`) bunların hiçbirini içermez.
  */
-import { ref, computed, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import AppShell from '@/components/layout/AppShell.vue'
 import SidebarSection from '@/components/layout/SidebarSection.vue'
 import Panel from '@/components/ui/Panel.vue'
@@ -34,6 +34,7 @@ import GmLogList from '@/components/gm/GmLogList.vue'
 import GmLogTabs from '@/components/gm/GmLogTabs.vue'
 import PlotPanel from '@/components/gm/PlotPanel.vue'
 import LearningPanel from '@/components/gm/LearningPanel.vue'
+import ItemCatalogPanel from '@/components/gm/ItemCatalogPanel.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
 import ScenarioTransfer from '@/components/gm/ScenarioTransfer.vue'
 import { jsonYaz, gerilimTonu, yayinOnEkiniAt } from '@/components/gm/gmYardimcilar'
@@ -182,6 +183,29 @@ async function yamaUygula(patch) {
 }
 
 /* ----------------------------------------------------------------- yaşam döngüsü */
+
+/** Katalog yoklamaya girmez: elle ya da kilit açılınca bir kez çekilir. */
+async function katalogYenile() {
+  try {
+    await gm.fetchCatalog({ force: true })
+  } catch {
+    /* hata store'da */
+  }
+}
+
+/** Kataloga kalıcı eşya ekle — dosyaya yazılır, tüm oyunlarda geçerli olur. */
+async function esyaEkle(esya) {
+  await gm.addItem(esya)
+}
+
+// Kilit açıldığında katalog bir kez çekilir.
+watch(
+  () => gm.unlocked,
+  (acik) => {
+    if (acik && !gm.catalog) katalogYenile()
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   gm.tryStoredPin()
@@ -334,6 +358,15 @@ onUnmounted(() => {
 
         <!-- Öğrenme defteri: oyunun kendi kendine çıkardığı dersler -->
         <LearningPanel :defter="gm.learning" :mesgul="gm.addingLesson" @ders-ekle="dersEkle" />
+
+        <!-- Sabit eşya kataloğu: her oyunda aynı; buradan eklenen KALICI -->
+        <ItemCatalogPanel
+          :katalog="gm.catalog"
+          :yukleniyor="gm.catalogLoading"
+          :ekleniyor="gm.addingItem"
+          @yenile="katalogYenile"
+          @ekle="esyaEkle"
+        />
 
         <!-- Anlatıcı defteri -->
         <Panel tone="gm" title="Anlatıcı defteri" icon="menu_book" collapsible>

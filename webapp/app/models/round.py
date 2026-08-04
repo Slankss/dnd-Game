@@ -36,11 +36,15 @@ class Pick:
     band: object = None
     custom: bool = False        # havuzdan mı, kendi yazdığı mı
     timeout: bool = False       # süre dolduğu için sunucunun açtığı boş seçim
+    # Seçeneğin beyan ettiği makine-okunur bedel ({"9mm fişek": 2}). Turun
+    # çözümünde sunucu bunu envanterden keser (bkz. services/inventory_service).
+    spend: dict = field(default_factory=dict)
     ts: float = 0.0
 
     @classmethod
     def from_dict(cls, data: dict) -> "Pick":
         data = data or {}
+        harcama = data.get("spend")
         return cls(
             player=str(data.get("player") or ""),
             option_id=str(data.get("option_id") or ""),
@@ -50,14 +54,18 @@ class Pick:
             band=data.get("band"),
             custom=bool(data.get("custom")),
             timeout=bool(data.get("timeout")),
+            spend=dict(harcama) if isinstance(harcama, dict) else {},
             ts=float(data.get("ts") or 0.0),
         )
 
     def to_dict(self) -> dict:
-        return {"player": self.player, "option_id": self.option_id,
-                "text": self.text, "category": self.category, "roll": self.roll,
-                "band": self.band, "custom": self.custom, "timeout": self.timeout,
-                "ts": self.ts}
+        out = {"player": self.player, "option_id": self.option_id,
+               "text": self.text, "category": self.category, "roll": self.roll,
+               "band": self.band, "custom": self.custom, "timeout": self.timeout,
+               "ts": self.ts}
+        if self.spend:
+            out["spend"] = dict(self.spend)
+        return out
 
 
 @dataclass

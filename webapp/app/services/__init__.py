@@ -14,10 +14,12 @@ Altı servis, altı akış:
   * `learning` — öğrenme defteri (her turda beslenir, yeteneğe yazılır)
   * `grid`     — sahnenin kare haritası (2D ızgara, O(1) hareket)
   * `threat`   — zombi tehdidi: her turda karşılaşma zarı, gürültü, yoğunluk
+  * `items`    — sabit eşya kataloğu: arama (yere göre), tüketim (doyum)
 """
 
 from app.services.gm_service import GmService
 from app.services.grid_service import GridService
+from app.services.items_service import ItemsService
 from app.services.learning_service import LearningService
 from app.services.options_service import OptionsService
 from app.services.round_service import RoundService
@@ -33,14 +35,16 @@ from app.services.worldgen_service import WorldGenService
 learning = LearningService()
 options = OptionsService()
 threat = ThreatService()
+items = ItemsService()
 turn = TurnService(learning=learning, options=options, threat=threat)
-rounds = RoundService(learning=learning, options=options, turn=turn, threat=threat)
+rounds = RoundService(learning=learning, options=options, turn=turn, threat=threat,
+                      items=items)
 game = GameService(learning=learning, options=options, rounds=rounds)
-gm = GmService()
+gm = GmService(items=items)
 grid = GridService()
 scenario = ScenarioService()
 
 __all__ = ["GameService", "TurnService", "RoundService", "GmService",
            "GridService", "ScenarioService", "LearningService", "OptionsService",
-           "ThreatService", "WorldGenService", "game", "turn", "rounds", "gm",
-           "grid", "scenario", "learning", "options", "threat"]
+           "ThreatService", "ItemsService", "WorldGenService", "game", "turn", "rounds",
+           "gm", "grid", "scenario", "learning", "options", "threat", "items"]

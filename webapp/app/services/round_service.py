@@ -1,18 +1,25 @@
-"""Tur bazlı akış: seçim topla → hepsi gelince tek seferde gönder.
+"""Tur bazlı akış: seçim topla → oyuncu turu geçince tek seferde gönder.
 
 Akış:
 
-  `ensure_open`  Anlatıcı sahneyi yazdıktan sonra tur açılır; süre sayacı
-                 (settings.turn_seconds) o anda başlar.
-  `pick`         Bir oyuncu SUNULAN SEÇENEKLERDEN birini seçer. Sunucu O ANDA
-                 gerçek bir d100 atar ve sonucu döndürür — arayüz zarı
-                 animasyonla gösterir, sonuç havuza not edilir. Seçim hafızada
-                 birikir, modele GİTMEZ.
+  `ensure_open`  Turun BAŞI. Bir önceki turda tetiklenen ne varsa (bekleyen
+                 sahne, tehdit devri, senarist direktifi) burada devreye girer;
+                 sonra tur açılır ve süre sayacı (settings.turn_seconds) başlar.
+  `pick`         Bir oyuncu SUNULAN SEÇENEKLERDEN birini seçer. Sunucu turun
+                 zarını atar (oyuncu başına BİR KEZ) ve sonucu döndürür —
+                 arayüz zarı animasyonla gösterir. Seçim hafızada birikir,
+                 modele GİTMEZ ve TUR İLERLEMEZ: oyuncu "Turu Geç"e basana
+                 kadar kararını istediği kadar değiştirebilir.
                  Serbest metin YOKTUR: hikaye yalnız sunulan tercihlerle
                  ilerler (bkz. `pick`'teki doğrulama).
-  `commit`       Herkes seçince (ya da süre dolunca / elle gönderilince) tüm
+  `commit`       "Turu Geç" (ya da süre dolduysa sayaç) turu kapatır: tüm
                  seçimler TEK mesajda anlatıcıya gider. Seçim yapmayanlar için
                  "ani sahne" istenir: dünya kararsızı beklemez.
+
+TUR GEÇİŞİ KURALI (bkz. `models/pending.py`): bir turda üretilen hiçbir şey o
+turda yayınlanmaz. Anlatıcının yazdığı sahne, o turda tetiklenen gürültü/olay
+ve vadesi gelen senarist beat'i kuyruğa yazılır; hepsi BİR SONRAKİ turun
+başında (`ensure_open` → `release`) devreye girer.
 
 Kilit: `state_repo.LOCK` — tur akışı seri kalsın diye model çağrısı da kilidin
 içindedir (mevcut TurnService davranışıyla aynı).
@@ -20,10 +27,15 @@ içindedir (mevcut TurnService davranışıyla aynı).
 
 import time
 
+from app import config
 from app.errors import ValidationError
 from app.models.dice import band_for, roll_d100, roll_world_dice
+from app.models.effort import critical_players
+from app.models.effort import decide as decide_effort
 from app.models.options import CATEGORIES, FREE_CATEGORY
+from app.models.pending import DIREKTIF, SAHNE, TEHDIT, birlestir
 from app.models.round import DONE, OPEN, SENDING, Pick, Round
+from app.models.threat import Encounter
 from app.models.text import DEFAULT_TURN_MINUTES
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
@@ -31,6 +43,12 @@ from app.repositories.state_repo import LOCK, StateRepository
 from app.serializers import public_round, public_world_state
 from app.services import prompt_builder, turn_prompts
 from app.services.director_service import DirectorService
+from app.services.inventory_service import InventoryService
+from app.services.items_service import (
+    ItemsService,
+    looks_like_eating,
+    looks_like_searching,
+)
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
@@ -50,7 +68,8 @@ class RoundService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, director=None, learning=None,
-                 options=None, turn=None, threat=None):
+                 options=None, turn=None, threat=None, inventory=None,
+                 items=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -60,6 +79,8 @@ class RoundService:
         self.learning = learning or LearningService()
         self.options = options or OptionsService()
         self.threat = threat or ThreatService()
+        self.inventory = inventory or InventoryService()
+        self.items = items or ItemsService()
         self.turn = turn or TurnService(
             state_repo=self.state_repo, scenario_repo=self.scenario_repo,
             narrator=self.narrator, game_log=self.game_log, gm_log=self.gm_log,
@@ -78,8 +99,16 @@ class RoundService:
         return bool(StateRepository.settings_of(state).get("round_mode", True))
 
     def ensure_open(self, state, world, force: bool = False) -> Round:
-        """Tur kapalıysa ve oyun seçim bekleyecek durumdaysa yeni tur açar.
-        Kaydı DEĞİŞTİRİRSE çağıranın state'i kaydetmesi gerekir."""
+        """TURUN BAŞI: bekleyenleri devreye alır, sonra yeni turu açar.
+
+        Tur kapalıysa ve oyun seçim bekleyecek durumdaysa çalışır. Kaydı
+        DEĞİŞTİRİRSE çağıranın state'i kaydetmesi gerekir.
+
+        Bir önceki turda yazılan sahne burada — turun başında — yayınlanır.
+        `commit` bunu hemen ardından çağırdığı için oyuncu bekleme hissetmez;
+        ama sunucu tur ortasında ölse bile sahne kaybolmaz, ilk yoklamada
+        (`/api/state` → `snapshot`) yayınlanır.
+        """
         round_ = StateRepository.round_of(state)
         if round_.status == OPEN and not force:
             return round_
@@ -90,13 +119,98 @@ class RoundService:
         if not self._round_mode(state):
             return round_
         seconds = int(StateRepository.settings_of(state).get("turn_seconds") or 0)
-        round_.open(round_.no + 1, seconds)
+        yeni_no = round_.no + 1
+        # Tur numarası önce yazılır (seçenek havuzu ve öğrenme defteri yeni
+        # turun numarasıyla kayıt tutsun), sonra bekleyen sahne yayınlanır.
+        # İkisi de aynı kilidin içinde: istemci arada bir hal göremez.
+        round_.open(yeni_no, seconds)
         StateRepository.store_round(state, round_)
+        self.release(state, world, yeni_no)
         return round_
+
+    # -------------------------------------------------------- turun başı
+    def release(self, state, world, round_no: int) -> list:
+        """Vadesi gelen bekleyen sahneleri yayınlar (kilit ÇAĞIRANDA).
+
+        Tehdit devri ve senarist direktifi burada TÜKETİLMEZ: onlar turun
+        çözümünde (`commit`) anlatıcıya girdi olarak verilir, kuyrukta o ana
+        kadar bekler.
+        """
+        kuyruk = StateRepository.pending_of(state)
+        sahneler = kuyruk.take(round_no, SAHNE)
+        if not sahneler:
+            return []
+        yayinlar = []
+        for item in sahneler:
+            try:
+                yayinlar.append(self._publish_scene(state, world, kuyruk, item))
+            except Exception as hata:  # noqa: BLE001 — oyun tıkanmasın
+                # Bozuk bir kayıt tüm masayı kilitlemesin: sahne düşer ama
+                # sessizce değil, akışta görünür bir not bırakır.
+                self.game_log.append({
+                    "id": self.state_repo.next_id(state),
+                    "role": "system",
+                    "text": "⚠️ Bir önceki turun sahnesi yayınlanamadı "
+                            f"({type(hata).__name__}). Tur devam ediyor.",
+                    "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+        StateRepository.store_pending(state, kuyruk)
+        StateRepository.store_world(state, world)
+        return yayinlar
+
+    def _publish_scene(self, state, world, kuyruk, item) -> dict:
+        """Bekleyen bir sahneyi yayınlar: dünyaya uygula, kayda düş, havuzu tazele.
+
+        Bu sahnede FİİLEN oynanan karşılaşma kuyrukta JSON olarak bekliyordu;
+        tehdit defterine burada işlenir. Sahnenin state-update'inde bildirilen
+        olaylar ise UYGULANMAZ — bir sonraki turun devrine yazılır.
+        """
+        veri = item.data or {}
+        # Bu turda anlatıcının bildirdiği olaylar: uygulanmaz, devre yazılır.
+        ertelenen = []
+        beat, plot = self.director.find(veri.get("beat_id"))
+        sonuc = self.turn.finish_turn(
+            state, world, veri.get("raw_text") or "",
+            beat=beat, plot=plot, plan_olaylari=veri.get("plan_events") or [],
+            picks=veri.get("picks") or [], kind=veri.get("kind") or "tur",
+            seconds=veri.get("seconds"),
+            threat_prep=self._rehydrate_threat(world, veri.get("threat")),
+            defer_events=ertelenen,
+        )
+        if ertelenen:
+            # Olayın etkisi (bölgeye ölü göçü) bir sonraki turun başında.
+            kuyruk.add(TEHDIT, item.due_round, {"events": ertelenen})
+        return sonuc
+
+    @staticmethod
+    def _rehydrate_threat(world, data) -> dict:
+        """Kuyrukta bekleyen karşılaşmayı canlı tehdit kaydına bağlar.
+
+        `threat` ve `graph` dünyadan yeniden okunur (JSON'a yazılamazlar);
+        zarın kendisi kuyrukta olduğu gibi durur."""
+        if not isinstance(data, dict) or not data:
+            return None
+        world_map = world.map
+        return {
+            "encounter": Encounter.from_dict(data.get("encounter")),
+            "threat": world.ensure_threat(),
+            "place": data.get("place") or "",
+            "density": data.get("density") or 0,
+            "graph": world_map.adjacency() if world_map is not None else {},
+            "note": data.get("note") or "",
+        }
 
     # ------------------------------------------------------------ seçim
     def pick(self, player, option_id=None, text=None) -> dict:
-        """Bir oyuncunun seçimi + o anda atılan zar.
+        """Bir oyuncunun seçimi + turun zarı.
+
+        Seçim TUR İLERLETMEZ ve KİLİTLEMEZ: oyuncu "Turu Geç"e basana kadar
+        kararını istediği kadar değiştirebilir, turda son seçtiği karar
+        işlenir.
+
+        Zar tur başına ve oyuncu başına BİR KEZ atılır: kararını değiştirmek
+        zar atmak değildir. Aksi halde beğenmediği zarı yeniden atmak için
+        seçenek değiştirmek serbest kalırdı.
 
         `text` KABUL EDİLMEZ: senaryo yalnız sunulan tercihlerle ilerler.
         Eski istemciler serbest metin gönderirse açık bir hatayla döner."""
@@ -125,11 +239,6 @@ class RoundService:
                 if player in (world.characters or {}) and not world.characters[player].is_alive:
                     raise ValidationError(f"{player} öldü — bu karakterle oynanamaz.")
                 raise ValidationError(f"{player} bu turda sahnede değil.")
-            if player in round_.picks:
-                raise ValidationError(
-                    f"{player} bu turda zaten seçim yaptı — zar atıldı, "
-                    "seçim değiştirilemez."
-                )
 
             if (text or "").strip():
                 raise ValidationError(SERBEST_METIN_HATASI)
@@ -140,8 +249,9 @@ class RoundService:
                 raise ValidationError("Seçenek bulunamadı — sahne yenilenmiş olabilir.")
             metin = secenek.text
 
-            # Zar SEÇİM ANINDA atılır: arayüz animasyonu gerçek sonucu gösterir.
-            roll = roll_d100()
+            # Zar TURUN zarıdır, seçeneğin değil: oyuncu bu turda ilk kez
+            # seçim yapıyorsa atılır, kararını değiştiriyorsa aynısı kalır.
+            roll = self._turn_roll(round_, player)
             pick = Pick(
                 player=player,
                 option_id=secenek.id,
@@ -150,8 +260,12 @@ class RoundService:
                 roll=roll,
                 band=band_for(roll),
                 custom=False,          # serbest metin yok: her seçim havuzdan
+                # Bedel seçimle birlikte taşınır: tur çözülürken envanterden
+                # kesilecek olan budur (havuz o sırada tazelenmiş olabilir).
+                spend=dict(secenek.spend or {}),
                 ts=time.time(),
             )
+            degisti = player in round_.picks
             round_.add(pick)
             StateRepository.store_round(state, round_)
             self.state_repo.save(state)
@@ -162,14 +276,26 @@ class RoundService:
             "pick": pick.to_dict(),
             "roll": roll,
             "band": pick.band,
+            # Karar değiştirildiyse arayüz zarı yeniden oynatmaz.
+            "changed": degisti,
             "round": public_round(state.get("round"), oyuncular),
             "all_picked": hazir,
             "version": int(state.get("version", 0)),
         }
 
+    @staticmethod
+    def _turn_roll(round_: Round, player: str) -> int:
+        """Oyuncunun bu turdaki zarı — bir kez atılır, karar değişse de kalır."""
+        onceki = round_.picks.get(player)
+        if onceki is not None and isinstance(onceki.roll, int):
+            return onceki.roll
+        return roll_d100()
+
     def cancel(self, player) -> dict:
-        """Seçimi geri alma YOKTUR (zar atıldı) — ama seçim yapmadan turdan
-        çekilmek mümkün: karakter bu turda bekler."""
+        """Bu turda bekle: hamle yapmadan turda kalmak.
+
+        Bu da bir seçimdir ve değiştirilebilir — oyuncu turu geçene kadar
+        fikrini değiştirip havuzdan bir seçenek seçebilir."""
         player = (player or "").strip()
         with LOCK:
             state = self.state_repo.load()
@@ -177,9 +303,7 @@ class RoundService:
             round_ = StateRepository.round_of(state)
             if not round_.is_open:
                 raise ValidationError("Açık tur yok.")
-            if player in round_.picks:
-                raise ValidationError("Zar atıldı — bu seçim geri alınamaz.")
-            roll = roll_d100()
+            roll = self._turn_roll(round_, player)
             round_.add(Pick(player=player, text="(bekliyor, hamle yapmıyor)",
                             category="güvenli", roll=roll, band=band_for(roll),
                             custom=False, ts=time.time()))
@@ -191,7 +315,13 @@ class RoundService:
 
     # ------------------------------------------------------------ gönderim
     def commit(self, reason: str = "elle", round_no=None) -> dict:
-        """Turu kapatır ve tüm seçimleri TEK mesajda anlatıcıya gönderir."""
+        """"Turu Geç" — turu kapatır ve tüm seçimleri TEK mesajda gönderir.
+
+        Turun çözümüne giren tehdit ve senarist direktifi BİR ÖNCEKİ turdan
+        devredilir; bu turda tetiklenenler (gürültü, yolculuk, anlatıcının
+        bildirdiği olaylar, vadesi gelen yeni beat) ve anlatıcının yazdığı
+        sahne kuyruğa yazılıp bir sonraki turun başında devreye girer.
+        """
         with LOCK:
             state = self.state_repo.load()
             if not state["started"]:
@@ -232,8 +362,73 @@ class RoundService:
                 if world.bring_to_scene(pick.player):
                     rejoined.append(pick.player)
 
-            beat, plot, plan_olaylari = self.director.take_due(world, world_entry)
+            # Bu turun çözümüne giren SÜRPRİZLER geçen turda tetiklendi.
+            kuyruk = StateRepository.pending_of(state)
+            devir = birlestir(kuyruk.take(round_.no, TEHDIT))
+            direktif_kaydi = kuyruk.take_one(round_.no, DIREKTIF)
+
+            # Senarist beat'i: geçen turda vadesi gelmişti, sahneye ŞİMDİ girer.
+            beat, plot = self.director.find(
+                (direktif_kaydi.data or {}).get("beat_id") if direktif_kaydi else None)
             directive = prompt_builder.directive_note(beat.to_dict()) if beat else None
+
+            # HARCAMA: seçeneklerin beyan ettiği bedel envanterden ŞİMDİ kesilir
+            # — sahne yazılmadan önce. Anlatıcı muhasebe tutmaz, ne kesildiğini
+            # zorunlu bir blok olarak öğrenir. `ws` bu yüzden kesimden SONRA
+            # kurulur: modele giden JSON güncel miktarları göstersin.
+            secimler = round_.ordered_picks(oyuncular)
+            harcamalar = self.inventory.apply(world, secimler)
+            harcama_notu = self.inventory.note(harcamalar)
+
+            # TÜKETİM: harcanan kalem katalogda bir yiyecek/içecekse açlık ve
+            # susuzluk göstergesi sunucuda düşer — "karnınız doydu" cümlesi
+            # göstergeyi değiştirmez.
+            tuketimler = {}
+            for kayit in harcamalar:
+                etki = self.items.consume(world, kayit["player"], kayit["spent"])
+                if etki:
+                    tuketimler[kayit["player"]] = etki
+            # Güvenlik ağı: hamle yemek/içmek diyorsa ama anlatıcı `spend`
+            # yazmayı unuttuysa envanterdeki en doyurucu kalem tüketilir —
+            # "karnını doyurdu" deyip açlık göstergesinin sabit kalması, mermi
+            # sorununun aynısıydı.
+            beyan_edenler = {k["player"] for k in harcamalar if k["spent"]}
+            for pick in secimler:
+                if pick.player in beyan_edenler or not looks_like_eating(pick.text):
+                    continue
+                etki = self.items.auto_consume(world, pick.player)
+                if etki:
+                    tuketimler.setdefault(pick.player, []).extend(etki)
+
+            # ARAMA: bir yeri arayan hamlede ne bulunacağını YER TÜRÜ ve
+            # katalog belirler (karakolda silah, metroda pek değil).
+            aramalar = []
+            for pick in secimler:
+                if looks_like_searching(pick.text):
+                    aramalar.append(
+                        self.items.search(world, pick.player, str(pick.band or "")))
+            arama_notu = self.items.search_note(aramalar)
+            for kayit in aramalar:
+                self.gm_log.append({
+                    "id": None, "role": "system", "ts": ts,
+                    "text": "🔎 " + (
+                        f"{kayit['player']} ({kayit['label']}) buldu: " + ", ".join(
+                            f"{b['adet']}× {b['ad']}" for b in kayit["found"])
+                        if kayit["found"] else
+                        f"{kayit['player']} aradı, bir şey çıkmadı ({kayit['place']})"),
+                })
+
+            for kayit in harcamalar:
+                if kayit["spent"] or kayit["dry"]:
+                    self.gm_log.append({
+                        "id": None, "role": "system", "ts": ts,
+                        "text": "🎒 " + (
+                            f"{kayit['player']} ateş edemedi (mermi yok)."
+                            if kayit["dry"] else
+                            f"{kayit['player']} harcadı: " + ", ".join(
+                                f"{adet}× {ad}" for ad, adet in kayit["spent"].items())
+                            + (" [otomatik]" if kayit["auto"] else "")),
+                    })
 
             ws = world.to_dict()
             scene_note = prompt_builder.presence_note(ws, returned, rejoined)
@@ -262,12 +457,12 @@ class RoundService:
             for name in bekleyenler:
                 satirlar.append(f"{name} — SEÇİM YAPMADI (süre doldu)")
 
-            # Zombi tehdidi: seçimlerin TAMAMINDAN gürültü/yolculuk okunur —
-            # biri ateş ediyorsa ya da grup yola çıktıysa bu turda karşılaşma
-            # ihtimali yükselir.
+            # Zombi tehdidi: bu turda oynanacak karşılaşma GEÇEN turun
+            # gürültüsünden ve olaylarından doğar. Bu turda çıkan ses aşağıda
+            # bir sonraki tura yazılır.
+            hamle_metni = " \n".join(p.text for p in round_.picks.values())
             threat_prep = self.threat.prepare(
-                world, action_text=" \n".join(p.text for p in round_.picks.values()),
-                minutes=DEFAULT_TURN_MINUTES)
+                world, carry=devir, minutes=DEFAULT_TURN_MINUTES)
 
             combined = "\n".join(satirlar)
             prompt = f"[TUR {round_.no} — TOPLU GÖNDERİM]\n{combined}"
@@ -276,12 +471,43 @@ class RoundService:
                 bekleyenler, StateRepository.settings_of(state), oyuncular,
                 self.options, round_.no, self.learning.note(),
                 threat_prep["note"],
+                "\n\n".join(x for x in (
+                    harcama_notu,
+                    self.items.consume_note(tuketimler),
+                    arama_notu,
+                ) if x),
+                "\n\n".join(x for x in (
+                    self.inventory.stock_note(world, oyuncular),
+                    self.items.catalog_note(world, oyuncular),
+                    self.items.story_note(world),
+                ) if x),
+                prompt_builder.distance_note(world.map, world.location),
             )
+
+            # EFFORT bu turda ne kadar düşünüleceğini belirler. Sıradan bir
+            # "kapıyı tut" turunda taban seviye yeter; sahnenin sürekliliğinin
+            # pahalıya patladığı turlarda üste çıkılır. Sinyallerin hepsi
+            # sunucuda ZATEN var — modele sormaya gerek yok.
+            karsilasma = (threat_prep or {}).get("encounter")
+            seviye, gerekce = decide_effort(
+                config.EFFORT, config.EFFORT_KEY,
+                encounter=bool(karsilasma is not None and karsilasma.var),
+                directive=bool(directive),
+                tension=world.tension,
+                critical=critical_players(ws),
+                waiting=bool(bekleyenler),
+            )
+            if gerekce:
+                self.gm_log.append({
+                    "id": None, "role": "system", "ts": ts,
+                    "text": f"🧠 Anlatıcı bu turda {seviye} seviyede düşünüyor "
+                            f"({gerekce}).",
+                })
 
             try:
                 result = self.narrator.ask(
                     prompt, extra_system, state["session_id"],
-                    self.scenario_repo.load()["scenario_text"])
+                    self.scenario_repo.load()["scenario_text"], effort=seviye)
             except Exception:
                 # Model çağrısı düştü: tur AÇIK kalsın, seçimler kaybolmasın.
                 round_.status = OPEN
@@ -307,30 +533,66 @@ class RoundService:
                        "roll": None, "band": None, "custom": False,
                        "timeout": True, "uzun": False} for name in bekleyenler]
 
-            sonuc = self.turn.finish_turn(
-                state, world, result.get("result", ""),
-                beat=beat, plot=plot, plan_olaylari=plan_olaylari,
-                picks=picks, kind="tur", seconds=round(time.time() - baslangic, 1),
-                threat_prep=threat_prep,
-            )
+            # SAHNE BU TURDA YAYINLANMAZ. Anlatıcının yanıtı, bu turda oynanan
+            # karşılaşmayla birlikte kuyruğa yazılır ve BİR SONRAKİ turun
+            # başında (`ensure_open` → `release`) yayınlanır.
+            sonraki = round_.no + 1
+            kuyruk.add(SAHNE, sonraki, {
+                "round_no": round_.no,
+                "raw_text": result.get("result", ""),
+                "picks": picks,
+                "kind": "tur",
+                "seconds": round(time.time() - baslangic, 1),
+                "beat_id": beat.id if beat else "",
+                # Plan muhasebesi (çürüyen beat notları) aşağıda doğrudan
+                # anlatıcı günlüğüne yazılır; sahneyle birlikte taşınmaz.
+                "plan_events": [],
+                "threat": {
+                    "encounter": threat_prep["encounter"].to_dict(),
+                    "place": threat_prep.get("place") or "",
+                    "density": threat_prep.get("density") or 0,
+                    "note": threat_prep.get("note") or "",
+                },
+            })
+            # Bu turda tetiklenenler de bir sonraki tura: çıkardığın ses ve
+            # yola çıkma niyetin ŞİMDİ değil, SONRAKİ turda ölü çeker.
+            kuyruk.add(TEHDIT, sonraki,
+                       self.threat.read_inputs(hamle_metni))
+            # Vadesi gelen yeni beat de bir sonraki turun sahnesini şekillendirir.
+            yeni_beat, _plot, yeni_plan_olaylari = self.director.take_due(
+                world, world_entry)
+            if yeni_beat is not None:
+                kuyruk.add(DIREKTIF, sonraki, {"beat_id": yeni_beat.id})
+            for olay in yeni_plan_olaylari:
+                self.gm_log.append({"id": None, "role": "plot", "text": olay,
+                                    "ts": ts})
 
-            # Yeni tur: seçenekler tazelendi, süre sayacı sıfırlanır.
             round_.status = DONE
             StateRepository.store_round(state, round_)
+            StateRepository.store_pending(state, kuyruk)
             StateRepository.store_world(state, world)
+            # Turun başı: bekleyen sahne burada yayınlanır, sonra yeni tur açılır.
             self.ensure_open(state, world)
             self.state_repo.save(state)
             acik_tur = public_round(state.get("round"), self.actors(world))
+            gm_entry = self._last_scene_entry()
 
         return {
             "ok": True,
             "user_entries": user_entries,
-            "gm_entry": sonuc["gm_entry"],
+            "gm_entry": gm_entry,
             "world_state": public_world_state(state["world_state"]),
             "round": acik_tur,
             "timeouts": bekleyenler,
             "version": int(state.get("version", 0)),
         }
+
+    def _last_scene_entry(self):
+        """Yayınlanan son anlatıcı kaydı — istemci yoklamayı beklemesin."""
+        for entry in reversed(self.game_log.read()):
+            if entry.get("role") == "assistant":
+                return entry
+        return None
 
     # ------------------------------------------------------------- durum
     def snapshot_round(self, state, world) -> dict:

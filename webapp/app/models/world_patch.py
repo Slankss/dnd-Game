@@ -21,9 +21,15 @@ TENSION_LEVELS = ("düşük", "orta", "yüksek")
 class WorldPatchMixin:
     """`WorldState`'in yama tarafı. Tek başına kullanılmaz."""
 
-    def merge_patch(self, patch: dict, vitals_touched: dict = None) -> None:
+    def merge_patch(self, patch: dict, vitals_touched: dict = None,
+                    defer_events: list = None) -> None:
         """`vitals_touched` verilirse, anlatıcının bu turda elle yazdığı
-        gösterge alanları {isim: {alan}} olarak oraya biriktirilir."""
+        gösterge alanları {isim: {alan}} olarak oraya biriktirilir.
+
+        `defer_events` verilirse anlatıcının bildirdiği tehdit OLAYLARI
+        (patlama/alarm/yangın) burada UYGULANMAZ, o listeye biriktirilir:
+        bir olayın etkisi tetiklendiği turda değil, bir sonraki turun başında
+        devreye girer (bkz. `models/pending.py`)."""
         # Model gün sayısını bazen "98" diye string yazıyor; eskiden bu sessizce
         # yok sayılıp başlıktaki gün sayacı hiç ilerlemiyordu.
         day = patch.get("day")
@@ -76,7 +82,11 @@ class WorldPatchMixin:
 
         # Tehdit: anlatıcının bildirdiği gürültü ve yoğunluk değişimi.
         if isinstance(patch.get("threat"), dict):
-            self._merge_threat(patch["threat"])
+            self._merge_threat(patch["threat"], defer_events)
+
+        # Hikaye eşyaları: anlatıcının ürettiği, MEKANİĞİ OLMAYAN eşyalar.
+        if isinstance(patch.get("story_items"), dict):
+            self._merge_story_items(patch["story_items"])
 
         if "zombie_sightings_add" in patch and isinstance(patch["zombie_sightings_add"], list):
             seen = self.ensure_sightings()
@@ -210,7 +220,7 @@ class WorldPatchMixin:
                 continue
             move(grid, varlik, kayit.get("direction"))
 
-    def _merge_threat(self, patch: dict) -> None:
+    def _merge_threat(self, patch: dict, defer_events: list = None) -> None:
         """`threat` yaması — anlatıcı yalnız ÜÇ şeyi bildirir:
 
           {"noise_add": 25}                      bu turda çıkan gürültü
@@ -242,6 +252,15 @@ class WorldPatchMixin:
         if isinstance(olaylar, dict):
             olaylar = [olaylar]
         if isinstance(olaylar, list):
+            # Ertelenen olaylar: tetiklendikleri turda göç yapılmaz, kayıt
+            # kuyruğa yazılır ve bir sonraki turun başında uygulanır.
+            if defer_events is not None:
+                for olay in olaylar:
+                    if isinstance(olay, dict):
+                        yer = str(olay.get("place") or self.location or "").strip()
+                        if yer:
+                            defer_events.append(dict(olay, place=yer))
+                return
             graf = self.ensure_map().adjacency()
             for olay in olaylar:
                 if not isinstance(olay, dict):
@@ -258,6 +277,45 @@ class WorldPatchMixin:
                     # Olayın türü kayıtta dursun: arayüz "patlama sonrası
                     # buraya çekildiler" diye gösterebilsin.
                     kayit["type"] = tur
+
+    def _merge_story_items(self, patch: dict) -> None:
+        """`story_items` yaması — hikayeye özel eşyalar.
+
+            {"Sarı zarf": {"sahip": "Okan", "not": "Mühürlü; kimden geldiği belirsiz."}}
+
+        Bu eşyaların HİÇBİR mekanik etkisi yoktur: açlık doldurmaz, zar
+        değiştirmez, mermi olmaz. Yalnızca sahnede anlamları vardır ve
+        süreklilik için kayıtta dururlar. Sahibi belliyse envanterine de
+        yazılır ki oyuncu ekranda görsün.
+
+        `null` yazmak eşyayı defterden düşürür (hikayede yok olduysa).
+        """
+        defter = self.ensure_story_items()
+        for ad, bilgi in patch.items():
+            if not isinstance(ad, str) or not ad.strip():
+                continue
+            ad = ad.strip()
+            anahtar = canonical_name(defter, ad) or ad
+            if bilgi is None:
+                defter.pop(anahtar, None)
+                continue
+            if isinstance(bilgi, str):
+                bilgi = {"not": bilgi}
+            if not isinstance(bilgi, dict):
+                continue
+            kayit = defter.setdefault(anahtar, {})
+            for alan in ("sahip", "not", "gun", "nerede"):
+                if alan in bilgi and bilgi[alan] is not None:
+                    kayit[alan] = bilgi[alan]
+            kayit.setdefault("gun", self.day if isinstance(self.day, int) else None)
+            # Sahibi varsa envanterinde de görünsün — ama SAYAÇ AÇILMAZ:
+            # hikaye eşyası miktarla takip edilmez, tektir.
+            sahip = kayit.get("sahip")
+            if isinstance(sahip, str) and sahip.strip():
+                kisi = (self.characters or {}).get(
+                    canonical_name(self.characters or {}, sahip) or "")
+                if kisi is not None:
+                    kisi.merge_inventory({"inventory_add": [anahtar]})
 
     def _merge_narrator(self, npatch: dict) -> None:
         narrator = self.ensure_narrator()

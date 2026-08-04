@@ -11,6 +11,7 @@ import tempfile
 
 from app import config
 from app.errors import NarratorError, NarratorTimeout
+from app.models.effort import canon_effort
 
 
 class NarratorClient:
@@ -35,9 +36,13 @@ class NarratorClient:
         return path
 
     def ask(self, prompt: str, extra_system: str, session_id,
-            scenario_text: str = None) -> dict:
+            scenario_text: str = None, effort: str = None) -> dict:
         """`session_id` None ise yeni oturum açılır (senaryo sistem promptu
         olarak verilir); değilse mevcut oturum --resume ile sürdürülür.
+
+        `effort` verilirse o TEK çağrı için geçerlidir; verilmezse istemcinin
+        taban seviyesi kullanılır. Seviye tura göre değişir çünkü üst seviyenin
+        karşılığı yalnız kritik turlarda var (bkz. models/effort).
 
         Uzun metinler komut satırından DEĞİL, geçici dosyalardan geçer
         (`--system-prompt-file` / `--append-system-prompt-file`). Windows'ta
@@ -56,7 +61,7 @@ class NarratorClient:
                 "--tools", "",
                 "--output-format", "json",
                 "--model", self.model,
-                "--effort", self.effort,
+                "--effort", canon_effort(effort, self.effort),
                 "--append-system-prompt-file", append_path,
             ]
             if session_id is None:

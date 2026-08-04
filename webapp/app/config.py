@@ -40,8 +40,15 @@ SKILL_LEARNED_FILE = SKILL_DIR / "ogrenilenler.md"
 # hesabınızın kimlik bilgileriyle çalıştırır — ayrı bir API anahtarı gerekmez.
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 MODEL = os.environ.get("CLAUDE_MODEL", "sonnet")
+# Effort TURA GÖRE seçilir (bkz. models/effort). `EFFORT` sıradan turların
+# taban seviyesi, `EFFORT_KEY` ise sahnenin sürekliliğinin pahalıya patladığı
+# turlarda (karşılaşma, senarist beat'i, yüksek gerilim, ölüme yakın karakter,
+# açılış) çıkılan seviyedir. İkisini eşitlerseniz effort yine sabitlenir.
 EFFORT = os.environ.get("CLAUDE_EFFORT", "medium")
-CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "180"))
+EFFORT_KEY = os.environ.get("CLAUDE_EFFORT_KEY", "high")
+# Ölçüm: aynı tur `high` ile 186.9 saniye sürdü — eski 180 sn'lik tavan
+# kritik turları zaman aşımına düşürüyordu.
+CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "300"))
 
 # /secrets ekranına (anlatıcı ekranı) girişi kabaca kilitler — gerçek bir
 # güvenlik önlemi değil, aynı ağdaki oyuncuların yanlışlıkla spoiler
@@ -55,6 +62,10 @@ PORT = int(os.environ.get("PORT", "5050"))
 # `state["settings"]` altında saklanır (bkz. StateRepository.default_state).
 # Bir turda oyunculara verilen süre (saniye). 0 = süre yok.
 TURN_SECONDS = int(os.environ.get("TURN_SECONDS", "180"))
+
+# Harita büyüklüğü: küçük | orta | büyük (bkz. models/mapgen.MAP_SIZES).
+# Oyun başında üretilecek şehir ve mekan sayısını belirler.
+MAP_SIZE = os.environ.get("MAP_SIZE", "orta")
 # Küfür/argo dozu: "kapalı" | "hafif" | "sert"
 PROFANITY = os.environ.get("PROFANITY", "hafif")
 # Karakter başına sunulacak seçenek sayısı (senaryo kuralı: en az 3, en çok 8,

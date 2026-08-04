@@ -1,12 +1,16 @@
 <script setup>
 /**
- * Tur çubuğu — kim seçti, ne kadar süre kaldı, tur ne zaman gönderilecek.
+ * Tur çubuğu — kim seçti, ne kadar süre kaldı, turu kim geçiriyor.
  *
- * Süre sunucunun saatine göre işler: store `clockSkew` ile istemci saatinin
- * farkını ölçüyor, burada sadece geri sayılıyor. Süre bittiğinde tur
- * KENDİLİĞİNDEN gönderilir (`sure` gerekçesiyle) — seçim yapmayanlar için
- * anlatıcı "ani sahne" yazar. Aynı turu iki tarayıcı birden göndermeye
- * kalkarsa sunucu ikincisini `skipped` ile geri çevirir.
+ * TURU OYUNCU GEÇİRİR: herkes seçim yapsa bile tur KENDİLİĞİNDEN ilerlemez,
+ * "Turu Geç" düğmesine basılması gerekir. Bu sayede masa kararlarını
+ * konuşabilir ve isteyen kararını son ana kadar değiştirebilir.
+ *
+ * Tek istisna SÜREdir: süre sunucunun saatine göre işler (store `clockSkew`
+ * ile istemci saatinin farkını ölçüyor, burada sadece geri sayılıyor) ve süre
+ * bittiğinde tur kendiliğinden gönderilir (`sure` gerekçesiyle) — seçim
+ * yapmayanlar için anlatıcı "ani sahne" yazar. Aynı turu iki tarayıcı birden
+ * göndermeye kalkarsa sunucu ikincisini `skipped` ile geri çevirir.
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Icon from '../ui/Icon.vue'
@@ -22,8 +26,9 @@ const props = defineProps({
   kayma: { type: Number, default: 0 },
   /** Tur gönderimi uçuşta mı */
   gonderiliyor: { type: Boolean, default: false },
-  /** Süre dolunca otomatik gönderilsin mi (tek sekme yeter, hepsi denerse
-      sunucu fazlasını eler) */
+  /** SÜRE DOLUNCA otomatik gönderilsin mi (tek sekme yeter, hepsi denerse
+      sunucu fazlasını eler). Herkes seçtiğinde tur ASLA kendiliğinden
+      gönderilmez — o karar oyuncunun. */
   otomatikGonder: { type: Boolean, default: true },
 })
 
@@ -72,7 +77,7 @@ const oran = computed(() => {
   return Math.round((seciler.value.length / kadro.value.length) * 100)
 })
 
-/* --- otomatik gönderim: herkes seçtiğinde ya da süre dolduğunda --- */
+/* --- otomatik gönderim: YALNIZ süre dolduğunda --- */
 let gonderildi = null
 
 function gonder(neden) {
@@ -82,12 +87,12 @@ function gonder(neden) {
   emit('gonder', neden)
 }
 
-// Seçim SAYISI da izlenir: süre çoktan dolmuşken gelen ilk seçim de turu
-// göndermeli (yoksa tur, kimse "gönder"e basmadıkça askıda kalıyordu).
-watch([hepsiSecti, sureDoldu, acik, () => seciler.value.length], () => {
+// Herkes seçtiğinde tur GÖNDERİLMEZ: turu oyuncu geçirir. Süre dolduğunda
+// gönderilir; seçim SAYISI da izlenir, çünkü süre çoktan dolmuşken gelen ilk
+// seçim de turu göndermeli (yoksa tur askıda kalıyordu).
+watch([sureDoldu, acik, () => seciler.value.length], () => {
   if (!props.otomatikGonder || !acik.value) return
-  if (hepsiSecti.value) gonder('elle')
-  else if (sureDoldu.value && seciler.value.length) gonder('sure')
+  if (sureDoldu.value && seciler.value.length) gonder('sure')
 })
 
 // Yeni tur açıldığında otomatik gönderim kilidi sıfırlanır.
@@ -121,14 +126,19 @@ watch(
         v-if="acik"
         class="ml-auto"
         size="sm"
-        variant="primary"
-        icon="send"
+        :variant="hepsiSecti ? 'primary' : 'subtle'"
+        icon="skip_next"
         :disabled="!seciler.length"
         :loading="gonderiliyor"
-        loading-text="Tur gönderiliyor…"
+        loading-text="Tur işleniyor…"
+        :title="
+          seciler.length
+            ? 'Seçimleri anlatıcıya gönder ve bir sonraki tura geç'
+            : 'Önce en az bir karar seçilmeli'
+        "
         @click="gonder('elle')"
       >
-        Turu şimdi gönder
+        Turu Geç
       </BaseButton>
       <Badge v-else-if="gonderiliyor" tone="accent" icon="progress_activity" size="sm">
         anlatıcı yazıyor
@@ -175,6 +185,11 @@ watch(
     <p v-if="sureDoldu && bekleyenler.length" class="mt-2 flex items-center gap-1.5 text-label text-warn">
       <Icon name="bolt" :size="13" />
       Süre doldu — seçim yapmayanlar için ani sahne yazılacak.
+    </p>
+    <p v-else-if="acik && hepsiSecti" class="mt-2 flex items-center gap-1.5 text-label text-ok">
+      <Icon name="check_circle" :size="13" />
+      Herkes kararını verdi. Tur, siz "Turu Geç"e basana kadar ilerlemez —
+      dilerseniz kararınızı hâlâ değiştirebilirsiniz.
     </p>
   </section>
 </template>

@@ -53,6 +53,22 @@ class DirectorService:
             return None, plot, olaylar
         return due[0], plot, olaylar
 
+    def find(self, beat_id):
+        """Kuyrukta bekleyen bir beat'i id'siyle geri bulur.
+
+        Vadesi gelen beat bir sonraki turun sahnesini şekillendirir; arada
+        planı diske yazan başka bir tur geçmiş olabilir, bu yüzden beat
+        nesnesi taşınmaz, id'siyle yeniden okunur. Beat bu arada çürüdüyse
+        ya da GM iptal ettiyse (None, plot) döner — direktif düşer.
+        """
+        plot = self.load()
+        if not beat_id:
+            return None, plot
+        for beat in plot.pending_beats():
+            if beat.id == beat_id:
+                return beat, plot
+        return None, plot
+
     def mark_fired(self, beat, plot, world) -> str:
         """Tur bittikten sonra: beat ateşlendi say, `on_fire` etkisini uygula.
 

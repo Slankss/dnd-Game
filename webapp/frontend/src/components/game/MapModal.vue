@@ -65,8 +65,18 @@ const gocMetni = computed(() => {
   return ''
 })
 
-const DUZEY_TONU = { duyuldu: 'muted', görüldü: 'warn', keşfedildi: 'ok' }
-const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'explore' }
+const DUZEY_TONU = {
+  bilinmiyor: 'gm',
+  duyuldu: 'muted',
+  görüldü: 'warn',
+  keşfedildi: 'ok',
+}
+const DUZEY_IKONU = {
+  bilinmiyor: 'visibility_off',
+  duyuldu: 'help',
+  görüldü: 'visibility',
+  keşfedildi: 'explore',
+}
 </script>
 
 <template>
@@ -105,6 +115,10 @@ const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'e
           <Icon name="help" :size="13" />
           duyuldu — sadece adı biliniyor
         </span>
+        <span v-if="gm" class="inline-flex items-center gap-1.5">
+          <Icon name="visibility_off" :size="13" class="text-gm" />
+          grup bilmiyor — yalnız anlatıcı görür
+        </span>
         <span class="inline-flex items-center gap-1.5">
           <span class="h-px w-5 border-t border-dashed border-border" aria-hidden="true" />
           kesin olmayan yol
@@ -134,7 +148,16 @@ const DUZEY_IKONU = { duyuldu: 'help', görüldü: 'visibility', keşfedildi: 'e
           </Badge>
         </div>
 
-        <p v-if="duzey === 'duyuldu'" class="mt-1.5 flex items-start gap-1.5 text-meta text-faint">
+        <p
+          v-if="duzey === 'bilinmiyor'"
+          class="mt-1.5 flex items-start gap-1.5 text-meta text-gm"
+        >
+          <Icon name="visibility_off" :size="15" class="mt-0.5 shrink-0" />
+          Grup burayı henüz DUYMADI. Dünyada var, haritası ve mesafeleri hazır — ama
+          oyuncu ekranında hiç görünmüyor. Sahnede adı geçtiği anda "duyuldu"ya yükselir.
+        </p>
+
+        <p v-else-if="duzey === 'duyuldu'" class="mt-1.5 flex items-start gap-1.5 text-meta text-faint">
           <Icon name="help" :size="15" class="mt-0.5 shrink-0" />
           Bu yerin sadece adı duyuldu — nasıl bir yer olduğu, kimin elinde olduğu ve ne kadar
           tehlikeli olduğu bilinmiyor. Yaklaşıp bakmak ya da birinden bilgi almak gerek.

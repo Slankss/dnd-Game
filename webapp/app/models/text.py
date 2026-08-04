@@ -77,6 +77,96 @@ def elapsed_minutes(before: dict, after: dict) -> int:
     return min(minutes, 24 * 60)
 
 
+# --------------------------------------------------------------------------
+# Anlatıcı metninden seçenek listesini ayıklama.
+#
+# Kural: anlatıcı metni YALNIZCA yaşananları ve sonuçlarını anlatır. Karar
+# seçenekleri sahne metninde DEĞİL, yalnızca seçenek havuzunda gösterilir —
+# aynı seçenekleri iki yerde okumak sahneyi bozuyor ve metindeki liste ile
+# havuzdaki liste birbirini tutmuyordu. Kural prompt'ta da yazılı, ama model
+# alışkanlıkla yine yazabildiği için sunucu keser (iki katmanlı savunma).
+
+#: "SEÇENEKLER", "**SEÇENEKLER:**", "## Seçenekler" gibi başlıklar.
+OPTION_HEADERS = {
+    "secenekler", "seceneklerin", "secenekleriniz", "secenek listesi",
+    "karar secenekleri", "kararlar", "secimler", "ne yaparsin",
+    "ne yapacaksin", "ne yapacaksiniz",
+}
+
+#: "A) ...", "1. ...", "- B) ..." gibi madde madde yazılmış seçenek satırları.
+OPTION_LINE_RE = re.compile(
+    r"^\s*(?:[-*•]\s*)?(?:[A-ZÇĞİÖŞÜ]|\d{1,2})\s*[).]\s+\S")
+
+#: Markdown süsü ve boşluk.
+_DECOR_RE = re.compile(r"[#*_`>]+")
+
+
+def _plain_line(line: str) -> str:
+    return re.sub(r"\s+", " ", _DECOR_RE.sub(" ", line or "")).strip()
+
+
+def strip_option_block(text: str) -> str:
+    """Sahne metninin sonundaki karar/seçenek listesini keser.
+
+    Kesilen: "SEÇENEKLER:" benzeri bir başlıktan sonrası, metnin sonundaki
+    madde madde (A)/B)/1.) yazılmış seçenek satırları ve "(Oyuncular sadece
+    sunulan seçeneklerden…)" gibi kapanış parantezleri.
+
+    Metnin tamamı seçenekten ibaretse hiçbir şey kesilmez: boş sahne
+    yayınlamaktansa kuralı ihlal eden sahneyi yayınlamak yeğdir.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return text or ""
+
+    satirlar = text.rstrip().split("\n")
+
+    # 1) Seçenek başlığı — SONUNCUSUNDAN itibaren her şey gider.
+    kesim = None
+    for i, satir in enumerate(satirlar):
+        sade = _plain_line(satir)
+        if not sade:
+            continue
+        bas = norm_tr(sade.split(":", 1)[0]).rstrip("?!. ")
+        if bas in OPTION_HEADERS:
+            kesim = i
+    if kesim is not None:
+        satirlar = satirlar[:kesim]
+
+    # 2) Kuyrukta kalan madde madde seçenekler (başlıksız yazılmış olabilir).
+    #    En az iki tanesi arka arkaya olmalı: tek bir "1." satırı düz anlatı
+    #    olabilir, iki tanesi listedir.
+    son = len(satirlar)
+    sayi = 0
+    i = len(satirlar) - 1
+    while i >= 0:
+        sade = satirlar[i].strip()
+        if not sade:
+            i -= 1
+            continue
+        if OPTION_LINE_RE.match(satirlar[i]):
+            sayi += 1
+            son = i
+            i -= 1
+            continue
+        break
+    if sayi >= 2:
+        satirlar = satirlar[:son]
+
+    # 3) "(Oyuncular sadece sunulan seçeneklerden birini seçebilir.)" kuyruğu.
+    while satirlar:
+        sade = _plain_line(satirlar[-1])
+        if not sade:
+            satirlar.pop()
+            continue
+        if sade.startswith("(") and "secenek" in norm_tr(sade):
+            satirlar.pop()
+            continue
+        break
+
+    kalan = "\n".join(satirlar).rstrip()
+    return kalan if kalan.strip() else text
+
+
 def as_str_list(value) -> list:
     """Model tek eşyayı string, birden fazlasını liste olarak yazabiliyor —
     ikisini de listeye normalize eder."""

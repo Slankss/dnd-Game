@@ -11,9 +11,12 @@ import time
 
 from scenario import CHARACTER_TEMPLATE, GROUP_DISPLAY_NAME, GROUP_LABEL
 
+from app import config
 from app.errors import ValidationError
 from app.models.learning import Learning
+from app.models.mapgen import MAP_SIZES
 from app.models.person import SHEET_FIELDS, Person, build_background, build_traits
+from app.models.text import strip_option_block
 from app.repositories import log_repo
 from app.repositories.scenario_repo import ScenarioRepository
 from app.repositories.state_repo import LOCK, StateRepository
@@ -164,7 +167,16 @@ class GameService:
             # de öğrenme defterine not edilir ki bir sonraki oyun tekrar etmesin.
             uretilen = self.worldgen.apply(world, self.worldgen.generate(
                 seed_factions=(scenario["initial_world_state"] or {}).get("factions")))
+            # HARİTA OYUN BAŞINDA BÜTÜNÜYLE ÜRETİLİR: şehirler, kategorili
+            # mekanlar, yollar ve mesafeler. Oyuncu hepsini görmez — üretilen
+            # yerler `bilinmiyor` başlar, keşfedildikçe açılır.
+            harita_ozeti = self.worldgen.build_map(
+                world,
+                StateRepository.settings_of(state).get("map_size"),
+                start_name=(uretilen["start"] or {}).get("name") or "",
+            )
             world_note = self.worldgen.start_note(uretilen["start"], uretilen["factions"])
+            world_note += "\n\n" + self.worldgen.map_note(world, harita_ozeti)
             ws = world.to_dict()
             players = list(world.characters.keys())
             hook = secrets.choice(scenario["opening_hooks"])
@@ -175,8 +187,10 @@ class GameService:
                     "doldurdu. Karakter oluşturma sorusu SORMA, seçenek sunma. "
                     "Açılış sahnesinde herkesi künyesine uygun biçimde tanıt ve "
                     "doğrudan asıl hikayeye geç: açılış olayını somut bir ZORLUĞA "
-                    "dönüştürüp `challenges` altına kaydet ve DURUM/SEÇENEKLER "
-                    "bloğuyla bitir. Durum güncelleme bloğunda `flags.chargen_done` "
+                    "dönüştürüp `challenges` altına kaydet ve tek satırlık DURUM "
+                    "özetiyle bitir. Metne SEÇENEK LİSTESİ YAZMA (A/B/C, "
+                    "'SEÇENEKLER:'); kararlar yalnız `options` alanına gider. "
+                    "Durum güncelleme bloğunda `flags.chargen_done` "
                     "alanını true yap ve her karaktere mesleğine uyan 1-2 mütevazı "
                     "eşyayı `inventory_add` ile ekle. Bu turda zar mekaniği YOK."
                 )
@@ -218,13 +232,21 @@ class GameService:
             )
             prompt = "(Oyun başlıyor. Sahneyi aç.)"
 
-            result = self.narrator.ask(prompt, extra_system, None, scenario["scenario_text"])
+            # Açılış sahnesi dünyayı kuruyor: bütün oyunun üzerine bindiği tur
+            # burası, effort'tan kısılacak yer değil (bkz. models/effort).
+            result = self.narrator.ask(prompt, extra_system, None,
+                                       scenario["scenario_text"],
+                                       effort=config.EFFORT_KEY)
 
             state["session_id"] = result.get("session_id")
             state["started"] = True
 
             raw_text = result.get("result", "")
             gm_text, patches = state_update.extract(raw_text)
+            # Künyeler hazırsa açılış sahnesi doğrudan oyuna girer: karar
+            # seçenekleri metinde değil, seçenek havuzunda gösterilir.
+            if sheets_done:
+                gm_text = strip_option_block(gm_text)
             gun = world.day if isinstance(world.day, int) else None
             for patch in patches:
                 world.merge_patch(patch)
@@ -301,6 +323,19 @@ class GameService:
                 if doz not in ("kapalı", "hafif", "sert"):
                     raise ValidationError("Küfür ayarı: kapalı, hafif ya da sert.")
                 settings["profanity"] = doz
+
+            if "map_size" in patch:
+                boyut = str(patch.get("map_size") or "").strip().lower()
+                if boyut not in MAP_SIZES:
+                    raise ValidationError(
+                        "Harita büyüklüğü: küçük, orta ya da büyük.")
+                if state.get("started"):
+                    # Harita oyun başında bir kez üretilir ve sabittir; sonradan
+                    # büyütmek mevcut mesafeleri ve keşifleri anlamsız kılardı.
+                    raise ValidationError(
+                        "Harita zaten üretildi — büyüklük ancak yeni oyunda "
+                        "değişir (önce sıfırla).")
+                settings["map_size"] = boyut
 
             if "round_mode" in patch and not patch.get("round_mode"):
                 # Tur bazlı akış artık kapatılamaz: senaryo yalnız sunulan

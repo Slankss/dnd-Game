@@ -36,7 +36,79 @@ const props = defineProps({
 
 const emit = defineEmits(['sec'])
 
-const yerlesim = computed(() => haritaYerlesimi(props.harita))
+const tumYerlesim = computed(() => haritaYerlesimi(props.harita))
+
+/**
+ * Çizilecek harita.
+ *
+ * Anlatıcı ekranı (`gm`) haritanın TAMAMINI görür: grubun duymadığı mekanlar
+ * da çizilir, ayrı bir biçimde. Oyuncu ekranında bu kayıtlar sunucudan zaten
+ * gelmez (`public_place` ayıklar) — buradaki süzgeç ikinci bir emniyet
+ * kemeridir, elle yüklenmiş bir kayıt bile oyuncuya sızmasın.
+ */
+const yerlesim = computed(() => {
+  const ham = tumYerlesim.value
+  if (props.gm) return ham
+  const gizli = new Set(
+    ham.dugumler.filter((d) => d.duzey === 'bilinmiyor').map((d) => d.ad),
+  )
+  if (!gizli.size) return ham
+  return {
+    ...ham,
+    dugumler: ham.dugumler.filter((d) => !gizli.has(d.ad)),
+    kenarlar: ham.kenarlar.filter((k) => !gizli.has(k.a) && !gizli.has(k.b)),
+  }
+})
+
+/** Grubun henüz duymadığı mekan (yalnız anlatıcı ekranında görünür). */
+function grupBilmiyor(dugum) {
+  return dugum.duzey === 'bilinmiyor'
+}
+
+/* --- yol çizimi --------------------------------------------------------- */
+
+/** Aynı çiftin ikinci yolu yay yapılır ki üst üste binmesin. */
+function yolCizgisi(kenar) {
+  if (!kenar.egri) return `M ${kenar.x1} ${kenar.y1} L ${kenar.x2} ${kenar.y2}`
+  const mx = (kenar.x1 + kenar.x2) / 2
+  const my = (kenar.y1 + kenar.y2) / 2
+  const dx = kenar.x2 - kenar.x1
+  const dy = kenar.y2 - kenar.y1
+  const boy = Math.hypot(dx, dy) || 1
+  // Dik normal boyunca kaydırılmış kontrol noktası.
+  const kx = mx + (-dy / boy) * kenar.egri
+  const ky = my + (dx / boy) * kenar.egri
+  return `M ${kenar.x1} ${kenar.y1} Q ${kx} ${ky} ${kenar.x2} ${kenar.y2}`
+}
+
+const YOL_RENGI = {
+  ana: 'var(--color-border-strong)',
+  ara: 'var(--color-border-strong)',
+  patika: 'var(--color-border)',
+}
+
+function yolRengi(kenar) {
+  if (kenar.kapali) return 'var(--color-danger)'
+  if (kenar.durum && kenar.durum !== 'açık') return 'var(--color-warn)'
+  if (kenar.zayif) return 'var(--color-border)'
+  return YOL_RENGI[kenar.ton] || 'var(--color-border-strong)'
+}
+
+function yolDeseni(kenar) {
+  if (kenar.kapali) return '3 6'
+  if (kenar.tur === 'demiryolu') return '7 4'
+  if (kenar.tur === 'patika') return '2 5'
+  if (kenar.zayif) return '5 7'
+  return ''
+}
+
+function yolBaslik(kenar) {
+  const parcalar = [kenar.tur || 'yol']
+  if (kenar.km !== null) parcalar.push(`${kenar.km} km`)
+  if (kenar.durum && kenar.durum !== 'açık') parcalar.push(kenar.durum.toUpperCase())
+  if (kenar.risk !== null) parcalar.push(`risk ${kenar.risk}/5`)
+  return parcalar.join(' · ')
+}
 
 /** Tehlike → çizgi rengi (tasarım sistemindeki durum renkleri). */
 const TEHLIKE_RENGI = {
@@ -84,9 +156,10 @@ function etiket(dugum) {
 
 /** Ekran okuyucu için tek satırlık özet. */
 function erisimMetni(dugum) {
-  const parcalar = [dugum.ad, dugum.duzey]
+  const parcalar = [dugum.ad, dugum.duzey === 'bilinmiyor' ? 'grup bilmiyor' : dugum.duzey]
+  if (dugum.sehir) parcalar.push(dugum.sehir)
   if (dugum.burada) parcalar.push('grubun konumu')
-  if (dugum.duzey !== 'duyuldu') {
+  if (!['duyuldu', 'bilinmiyor'].includes(dugum.duzey)) {
     if (dugum.bilgi?.kind) parcalar.push(dugum.bilgi.kind)
     if (dugum.bilgi?.danger && dugum.bilgi.danger !== 'bilinmiyor') {
       parcalar.push(`tehlike: ${dugum.bilgi.danger}`)
@@ -146,20 +219,36 @@ function yogunlukHalkasi(dugum) {
         </radialGradient>
       </defs>
 
-      <!-- yollar -->
-      <g stroke-linecap="round">
-        <line
+      <!-- şehir etiketleri: mekanlar hangi şehre bağlı, göz kararı görünsün -->
+      <g v-if="!mini" pointer-events="none">
+        <text
+          v-for="sehir in yerlesim.sehirler"
+          :key="sehir.ad"
+          :x="sehir.x"
+          :y="sehir.y"
+          text-anchor="middle"
+          font-size="15"
+          letter-spacing="1.6"
+          fill="var(--color-text-faint)"
+          opacity="0.75"
+        >
+          {{ sehir.ad.toLocaleUpperCase('tr-TR') }}
+        </text>
+      </g>
+
+      <!-- yollar: tür kalınlığı belirler, çökük yol kırmızı ve kesik -->
+      <g stroke-linecap="round" fill="none">
+        <path
           v-for="kenar in yerlesim.kenarlar"
           :key="kenar.anahtar"
-          :x1="kenar.x1"
-          :y1="kenar.y1"
-          :x2="kenar.x2"
-          :y2="kenar.y2"
-          :stroke="kenar.zayif ? 'var(--color-border)' : 'var(--color-border-strong)'"
-          :stroke-width="kenar.zayif ? 1.5 : 2.5"
-          :stroke-dasharray="kenar.zayif ? '5 7' : ''"
-          :opacity="kenar.zayif ? 0.5 : 0.9"
-        />
+          :d="yolCizgisi(kenar)"
+          :stroke="yolRengi(kenar)"
+          :stroke-width="kenar.zayif ? kenar.kalinlik * 0.7 : kenar.kalinlik"
+          :stroke-dasharray="yolDeseni(kenar)"
+          :opacity="kenar.zayif ? 0.45 : kenar.kapali ? 0.75 : 0.9"
+        >
+          <title>{{ yolBaslik(kenar) }}</title>
+        </path>
       </g>
 
       <!-- düğümler -->
@@ -218,9 +307,17 @@ function yogunlukHalkasi(dugum) {
           :r="dugum.r"
           :fill="dugum.burada ? 'var(--color-accent-soft)' : 'var(--color-surface)'"
           :stroke="dugum.burada ? 'var(--color-accent)' : tehlikeRengi(dugum)"
-          :stroke-width="dugum.duzey === 'keşfedildi' ? 2.5 : 1.75"
-          :stroke-dasharray="dugum.duzey === 'duyuldu' && !gm ? '3 4' : dugum.duzey === 'görüldü' ? '7 4' : ''"
-          :opacity="dugum.duzey === 'duyuldu' && !gm ? 0.55 : 1"
+          :stroke-width="dugum.duzey === 'keşfedildi' ? 2.5 : grupBilmiyor(dugum) ? 1.25 : 1.75"
+          :stroke-dasharray="
+            grupBilmiyor(dugum)
+              ? '2 3'
+              : dugum.duzey === 'duyuldu' && !gm
+                ? '3 4'
+                : dugum.duzey === 'görüldü'
+                  ? '7 4'
+                  : ''
+          "
+          :opacity="grupBilmiyor(dugum) ? 0.4 : dugum.duzey === 'duyuldu' && !gm ? 0.55 : 1"
         />
         <!-- ikon -->
         <foreignObject
@@ -264,13 +361,32 @@ function yogunlukHalkasi(dugum) {
           :y="dugum.y + dugum.r + 16"
           text-anchor="middle"
           :font-size="mini ? 11 : 12"
-          :fill="dugum.duzey === 'duyuldu' && !gm ? 'var(--color-faint)' : 'var(--color-muted)'"
-          :font-style="dugum.duzey === 'duyuldu' && !gm ? 'italic' : 'normal'"
+          :fill="
+            grupBilmiyor(dugum) || (dugum.duzey === 'duyuldu' && !gm)
+              ? 'var(--color-faint)'
+              : 'var(--color-muted)'
+          "
+          :font-style="
+            grupBilmiyor(dugum) || (dugum.duzey === 'duyuldu' && !gm) ? 'italic' : 'normal'
+          "
+          :opacity="grupBilmiyor(dugum) ? 0.55 : 1"
         >
           {{ etiket(dugum) }}
         </text>
+        <!-- anlatıcı kipi: grubun bilmediği mekanın kategorisi de görünsün -->
         <text
-          v-if="!mini && dugum.duzey !== 'duyuldu' && dugum.bilgi?.kind"
+          v-if="!mini && gm && grupBilmiyor(dugum) && dugum.bilgi?.category"
+          :x="dugum.x"
+          :y="dugum.y + dugum.r + 29"
+          text-anchor="middle"
+          font-size="9"
+          fill="var(--color-faint)"
+          opacity="0.6"
+        >
+          {{ dugum.bilgi.category }}
+        </text>
+        <text
+          v-if="!mini && !grupBilmiyor(dugum) && dugum.duzey !== 'duyuldu' && dugum.bilgi?.kind"
           :x="dugum.x"
           :y="dugum.y + dugum.r + 30"
           text-anchor="middle"

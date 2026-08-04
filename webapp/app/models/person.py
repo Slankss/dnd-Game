@@ -8,6 +8,7 @@ yaralar/sahne katılımı iç içe güncellenir.
 from dataclasses import dataclass, field
 
 from .base import DictModel
+from .inventory import CountedItems, metinden_say, sayilabilir
 from .presence import PRESENCE_STATES, Presence
 from .text import as_str_list, norm_tr
 from .vitals import Vitals
@@ -56,8 +57,8 @@ class Person(DictModel):
     """`world_state.characters.<isim>` / `world_state.npcs.<isim>`."""
 
     KNOWN = SHEET_FIELDS + ("background", "traits", "status", "alive", "location",
-                            "notes", "inventory", "lost_items", "relationships",
-                            "wounds", "vitals", "presence")
+                            "notes", "inventory", "inventory_counts", "lost_items",
+                            "relationships", "wounds", "vitals", "presence")
 
     profession: object = None
     age: object = None
@@ -72,6 +73,9 @@ class Person(DictModel):
     location: object = None
     notes: object = None
     inventory: list = field(default_factory=list)
+    # Sayılabilir kalemlerin miktarı ({"9mm fişek": 12}). Sunucu tutar,
+    # anlatıcı muhasebe yapmaz — bkz. models/inventory.py.
+    inventory_counts: dict = field(default_factory=dict)
     lost_items: list = field(default_factory=list)
     relationships: dict = field(default_factory=dict)
     wounds: object = None      # None = kayıtta yok (eski NPC'lerde olabiliyor)
@@ -92,7 +96,7 @@ class Person(DictModel):
         # Beklenmedik tipteki alanlar `extra`'ya düşer: modelin yapısını
         # bozamayız ama kaydı da atamayız.
         for name, kind in (("inventory", list), ("lost_items", list),
-                           ("relationships", dict)):
+                           ("inventory_counts", dict), ("relationships", dict)):
             raw = data.get(name)
             if isinstance(raw, kind):
                 setattr(person, name, kind(raw))
@@ -110,7 +114,40 @@ class Person(DictModel):
             person.presence = Presence.from_dict(data["presence"])
         elif "presence" in data:
             person.extra["presence"] = data["presence"]
+        person._backfill_counts()
         return person
+
+    def _backfill_counts(self) -> None:
+        """Envanterdeki sayıyı sayaca taşır: "12 9mm fişek" → "9mm fişek" ×12.
+
+        Devam eden oyunlar (ve anlatıcının serbest yazdığı eşyalar) miktarı
+        ismin içine gömüyor. Sayı iki yerde durursa biri eskir — bu yüzden
+        isim listesinde SADE ad, miktar sayaçta tutulur.
+        """
+        if not self.inventory:
+            return
+        counted = CountedItems(self.inventory_counts)
+        degisti = False
+        for i, item in enumerate(list(self.inventory)):
+            if not isinstance(item, str):
+                continue
+            ad, adet = metinden_say(item)
+            if adet is None or not ad or not sayilabilir(ad):
+                continue
+            self.inventory[i] = ad
+            if counted.find(ad) is None:
+                counted.set(ad, adet)
+            degisti = True
+        if degisti:
+            self._touch("inventory_counts")
+            self.inventory_counts = counted.to_dict()
+        # Sayacı olup listede görünmeyen kalem eklenir: oyuncu envanterinde
+        # "9mm fişek"i görmeli, sayaç arayüzde onun yanına yazılıyor.
+        var = {norm_tr(i) for i in self.inventory if isinstance(i, str)}
+        for ad in counted.items:
+            if norm_tr(ad) not in var:
+                self.inventory.append(ad)
+                self._touch("inventory")
 
     @classmethod
     def new(cls) -> "Person":
@@ -125,6 +162,9 @@ class Person(DictModel):
                   SHEET_FIELDS + ("background", "traits", "status", "alive",
                                   "location", "notes")}
         values["inventory"] = self.inventory
+        # Boş sayaç sözlüğü kayda yazılmaz (`_emit` boş değerleri eler):
+        # sayılabilir eşyası olmayan künye boş bir alanla şişmesin.
+        values["inventory_counts"] = self.inventory_counts
         values["lost_items"] = self.lost_items
         values["relationships"] = self.relationships
         if self.wounds is not None:
@@ -203,6 +243,46 @@ class Person(DictModel):
             return
         self.ensure_presence().merge_patch(raw, day, clock)
 
+    # ------------------------------------------------------ sayılabilir stok
+    def counts(self) -> CountedItems:
+        """Sayaç sarmalayıcısı. Değişiklikler `store_counts` ile geri yazılır."""
+        return CountedItems(self.inventory_counts)
+
+    def store_counts(self, counted: CountedItems) -> None:
+        """Sayaçları geri yazar ve tükenen kalemi envanterden düşürür.
+
+        Sayacı biten kalem cepte "var" görünmemeli: "9mm fişek" yazısı duruyor
+        ama sayacı 0 olan bir kayıt, düzeltmeye çalıştığımız tutarsızlığın ta
+        kendisi olurdu. Tükenen kalem `lost_items`'a geçer, böylece model
+        sonraki turda hafızasından geri yazamaz."""
+        # Hangi kalemler SAYILIYORDU — üzerine yazmadan önce saptanır.
+        sayiliyordu = {norm_tr(ad) for ad in self.inventory_counts}
+        self._touch("inventory_counts")
+        self.inventory_counts = counted.to_dict()
+        self._touch("lost_items")
+        for item in list(self.inventory):
+            if not isinstance(item, str) or not sayilabilir(item):
+                continue
+            ad = metinden_say(item)[0] or item
+            if counted.count(ad) > 0:
+                continue
+            if counted.find(ad) is None and norm_tr(ad) not in sayiliyordu:
+                continue  # hiç sayılmamış kalem: dokunma
+            self.inventory[:] = [i for i in self.inventory if i is not item]
+            if all(norm_tr(i) != norm_tr(item) for i in self.lost_items):
+                self.lost_items.append(item)
+
+    def spend_item(self, name, amount: int) -> int:
+        """Kalemden `amount` kadar harca; GERÇEKTEN harcananı döndür."""
+        counted = self.counts()
+        harcanan = counted.spend(name, amount)
+        if harcanan:
+            self.store_counts(counted)
+        return harcanan
+
+    def count_of(self, name) -> int:
+        return self.counts().count(name)
+
     def merge_inventory(self, fields: dict) -> None:
         self._touch("inventory")
         inv = self.inventory
@@ -214,9 +294,15 @@ class Person(DictModel):
         lost = self.lost_items
         lost_keys = {norm_tr(i) for i in lost}
 
-        added = as_str_list(fields.get("inventory_add"))
-        bulk = as_str_list(fields.get("inventory"))
-        removed = as_str_list(fields.get("inventory_remove"))
+        # Sayılabilir kalemlerde miktar İSİMDEN ayrılır: "12 fişek" listeye
+        # "fişek" olarak girer, 12 sayaca yazılır. Sayı iki yerde dursaydı biri
+        # eskir ve envanter yine tutarsızlaşırdı.
+        eklenen_sayilar = {}
+        added = self._strip_counts(as_str_list(fields.get("inventory_add")),
+                                   eklenen_sayilar)
+        bulk = self._strip_counts(as_str_list(fields.get("inventory")),
+                                  eklenen_sayilar)
+        removed = self._strip_counts(as_str_list(fields.get("inventory_remove")), {})
 
         # açık geri alma: eşya tekrar sahiplenildi
         for item in added:
@@ -244,6 +330,58 @@ class Person(DictModel):
             if key not in lost_keys:
                 lost.append(item)
                 lost_keys.add(key)
+
+        self._merge_counts(fields, eklenen_sayilar, removed)
+
+    @staticmethod
+    def _strip_counts(items: list, sayilar: dict) -> list:
+        """"12 fişek" → "fişek" (+ sayilar["fişek"] += 12). Sayısızlar aynen."""
+        sade = []
+        for item in items:
+            ad, adet = metinden_say(item)
+            if adet is not None and ad and sayilabilir(ad):
+                sayilar[ad] = sayilar.get(ad, 0) + adet
+                sade.append(ad)
+            else:
+                sade.append(item)
+        return sade
+
+    def _merge_counts(self, fields: dict, eklenen: dict, removed: list) -> None:
+        """Sayılabilir kalemlerin miktarını günceller.
+
+        Üç kaynak: (1) eklenen eşyanın adındaki sayı ("12 fişek"),
+        (2) çıkarılan eşyanın sayacının silinmesi, (3) anlatıcının açık
+        `inventory_counts` yaması — en son o uygulanır, çünkü kesin miktar
+        beyanıdır. Miktar bilinmiyorsa UYDURULMAZ: sayaç açılmaz, kalem eskisi
+        gibi sayısız durur."""
+        counted = self.counts()
+        degisti = False
+
+        for ad, adet in eklenen.items():
+            counted.add(ad, adet)
+            degisti = True
+
+        for item in removed:
+            mevcut = counted.find(item)
+            if mevcut:
+                counted.drop(mevcut)
+                degisti = True
+
+        ham = fields.get("inventory_counts")
+        if isinstance(ham, dict):
+            for ad, adet in ham.items():
+                if isinstance(ad, str) and ad.strip():
+                    counted.set(ad, adet)
+                    degisti = True
+
+        if degisti:
+            self.store_counts(counted)
+            # Sayacı olan ama isim listesinde görünmeyen kalem eklenir:
+            # oyuncu envanterinde "9mm fişek"i görmeli.
+            var = {norm_tr(i) for i in self.inventory}
+            for ad in counted.items:
+                if norm_tr(ad) not in var:
+                    self.inventory.append(ad)
 
     # ------------------------------------------------------ tur bakımı
     def apply_vitals_drift(self, hours: float, touched=()) -> None:

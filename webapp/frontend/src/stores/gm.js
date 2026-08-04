@@ -59,6 +59,10 @@ export const useGmStore = defineStore('gm', () => {
   const sendingNote = ref(false)
   /** Elle yama kaydediliyor mu */
   const patching = ref(false)
+  /** Sabit eşya kataloğu (GET /api/gm/items) — ayrı çekilir, yoklamaya girmez */
+  const catalog = shallowRef(null)
+  const catalogLoading = ref(false)
+  const addingItem = ref(false)
   const lastSyncAt = ref(null)
 
   /* -------------------------------------------------------------- getters */
@@ -228,6 +232,40 @@ export const useGmStore = defineStore('gm', () => {
     }
   }
 
+  /** GET /api/gm/items — sabit eşya kataloğu (bir kez çekilir). */
+  async function fetchCatalog({ force = false } = {}) {
+    if (catalog.value && !force) return catalog.value
+    catalogLoading.value = true
+    try {
+      catalog.value = await api.gmItems(pin.value)
+      return catalog.value
+    } catch (e) {
+      error.value = api.toApiError(e)
+      throw error.value
+    } finally {
+      catalogLoading.value = false
+    }
+  }
+
+  /**
+   * POST /api/gm/items — kataloga KALICI eşya ekler.
+   * Eklenen eşya data/items.json'a yazılır: tüm oyunlarda geçerli olur.
+   */
+  async function addItem(item) {
+    addingItem.value = true
+    try {
+      const data = await api.gmAddItem(pin.value, item)
+      if (data.catalog) catalog.value = data.catalog
+      error.value = null
+      return data
+    } catch (e) {
+      error.value = api.toApiError(e)
+      throw error.value
+    } finally {
+      addingItem.value = false
+    }
+  }
+
   /**
    * POST /api/gm/patch — dünya durumuna elle kısmi yama.
    * @param {object} patch
@@ -311,6 +349,11 @@ export const useGmStore = defineStore('gm', () => {
     pollNow,
     sendNote,
     addLesson,
+    catalog,
+    catalogLoading,
+    addingItem,
+    fetchCatalog,
+    addItem,
     applyPatch,
     clearError,
     tryStoredPin,

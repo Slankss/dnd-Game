@@ -110,6 +110,31 @@ export function saglikTonu(status) {
   return 'ok'
 }
 
+/* -------------------------------------------------------------- envanter */
+
+/**
+ * Envanter listesi + sayaçlar → gösterilecek kalemler.
+ *
+ * Sunucu miktarı isimden ayrı tutuyor (`inventory_counts`), çünkü sayı iki
+ * yerde dursaydı biri eskirdi. Arayüzde ikisi birleştirilip "9mm fişek ×9"
+ * olarak gösterilir; sayacı olan kalem az kaldığında vurgulanır.
+ *
+ * @returns {{ad:string, adet:number|null, az:boolean}[]}
+ */
+export function envanteriDiziye(bilgi) {
+  const liste = Array.isArray(bilgi?.inventory) ? bilgi.inventory : []
+  const sayaclar = bilgi?.inventory_counts && typeof bilgi.inventory_counts === 'object'
+    ? bilgi.inventory_counts
+    : {}
+  const anahtar = (s) => String(s || '').toLocaleLowerCase('tr-TR').trim()
+  const eslesen = new Map(Object.entries(sayaclar).map(([ad, n]) => [anahtar(ad), n]))
+  return liste.map((esya) => {
+    const adet = eslesen.get(anahtar(esya))
+    const sayi = typeof adet === 'number' ? adet : null
+    return { ad: String(esya), adet: sayi, az: sayi !== null && sayi <= 2 }
+  })
+}
+
 /* -------------------------------------------------------------------- zar */
 
 /** Zar bandı → ton. Bant adları sunucudaki DICE_BANDS ile birebir. */
@@ -169,7 +194,7 @@ export const TEHLIKE_TONU = {
 }
 
 /** Bilgi düzeyi sırası — bilinen yerler listenin başında durur. */
-const BILGI_SIRASI = { keşfedildi: 0, görüldü: 1, duyuldu: 2 }
+const BILGI_SIRASI = { keşfedildi: 0, görüldü: 1, duyuldu: 2, bilinmiyor: 3 }
 
 /**
  * Harita kaydını listeye çevirir: şu an bulunulan yer BAŞA gelir, gerisi

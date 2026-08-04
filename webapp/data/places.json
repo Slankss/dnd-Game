@@ -1,0 +1,78 @@
+{
+  "surum": 1,
+  "aciklama": "Harita üreteci içeriği. Oyun başında bütün harita bundan üretilir: şehirler, şehirlere bağlı mekanlar (kategorili, koordinatlı) ve mekanlar arası yollar. Kategoriler data/items.json'daki yer türleriyle AYNI anahtarları kullanır — böylece bir mekanın türü hem yağmayı hem haritayı belirler.",
+
+  "sehirler": [
+    {"ad": "Demirkale", "tur": "ilçe merkezi", "not": "Eski sanayi kasabası; dar sokaklar, yüksek bina yoğunluğu."},
+    {"ad": "Kartaltepe", "tur": "yamaç mahallesi", "not": "Şehrin sırtına kurulmuş; yollar dik ve virajlı."},
+    {"ad": "Akyazı", "tur": "ova kasabası", "not": "Tarım ovasının ortasında; geniş, açık ve savunmasız."},
+    {"ad": "Gökçepınar", "tur": "dağ köyü", "not": "Yüksekte, soğuk ve uzak; kışın yolu kapanır."},
+    {"ad": "Yenidoğan", "tur": "toplu konut bölgesi", "not": "Sıra sıra bloklar; içeride kaybolmak kolay."},
+    {"ad": "Söğütlü", "tur": "dere kenarı kasaba", "not": "Su var ama sivrisinek ve sis de var."},
+    {"ad": "Taşköprü", "tur": "geçit kasabası", "not": "İki yakayı bağlayan tek köprünün etrafında büyümüş."},
+    {"ad": "Karadut", "tur": "orman köyü", "not": "Ağaç arasında dağınık evler; görüş mesafesi kısa."},
+    {"ad": "Beşpınar", "tur": "kaplıca kasabası", "not": "Terk edilmiş oteller ve buhar tüten havuzlar."},
+    {"ad": "Çamlıyurt", "tur": "yayla yerleşimi", "not": "Yazlık evler; kışın kimse yoktu, şimdi kim var belli değil."},
+    {"ad": "Alacahöyük", "tur": "höyük kasabası", "not": "Kazı alanının çevresinde kurulmuş; altında tüneller var."},
+    {"ad": "Değirmenönü", "tur": "değirmen kasabası", "not": "Un fabrikası ve siloların gölgesinde."},
+    {"ad": "Kızılkaya", "tur": "maden kasabası", "not": "Kapanmış maden; galeriler hâlâ açık."},
+    {"ad": "İncirlik", "tur": "sahil kasabası", "not": "Boş yazlık siteler ve çekilmiş tekneler."}
+  ],
+
+  "ilceler": [
+    "Merkez", "Yeni Mahalle", "Cumhuriyet", "İstiklal", "Bahçelievler",
+    "Sanayi", "Fevzipaşa", "Karşıyaka", "Yukarı Mahalle", "Aşağı Mahalle",
+    "Çarşı", "Gölbaşı", "Kavaklık", "Hürriyet", "Zafer", "Esentepe",
+    "Dere Mahallesi", "Kale altı", "Fabrika Sitesi", "Yenişehir",
+    "Tepebaşı", "Bağlar", "Kışla", "Toptancılar", "Hal", "Şehitlik",
+    "Değirmen", "Söğütlük", "Kuzey Çıkışı", "Güney Kapısı"
+  ],
+
+  "ozel_adlar": [
+    "Umut", "Sevgi", "Yıldız", "Hilal", "Şafak", "Zümrüt", "Anadolu",
+    "Marmara", "Toros", "Efe", "Poyraz", "Lodos", "Gündoğdu", "Akgün",
+    "Karaca", "Ceylan", "Aslan", "Doğan", "Kartal", "Şahin"
+  ],
+
+  "kategoriler": {
+    "karakol":   {"ad": "karakol", "kent": 6, "kir": 0, "kalabalik": 1, "sablon": ["{ilce} Polis Karakolu", "{sehir} Emniyet Amirliği", "{ilce} Jandarma Karakolu"]},
+    "askeri":    {"ad": "askeri tesis", "kent": 2, "kir": 3, "kalabalik": 1, "sablon": ["{sehir} Askerlik Şubesi", "{ilce} Kışla Deposu", "{sehir} Cephanelik Binası"]},
+    "hastane":   {"ad": "hastane", "kent": 7, "kir": 1, "kalabalik": 1, "sablon": ["{sehir} Devlet Hastanesi", "{ilce} Aile Sağlığı Merkezi", "{ilce} Poliklinik Binası", "{sehir} Acil Servis Ek Binası"]},
+    "eczane":    {"ad": "eczane", "kent": 8, "kir": 1, "kalabalik": 2, "sablon": ["{ozel} Eczanesi", "{ilce} Nöbetçi Eczanesi"]},
+    "market":    {"ad": "market", "kent": 12, "kir": 3, "kalabalik": 3, "sablon": ["{ozel} Market", "{ilce} Bakkalı", "{ozel} Süpermarket", "{ilce} Kasap ve Manav"]},
+    "bufe":      {"ad": "büfe", "kent": 8, "kir": 2, "kalabalik": 2, "sablon": ["{ozel} Büfe", "{ilce} Kantini", "Durak Büfesi ({ilce})"]},
+    "avm":       {"ad": "AVM", "kent": 4, "kir": 0, "kalabalik": 1, "sablon": ["{sehir} Alışveriş Merkezi", "{ilce} Kapalı Çarşı", "{ozel} Pasajı"]},
+    "okul":      {"ad": "okul", "kent": 9, "kir": 2, "kalabalik": 2, "sablon": ["{ilce} İlkokulu", "{sehir} Anadolu Lisesi", "{sehir} Halk Kütüphanesi", "{ilce} Öğrenci Yurdu"]},
+    "sanayi":    {"ad": "sanayi", "kent": 7, "kir": 2, "kalabalik": 2, "sablon": ["{ilce} Küçük Sanayi Sitesi", "{ozel} Dokuma Fabrikası", "{sehir} Un Fabrikası", "{ilce} Torna Atölyesi"]},
+    "depo":      {"ad": "depo", "kent": 7, "kir": 4, "kalabalik": 2, "sablon": ["{ilce} Toptancı Deposu", "{ozel} Lojistik Ambarı", "{sehir} Tarım Kredi Deposu", "{ilce} Soğuk Hava Deposu"]},
+    "santiye":   {"ad": "şantiye", "kent": 6, "kir": 2, "kalabalik": 2, "sablon": ["{ilce} İnşaat Şantiyesi", "{ozel} Yapı Market", "{ilce} Nalburu"]},
+    "metro":     {"ad": "istasyon", "kent": 4, "kir": 2, "kalabalik": 1, "sablon": ["{sehir} Tren Garı", "{ilce} Metro İstasyonu", "{sehir} Raylı Sistem Deposu", "{ilce} Yeraltı Geçidi"]},
+    "otogar":    {"ad": "otogar", "kent": 6, "kir": 2, "kalabalik": 2, "sablon": ["{sehir} Otogarı", "{ilce} Kapalı Otoparkı", "{ozel} Oto Servisi", "{ilce} Belediye Garajı"]},
+    "benzinlik": {"ad": "benzinlik", "kent": 5, "kir": 6, "kalabalik": 2, "sablon": ["{ozel} Akaryakıt", "{ilce} Benzinliği", "{sehir} Çıkışı Benzinlik"]},
+    "konut":     {"ad": "konut", "kent": 14, "kir": 3, "kalabalik": 4, "sablon": ["{ilce} Apartmanları", "{ozel} Sitesi", "{ilce} Toplu Konutları", "{ozel} Apartmanı"]},
+    "otel":      {"ad": "otel", "kent": 5, "kir": 3, "kalabalik": 2, "sablon": ["{ozel} Oteli", "{ilce} Pansiyonu", "{sehir} Termal Oteli", "{ozel} Misafirhanesi"]},
+    "lokanta":   {"ad": "lokanta", "kent": 9, "kir": 3, "kalabalik": 3, "sablon": ["{ozel} Lokantası", "{ilce} Fırını", "{ozel} Kıraathanesi", "{sehir} Yemekhanesi"]},
+    "ciftlik":   {"ad": "çiftlik", "kent": 2, "kir": 9, "kalabalik": 3, "sablon": ["{ozel} Çiftliği", "{ilce} Serası", "{ozel} Besihanesi", "{ilce} Tarlaları"]},
+    "dogal":     {"ad": "kır", "kent": 3, "kir": 10, "kalabalik": 3, "sablon": ["{ozel} Koruluğu", "{ilce} Deresi", "{sehir} Barajı", "{ozel} Göleti", "{ilce} Mesire Alanı"]},
+    "siginak":   {"ad": "sığınak", "kent": 3, "kir": 3, "kalabalik": 1, "sablon": ["{ilce} Sivil Savunma Sığınağı", "{ozel} Kamp Alanı", "{ilce} Mahzeni"]},
+    "harabe":    {"ad": "harabe", "kent": 4, "kir": 5, "kalabalik": 3, "sablon": ["Yanmış {ilce} Bloğu", "{ozel} Enkazı", "{ilce} Yıkıntısı", "Terk Edilmiş {ozel} Tesisi"]}
+  },
+
+  "yol_turleri": {
+    "anayol":     {"ad": "anayol", "sapma": 1.15, "hiz": 1.0, "risk": 3, "not": "Geniş ve hızlı ama açık: uzaktan görülürsün."},
+    "cadde":      {"ad": "cadde", "sapma": 1.25, "hiz": 0.9, "risk": 2, "not": "Şehir içi ana arter; araç kalabalığı var."},
+    "ara sokak":  {"ad": "ara sokak", "sapma": 1.4, "hiz": 0.75, "risk": 1, "not": "Yavaş ve dolambaçlı ama saklanacak yer çok."},
+    "kır yolu":   {"ad": "kır yolu", "sapma": 1.3, "hiz": 0.8, "risk": 2, "not": "Toprak yol; araçla zor, yürüyerek sessiz."},
+    "patika":     {"ad": "patika", "sapma": 1.55, "hiz": 0.6, "risk": 1, "not": "En sessiz yol; yük taşımak zor, gece kaybolunur."},
+    "köprü":      {"ad": "köprü", "sapma": 1.05, "hiz": 0.95, "risk": 4, "not": "Tek geçit: tıkanırsa alternatifi yok."},
+    "tünel":      {"ad": "tünel", "sapma": 1.0, "hiz": 0.85, "risk": 4, "not": "Kapalı ve karanlık; içeride kaçacak yer yok."},
+    "demiryolu":  {"ad": "demiryolu", "sapma": 1.1, "hiz": 0.85, "risk": 2, "not": "Düz ve boş; ray boyunca yürünür."}
+  },
+
+  "yol_durumlari": {
+    "açık":      {"ad": "açık", "gecilir": true, "carpan": 1.0},
+    "tıkalı":    {"ad": "tıkalı", "gecilir": true, "carpan": 1.6, "not": "Devrilmiş araçlar; yavaş ve gürültülü geçilir."},
+    "barikatlı": {"ad": "barikatlı", "gecilir": true, "carpan": 1.8, "not": "Birileri kapatmış; ya aşarsın ya izin istersin."},
+    "çökük":     {"ad": "çökük", "gecilir": false, "carpan": 0, "not": "Geçilmez — başka yol bulmak gerekir."}
+  }
+}

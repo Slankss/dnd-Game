@@ -29,7 +29,8 @@ webapp/
       challenges.py         # Challenge
       factions.py           # Faction — iki katmanlı görünürlük
       world.py              # WorldState — kök nesne, patch birleştirme
-      worldmap.py           # WorldMap, Place — konum ve keşfedilen yerler
+      worldmap.py           # WorldMap, Place, Road — şehir/koordinat/yol/mesafe
+      mapgen.py             # harita üreteci: şehirler, mekanlar, yollar (oyun başı)
       threat.py             # zombi tehdidi: yoğunluk, gürültü, karşılaşma zarı
       grid/                 # kare harita: grid[y][x] Cell dizisi (bkz. kare-harita.md)
         coords.py           #   Direction — yön vektörleri
@@ -37,8 +38,11 @@ webapp/
         entities.py         #   Entity/Player/Npc/Item/Building
         grid_map.py         #   GridMap — 2D dizi + varlık kaydı
         movement.py         #   move() — 8 adımlı hareket algoritması (O(1))
-      options.py            # Option, OptionBoard — seçenek havuzu (3-8, sabit değil)
+      options.py            # Option, OptionBoard — seçenek havuzu (3-8, sabit değil, spend)
+      inventory.py          # sayılabilir envanter (mermi/sargı/yakıt sayaçları)
+      items.py              # sabit eşya kataloğu (yer türüne göre bulunma)
       round.py              # Round, Pick — tur bazlı akışın kaydı
+      pending.py            # bekleyen yayın kuyruğu (her şey BİR SONRAKİ turda)
       learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
       plot.py               # Plot, Beat (senarist katmanı)
       conditions.py         # koşul motoru (mevcut director.matches)
@@ -50,17 +54,22 @@ webapp/
       plot_repo.py          # plot.json
       learning_repo.py      # learning.json + learning_events.jsonl
       options_repo.py       # options_pool.jsonl (sunulan/seçilen seçenekler)
+      items_repo.py         # items.json (sabit katalog; tek yazan GM ekranı)
+      places_repo.py        # places.json (harita üreteci içeriği, SALT OKUNUR)
     services/               # iş akışı — modelleri ve repo'ları orkestre eder
       narrator_client.py    # claude CLI süreci (subprocess)
       prompt_builder.py     # modele giden tüm metin blokları
       state_update.py       # yanıttan state-update ayrıştırma/temizleme
       turn_service.py       # serbest metin turu + ortak tur sonu (finish_turn)
-      round_service.py      # tur bazlı akış: seçim topla → toplu gönder
+      round_service.py      # tur bazlı akış: seçim topla → "Turu Geç" → toplu
+                            #   gönder; turun BAŞINDA bekleyenleri yayınlar
       options_service.py    # seçenek havuzu bakımı (eksik kalanı tamamlar)
       learning_service.py   # öğrenme defteri + Claude yeteneğine yazma
       worldgen_service.py   # her oyuna farklı başlangıç ve fraksiyonlar
       grid_service.py       # kare harita: sahne kurulumu + hareket
-      threat_service.py     # her turda karşılaşma zarı + zorunlu tehdit bloğu
+      threat_service.py     # karşılaşma zarı (girdiler GEÇEN turdan devreder)
+      inventory_service.py  # harcama muhasebesi: seçeneğin bedelini sunucu keser
+      items_service.py      # arama (yere göre loot) + tüketim (doyum/susuzluk)
       setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
@@ -104,22 +113,30 @@ taşınır; eski dosya kaldırılır (import'u sadece `server.py` kullanıyordu)
 `WorldState` alanları: `day` (int), `time_of_day`, `clock`, `season`,
 `weather`, `temperature`, `location`, `tension` (`düşük|orta|yüksek`),
 `factions`, `characters`, `npcs`, `resources`, `challenges`,
-`map`, `grid`, `zombie_sightings`, `flags`, `narrator`, `options`, `threat`,
+`map`, `grid`, `zombie_sightings`, `story_items` (hikayeye özel, mekaniği
+OLMAYAN eşyalar), `searched` (yer başına arama sayacı), `flags`, `narrator`,
+`options`, `threat`,
 `world_roll`, `world_roll_history`.
 
-`state.json` kökünde ayrıca iki alan vardır: `settings`
-(`{turn_seconds, profanity, round_mode}`) ve `round` (açık turun kaydı:
-`{no, status, seconds, opened_ts, picks}`). Eski kayıtlarda yoklarsa
-`StateRepository.backfill` varsayılanla doldurur.
+`state.json` kökünde ayrıca üç alan vardır: `settings`
+(`{turn_seconds, profanity, round_mode, map_size}`), `round` (açık turun kaydı:
+`{no, status, seconds, opened_ts, picks}`) ve `pending` (bir sonraki turun
+başında devreye girecek kayıtlar: `{items: [{kind, due_round, data, ts}]}`,
+bkz. `models/pending.py` ve `docs/tur-akisi-ve-ogrenme.md` §1b). Eski
+kayıtlarda yoklarsa `StateRepository.backfill` varsayılanla doldurur.
 
 `Person` (characters ve npcs): `background`, `traits`, `status`, `alive`,
-`location`, `notes`, `inventory`, `lost_items`, `relationships`, `wounds`,
+`location`, `notes`, `inventory`, `inventory_counts` (sayılabilir kalemlerin
+miktarı — sunucu tutar), `lost_items`, `relationships`, `wounds`,
 `vitals`, `presence`, künye alanları (`profession`, `age`, `strength`,
 `weakness`, `reflex`, `secret`).
 
 Patch birleştirme kuralları (davranış AYNEN korunacak):
 - `inventory` üzerine yazmaz, birleştirir; `lost_items` elden çıkanı hatırlar
-- `resources` `"+3"` / `"-12"` göreli değişimi destekler
+- sayılabilir kalemde miktar İSİMDEN AYRILIR: `"12 fişek"` → liste `"fişek"`,
+  sayaç `{"fişek": 12}`. Sayaç sıfırlanınca kalem envanterden düşer
+  (bkz. `docs/tur-akisi-ve-ogrenme.md` §1d)
+- `inventory_counts` ve `resources` `"+3"` / `"-12"` göreli değişimi destekler
 - boş/None zaman alanı mevcut değeri korur
 - model `characters` altına tanımadık isim yazarsa `npcs`'e yönlendirilir
 - `presence.until` dolduğunda karakter sahneye döner
@@ -146,13 +163,16 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/message` | `{player, text}` | `{user_entries, gm_entry, world_state, inventory_report, version}` — YALNIZ karakter oluşturma sürerken; chargen bitince 400 (serbest hamle yok) |
 | POST | `/api/takeover` | `{dead_player, new_character}` | `{system_entry, gm_entry, world_state}` |
 | POST | `/api/finish-chargen` | — | `{ok, world_state}` |
-| POST | `/api/settings` | `{turn_seconds?, profanity?}` | `{ok, settings, version, round}` — `round_mode: false` reddedilir |
+| POST | `/api/settings` | `{turn_seconds?, profanity?, map_size?}` | `{ok, settings, version, round}` — `round_mode: false` reddedilir; `map_size` yalnız oyun başlamadan önce değişir |
 | POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
-| POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, round, all_picked, version}` — zar SEÇİM ANINDA atılır; `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
-| POST | `/api/round/wait` | `{player}` | `{ok, round, version}` |
+| POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, changed, round, all_picked, version}` — zar SEÇİM ANINDA ve tur başına BİR KEZ atılır; karar turu geçene kadar değiştirilebilir (`changed: true` = zar aynı kaldı); `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
+| POST | `/api/round/wait` | `{player}` | `{ok, round, version}` — bu da bir seçimdir, değiştirilebilir |
+| GET | `/api/items` | — | `{surum, kategoriler, yer_turleri, esyalar}` — SABİT eşya kataloğu (`data/items.json`), her eşyanın en olası üç yeriyle |
+| GET | `/api/gm/items?pin` | — | aynı katalog, anlatıcı ekranı için |
+| POST | `/api/gm/items` | `{pin, item}` | `{ok, item, catalog}` — kataloga KALICI eşya ekler: `data/items.json`'a yazılır, tüm oyunlarda geçerli olur |
 | GET | `/api/grid` | — | `{grid, world_state, version}` — sahne yoksa kurulur |
 | POST | `/api/grid/move` | `{player, direction}` | `{ok, result, grid, version}` — hareket algoritması: yön→koordinat→sınır→geçilebilirlik→kaldır→koordinat→ekle→sonuç |
-| POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` |
+| POST | `/api/round/commit` | `{reason: elle\|sure, round_no}` | `{ok, user_entries, gm_entry, world_state, round, timeouts, version}` ya da `{ok, skipped:true}` — "Turu Geç"; sahne kuyruğa yazılıp bir sonraki turun başında yayınlanır |
 | POST | `/api/gm/unlock` | `{pin}` | `{ok}` / 403 |
 | GET | `/api/gm/state?pin&since` | — | `{version, changed, world_state, gm_log, log, started, plot, round, settings, learning}` |
 | POST | `/api/gm/lesson` | `{pin, text}` | `{ok, learning}` — deftere elle ders |

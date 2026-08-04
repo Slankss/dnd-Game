@@ -34,6 +34,19 @@ def gm_lesson():
     return jsonify(services.gm.add_lesson(body.get("pin"), body.get("text")))
 
 
+@bp.get("/items")
+def gm_items():
+    """Sabit eşya kataloğu — anlatıcı ekranı için (yer türleri dahil)."""
+    return jsonify(services.gm.items_catalog(request.args.get("pin")))
+
+
+@bp.post("/items")
+def gm_add_item():
+    """Katalogu KALICI olarak genişletir: eklenen eşya tüm oyunlarda geçerli."""
+    body = request.get_json(force=True) or {}
+    return jsonify(services.gm.add_item(body.get("pin"), body.get("item")))
+
+
 @bp.post("/patch")
 def gm_patch():
     body = request.get_json(force=True) or {}
