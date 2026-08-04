@@ -5,14 +5,15 @@ Akış:
   `ensure_open`  Turun BAŞI. Bir önceki turda tetiklenen ne varsa (bekleyen
                  sahne, tehdit devri, senarist direktifi) burada devreye girer;
                  sonra tur açılır ve süre sayacı (settings.turn_seconds) başlar.
-  `pick`         Bir oyuncu SUNULAN SEÇENEKLERDEN birini seçer. Sunucu turun
-                 zarını atar (oyuncu başına BİR KEZ) ve sonucu döndürür —
-                 arayüz zarı animasyonla gösterir. Seçim hafızada birikir,
-                 modele GİTMEZ ve TUR İLERLEMEZ: oyuncu "Turu Geç"e basana
-                 kadar kararını istediği kadar değiştirebilir.
-                 Serbest metin YOKTUR: hikaye yalnız sunulan tercihlerle
-                 ilerler (bkz. `pick`'teki doğrulama).
-  `commit`       "Turu Geç" (ya da süre dolduysa sayaç) turu kapatır: tüm
+  `pick`         Bir oyuncu SUNULAN SEÇENEKLERDEN birini seçer. ZAR BURADA
+                 ATILMAZ: seçim hafızada birikir, modele GİTMEZ ve TUR
+                 İLERLEMEZ — oyuncu "Turu Geç"e basana kadar kararını
+                 istediği kadar değiştirebilir. Serbest metin YOKTUR: hikaye
+                 yalnız sunulan tercihlerle ilerler (bkz. `pick`'teki
+                 doğrulama).
+  `commit`       "Turu Geç" (ya da süre dolduysa sayaç) turu kapatır: turun
+                 zarı burada, TEK seferde, o an seçimi olan HERKES için
+                 birlikte atılır (bkz. `_roll_all_picks`) — sonra tüm
                  seçimler TEK mesajda anlatıcıya gider. Seçim yapmayanlar için
                  "ani sahne" istenir: dünya kararsızı beklemez.
 
@@ -202,15 +203,16 @@ class RoundService:
 
     # ------------------------------------------------------------ seçim
     def pick(self, player, option_id=None, text=None) -> dict:
-        """Bir oyuncunun seçimi + turun zarı.
+        """Bir oyuncunun seçimi.
 
         Seçim TUR İLERLETMEZ ve KİLİTLEMEZ: oyuncu "Turu Geç"e basana kadar
         kararını istediği kadar değiştirebilir, turda son seçtiği karar
         işlenir.
 
-        Zar tur başına ve oyuncu başına BİR KEZ atılır: kararını değiştirmek
-        zar atmak değildir. Aksi halde beğenmediği zarı yeniden atmak için
-        seçenek değiştirmek serbest kalırdı.
+        ZAR BURADA ATILMAZ: turun zarı, "Turu Geç" ânında TÜM oyuncular için
+        birlikte atılır (bkz. `commit` → `_roll_all_picks`). Böylece kararını
+        değiştirmek de bir sorun değildir — henüz atılmış bir zar yoktur ki
+        onu yeniden atmak için seçenek değiştirmek "serbest" olsun.
 
         `text` KABUL EDİLMEZ: senaryo yalnız sunulan tercihlerle ilerler.
         Eski istemciler serbest metin gönderirse açık bir hatayla döner."""
@@ -249,16 +251,11 @@ class RoundService:
                 raise ValidationError("Seçenek bulunamadı — sahne yenilenmiş olabilir.")
             metin = secenek.text
 
-            # Zar TURUN zarıdır, seçeneğin değil: oyuncu bu turda ilk kez
-            # seçim yapıyorsa atılır, kararını değiştiriyorsa aynısı kalır.
-            roll = self._turn_roll(round_, player)
             pick = Pick(
                 player=player,
                 option_id=secenek.id,
                 text=metin,
                 category=secenek.category,
-                roll=roll,
-                band=band_for(roll),
                 custom=False,          # serbest metin yok: her seçim havuzdan
                 # Bedel seçimle birlikte taşınır: tur çözülürken envanterden
                 # kesilecek olan budur (havuz o sırada tazelenmiş olabilir).
@@ -274,9 +271,8 @@ class RoundService:
         return {
             "ok": True,
             "pick": pick.to_dict(),
-            "roll": roll,
-            "band": pick.band,
-            # Karar değiştirildiyse arayüz zarı yeniden oynatmaz.
+            # Karar değiştirildi mi — zar artık burada atılmadığı için bu alan
+            # yalnız bilgi amaçlı durur.
             "changed": degisti,
             "round": public_round(state.get("round"), oyuncular),
             "all_picked": hazir,
@@ -284,18 +280,24 @@ class RoundService:
         }
 
     @staticmethod
-    def _turn_roll(round_: Round, player: str) -> int:
-        """Oyuncunun bu turdaki zarı — bir kez atılır, karar değişse de kalır."""
-        onceki = round_.picks.get(player)
-        if onceki is not None and isinstance(onceki.roll, int):
-            return onceki.roll
-        return roll_d100()
+    def _roll_all_picks(round_: Round) -> None:
+        """Turun zarı: TÜM oyuncular için TEK seferde, "Turu Geç" ânında atılır.
+
+        Karar seçilirken/değiştirilirken zar YOKTUR — o an henüz kimse zar
+        atmamıştır, dolayısıyla kararını değiştirmek "beğenmediği zarı
+        yeniden atmak" anlamına gelmez. Zar, tur kapanırken herkes için aynı
+        anda belirir."""
+        for pick in round_.picks.values():
+            roll = roll_d100()
+            pick.roll = roll
+            pick.band = band_for(roll)
 
     def cancel(self, player) -> dict:
         """Bu turda bekle: hamle yapmadan turda kalmak.
 
         Bu da bir seçimdir ve değiştirilebilir — oyuncu turu geçene kadar
-        fikrini değiştirip havuzdan bir seçenek seçebilir."""
+        fikrini değiştirip havuzdan bir seçenek seçebilir. Zar burada da
+        atılmaz: turu geçerken herkesle birlikte atılır."""
         player = (player or "").strip()
         with LOCK:
             state = self.state_repo.load()
@@ -303,10 +305,8 @@ class RoundService:
             round_ = StateRepository.round_of(state)
             if not round_.is_open:
                 raise ValidationError("Açık tur yok.")
-            roll = self._turn_roll(round_, player)
             round_.add(Pick(player=player, text="(bekliyor, hamle yapmıyor)",
-                            category="güvenli", roll=roll, band=band_for(roll),
-                            custom=False, ts=time.time()))
+                            category="güvenli", custom=False, ts=time.time()))
             StateRepository.store_round(state, round_)
             self.state_repo.save(state)
             oyuncular = self.actors(world)
@@ -347,6 +347,10 @@ class RoundService:
                 raise ValidationError("Bu turda hiç seçim yapılmadı.")
             if reason == "sure" and not round_.expired():
                 raise ValidationError("Sürenin dolmasına daha var.")
+
+            # TURUN ZARI: tam burada, "Turu Geç" ânında, o an seçimi olan
+            # HERKES için TEK seferde atılır (bkz. `_roll_all_picks`).
+            self._roll_all_picks(round_)
 
             round_.status = SENDING
             StateRepository.store_round(state, round_)

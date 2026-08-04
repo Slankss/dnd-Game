@@ -143,9 +143,27 @@ const havuzAcik = computed(
 const seciliSecim = computed(() => oyun.pickOf(seciliOyuncu.value))
 const seciliSecenekler = computed(() => oyun.optionsFor(seciliOyuncu.value))
 
+/**
+ * "Kimsin?" çubuğundaki sıra: karar veren karakter geriye geçer, henüz karar
+ * vermeyenler önde kalır — sırada kimin beklendiği hep ilk bakışta görünür.
+ * `sort` kararlı (stable) olduğu için aynı grubun kendi içindeki sırası
+ * korunur.
+ */
+const oyuncuSirasi = computed(() =>
+  [...oyun.aliveRoster].sort((a, b) => Number(!!oyun.pickOf(a)) - Number(!!oyun.pickOf(b))),
+)
+
+/** Karar verildikten sonra sıradaki (henüz karar vermemiş) karaktere geç. */
+function sonrakiKararsizaGec() {
+  const simdiki = seciliOyuncu.value
+  const sonraki = oyun.aliveRoster.find((ad) => ad !== simdiki && !oyun.pickOf(ad))
+  if (sonraki) seciliOyuncu.value = sonraki
+}
+
 async function secenekSec(secenek) {
   try {
     await oyun.pickOption(seciliOyuncu.value, { optionId: secenek.id })
+    sonrakiKararsizaGec()
   } catch {
     /* hata store'da; ekranda gösteriliyor */
   }
@@ -154,6 +172,7 @@ async function secenekSec(secenek) {
 async function turdaBekle() {
   try {
     await oyun.waitRound(seciliOyuncu.value)
+    sonrakiKararsizaGec()
   } catch {
     /* hata store'da */
   }
@@ -621,7 +640,7 @@ function yeniSahneyeGit() {
               <div class="flex flex-wrap items-center gap-1.5">
                 <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
                 <button
-                  v-for="ad in oyun.aliveRoster"
+                  v-for="ad in oyuncuSirasi"
                   :key="ad"
                   type="button"
                   class="inline-flex h-7 items-center gap-1.5 rounded-chip border px-2.5 text-label transition-colors duration-[var(--duration-fast)]"
@@ -648,7 +667,6 @@ function yeniSahneyeGit() {
                 :secim="seciliSecim"
                 :mesgul="oyun.picking"
                 :tur-acik="oyun.roundOpen"
-                :son-zar="oyun.lastRoll"
                 @sec="secenekSec"
                 @bekle="turdaBekle"
               />

@@ -17,7 +17,6 @@ import Icon from '../ui/Icon.vue'
 import Badge from '../ui/Badge.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import { colorFor } from '@/utils/characterColors'
-import { zarTonu } from './gameFormat'
 
 const props = defineProps({
   /** public_round çıktısı */
@@ -167,9 +166,7 @@ watch(
           aria-hidden="true"
         />
         {{ secim.player }}
-        <Badge :tone="zarTonu(secim.band)" size="sm">
-          <span class="nums-tabular">{{ secim.roll }}</span>
-        </Badge>
+        <Icon name="check" :size="13" class="text-ok" />
       </span>
 
       <span

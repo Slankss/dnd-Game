@@ -121,10 +121,11 @@ def public_threat(threat: dict, world_map: dict) -> dict:
 def public_round(round_state, actors=None) -> dict:
     """Turun oyunculara giden hali.
 
-    Seçimler bilerek AÇIKTIR: masadaki herkes kimin karar verdiğini, hangi
-    kategoriyi seçtiğini ve zarının kaç geldiğini görür — tur, herkes seçim
-    yapınca kapanacağı için bu bilgi oyunun kendisidir. Gizlenen tek şey
-    yoktur; anlatıcıya özel alanlar zaten bu kayıtta durmuyor.
+    Seçimler bilerek AÇIKTIR: masadaki herkes kimin karar verdiğini ve hangi
+    kategoriyi seçtiğini görür. Zar ise tur AÇIKKEN henüz atılmamıştır (bkz.
+    `RoundService._roll_all_picks`) — "Turu Geç" ânında herkes için birlikte
+    belirir. Gizlenen tek şey yoktur; anlatıcıya özel alanlar zaten bu
+    kayıtta durmuyor.
     """
     round_ = round_state if isinstance(round_state, Round) else Round.from_dict(round_state)
     now = time.time()

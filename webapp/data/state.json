@@ -1,72 +1,45 @@
 {
   "world_state": {
     "challenges": {
-      "Vadi Ambarı Alevi": {
-        "description": "Yarım gün yürüyüş mesafesindeki tek bilinen erzak kaynağı yönünden büyük bir patlama oldu, alev şiddetlendi.",
+      "Jeneratör Yakıtı": {
+        "description": "Motor hâlâ durgun; arıza teşhis edilmişti (tıkalı yakıt hattı) ama onarım koşucu saldırısıyla yarıda kesilmişti.",
         "severity": "kritik",
-        "clock": "şafağa ~3 saat 5 dk (yaklaşık 06:30)",
-        "progress": "70 - büyük patlama oldu, çatı büyük ihtimalle çökmüş, yağma tamamlanmak üzere",
+        "clock": "onarım yarıda — doğru aletle/ışıkla tamamlanabilir",
+        "progress": "değişmedi",
         "status": "açık",
-        "consequence": "Ambar bu gece içinde tamamen kullanılamaz hale gelebilir; grubun bildiği tek erzak kaynağı fiilen kaybolmuş olacak.",
-        "gm_notes": "Patlama, çeteninkinden bir yakıt/gaz kabının ısıyla infilak etmesinden kaynaklandı. Şafağa kadar geriye pek bir şey kalmayabilir; Doğu şu an yerinden ayrılamıyor çünkü daha yakın bir tehditle karşı karşıya."
+        "consequence": "Kepenk motor olmadan açılamaz.",
+        "gm_notes": ""
       },
-      "Duvar Dibinde Hareket": {
-        "description": "Doğu'nun kendi sesiyle uyanan iki Taze Ölü, bekçi evinin savunma duvarına doğru sendeleyerek geliyor.",
+      "Kepenk Kuşatması": {
+        "description": "Koşucu garajın içinde ama Okan'ı şu an net takip edemiyor; hasar noktası hâlâ açık, dışarıdaki baskı sabit.",
         "severity": "yüksek",
-        "clock": "birkaç dakika, çok yakın",
-        "progress": "100 - iki taze ölü de etkisiz hale getirildi",
-        "status": "çözüldü",
-        "consequence": "Duvar aşılmadı, bekçi evi güvende kaldı, ama çatışma sesi civara biraz yayıldı.",
-        "gm_notes": ""
-      },
-      "Kabuklu Koşucu Saldırısı": {
-        "description": "Göğsünde kemik zırh çıkıntıları olan, olağanüstü hızlı bir mutant Doğu'ya doğru düz bir çizgide koşuyor.",
-        "severity": "kritik",
-        "clock": "saniyeler, şu an göğüs göğüse",
-        "progress": "100 - yaratık öldürüldü",
-        "status": "çözüldü",
-        "consequence": "Doğrudan tehdit sona erdi, ama iki silah sesi civara yayıldı.",
-        "gm_notes": ""
-      },
-      "Dışarıda Toplanan Sürü": {
-        "description": "Silah sesleri ve kan kokusuyla çekilen karışık bir sürü bekçi evine doğru yaklaşıyor, rüzgâr altından geliyorlar - kokuyu almışlar.",
-        "severity": "kritik",
-        "clock": "birkaç dakika, mesafe hızla kapanıyor (87 metre)",
-        "progress": "50 - sürünün büyüklüğü ve türü netleşti: ~20 ölü (11 hareketsiz bekleyen, 4 sürünen, 5 hızlı)",
+        "clock": "sabit — koşucu içeride başıboş dolaşıyor, arkadaki baskı ilerlemedi",
+        "progress": "acil temas durdu, tehdit hâlâ ortamda",
         "status": "açık",
-        "consequence": "Hızlı olanlar öne geçip ilk teması dakikalar içinde sağlayabilir; barikat tam kapanmadığı için risk büyük.",
-        "gm_notes": "Grup onları önce fark etti, kısa bir hazırlık payı var."
-      },
-      "Üst Kattaki Ses": {
-        "description": "Bekçi evinin üst katından gelen belirsiz bir ayak sürtme/kayma sesi - kaynağı bilinmiyor.",
-        "severity": "orta",
-        "clock": "belirsiz, yakın",
-        "progress": "0 - henüz kaynağı belirlenmedi",
-        "status": "açık",
-        "consequence": "Görmezden gelinirse üst kat beklenmedik bir tehdide dönüşebilir.",
-        "gm_notes": ""
+        "consequence": "Koşucu sesi/kokuyu yeniden yakalarsa saldırı tekrar başlar; hasar noktası kapatılmazsa arkadan yenileri sızabilir.",
+        "gm_notes": "Dünya bandı durgundu — kısa bir nefes payı verildi."
       }
     },
     "characters": {
-      "Doğu": {
-        "profession": "Asker",
-        "age": "27",
-        "strength": "Keskin Zeka",
-        "weakness": "Çabuk sinirlenir",
-        "reflex": "Küfreder ve üstüne yürür",
-        "secret": "Kıyametin başladığı zamanlarda emir komuta dengesinin düzenini bozduğu için çıkan kaosta kardeşini katlettiler. Bu durumun ardından cinnet geçirdiğim için 3 yüksek rütbeli askeri aylaklara yedirdim ve bunu soğukkanlılıkla izledim.",
-        "background": "27 yaşında, Asker",
-        "traits": "Güçlü yanı: Keskin Zeka · Zayıf yanı: Çabuk sinirlenir · Refleksi: Küfreder ve üstüne yürür",
-        "status": "Yaralı",
+      "Okan": {
+        "profession": "Doktor",
+        "age": "26",
+        "strength": "Hızlı koşar",
+        "weakness": "Kimseye güvenemiyor",
+        "reflex": "Siper alır ve bekler",
+        "secret": "birinin öldürdü",
+        "background": "26 yaşında, Doktor",
+        "traits": "Güçlü yanı: Hızlı koşar · Zayıf yanı: Kimseye güvenemiyor · Refleksi: Siper alır ve bekler",
+        "status": "İyi",
         "alive": true,
         "wounds": [],
         "vitals": {
           "fatigue": 43,
-          "hunger": 29,
-          "thirst": 31,
-          "stress": 62,
-          "awake_hours": 3.9,
-          "condition": "Pencerede, dışarıdaki sürüyü fark etmiş durumda, kısa bir hazırlık payı var"
+          "hunger": 35,
+          "thirst": 35,
+          "stress": 75,
+          "awake_hours": 4.9,
+          "condition": "Panik eşiğinde"
         },
         "presence": {
           "state": "sahnede",
@@ -75,78 +48,79 @@
           "since_day": null,
           "since_clock": null
         },
-        "location": "Sulama barajı bekçi evi (vadinin doğusu)",
+        "location": "Belediye itfaiye garajı (Demirkale merkez)",
         "inventory": [
-          "Tabanca (16 mermi)",
-          "Cep dürbünü",
-          "Taktik bıçak"
+          "Antibiyotik kürü",
+          "Steteskop",
+          "Cerrahi eldiven çifti (birkaç adet)",
+          "Çivili sopa"
         ],
         "relationships": {},
-        "notes": "",
+        "notes": "Gece yarısı hiç gitmediği bir yeri (beyaz fayanslı koridor, yeşil acil çıkış ışıkları, çift kanatlı kapı) rüyasında net gördü ve tarif edebiliyor.",
         "lost_items": []
       }
     },
-    "clock": "03:35",
+    "clock": "04:15",
     "day": 97,
     "factions": {
-      "Pale Market": {
-        "disposition": "temkinli",
-        "known": "bilinmiyor",
-        "notes": "İlaç stoku bir güç aracı; kimi kurtaracaklarına siyasi olarak karar veriyorlar.",
-        "public_notes": "İlaç ve tedavi dağıttığı söylenen küçük bir ekip."
-      },
-      "Arınma Cemaati": {
-        "disposition": "temkinli",
-        "known": "bilinmiyor",
-        "notes": "Kaynak zengini ama zayıfı dışlıyor; işe yarar bulursa ticarete açık.",
-        "public_notes": "Katı hiyerarşili, kaynak zengini kamp."
-      },
-      "The Tannery": {
+      "Hollow Star": {
         "disposition": "bilinmiyor",
         "known": "bilinmiyor",
         "notes": "Mutasyonun kaynağına dair veri onlarda; canlı denek arıyorlar ve bunu saklıyorlar.",
         "public_notes": "Bir tesise kapanmış, dışarıyla konuşmayan bir grup."
       },
-      "The Garrison": {
+      "Garnizon Komutanlığı": {
+        "disposition": "şüpheci",
+        "known": "bilinmiyor",
+        "notes": "Sıkıyönetim; sivil grupları kayıt altına almak istiyor, direnç görürse sertleşir.",
+        "public_notes": "Kuzeydeki askeri üs, sıkıyönetim."
+      },
+      "Northgate": {
+        "disposition": "çaresiz",
+        "known": "bilinmiyor",
+        "notes": "Korunma karşılığında her şeyi verir; içlerinde kimin ne olduğunu kimse bilmiyor.",
+        "public_notes": "Kaynaksız, kalabalık bir sığınmacı koalisyonu."
+      },
+      "Salt": {
         "disposition": "temkinli",
+        "known": "bilinmiyor",
+        "notes": "Altyapıyı onarıyorlar ama karşılığında o altyapının kontrolünü istiyorlar.",
+        "public_notes": "Elektrik ve suyu yeniden çalıştırdığı söylenen bir ekip."
+      },
+      "Ashfall": {
+        "disposition": "dostane",
         "known": "bilinmiyor",
         "notes": "İz bırakmıyorlar çünkü peşlerinde bir şey var; durdukları yere onu da getiriyorlar.",
         "public_notes": "Hiçbir yerde iki geceden fazla kalmayan bir konvoy."
       },
-      "The Kennel": {
+      "Copperline": {
         "disposition": "fırsatçı",
         "known": "bilinmiyor",
         "notes": "Fiyatı güç dengesine göre belirliyor; zayıf gördüğünü kazıklıyor, borçlandırıp bağlıyor.",
         "public_notes": "Her şeyi takas eden gezici bir pazar."
-      },
-      "Harvest": {
-        "disposition": "bilinmiyor",
-        "known": "bilinmiyor",
-        "notes": "Bilgi topluyor ve satıyor; kimin nerede olduğunu ilk onlar öğreniyor.",
-        "public_notes": "Bölgede yayın yapan, herkesi dinleyen bir ağ."
       }
     },
     "flags": {
       "chargen_done": true
     },
-    "location": "Sulama barajı bekçi evi (vadinin doğusu)",
+    "location": "Belediye itfaiye garajı (Demirkale merkez)",
     "narrator": {
-      "plot_summary": "Doğu, sulama barajı bekçi evinde tek başına nöbet tutarken, grubun tek bilinen erzak kaynağı olan Vadi Ambarı yönünden beklenmedik bir alev yükseldiğini fark etti. Kaynağı belirsiz; şafağa kadar bir karar vermesi gerekiyor.",
+      "plot_summary": "Okan aracın arkasına sığınarak koşucudan mesafe kazandı; karanlıkta yön bulmakta zorlanan koşucu onu anlık olarak kaybetti. Kısa bir nefes payı doğdu ama koşucu hâlâ garajın içinde, hasar noktası hâlâ açık ve jeneratör onarımı yarıda kaldı.",
       "puzzles": {
-        "Alevin Kaynağı": {
-          "description": "Vadi Ambarı yönünden yükselen turuncu alev - kim ya da ne sebep oldu bilinmiyor.",
+        "Rüyadaki Koridor": {
+          "description": "Okan, hiç gitmediği bir yeri (beyaz fayanslı koridor, yeşil acil çıkış ışıkları, çift kanatlı kapı, okunamayan bir tabela) rüyasında net biçimde gördü ve tarif edebiliyor.",
           "status": "çözülmedi",
-          "progress": 15,
+          "progress": 5,
           "clues_found": [
-            "Büyük bir patlama görüldü, alev birden şiddetlendi"
+            "Rüyada beyaz fayanslı bir koridor, yeşil acil çıkış ışıkları ve çift kanatlı bir kapı görüldü; tabela okunamadı."
           ],
-          "next_step": "Şafağa kadar ambara gidip gidilemeyeceğine ya da yakındaki tehditle önce ilgilenmeye karar vermek",
-          "solution": "Fırsatçı küçük bir çete (Kennel bağlantılı) ambarı basmış, ısınmak için ateş yakmışlar ve şafağa kadar yağmayı tamamlamayı planlıyorlar.",
-          "notes": ""
+          "next_step": "Bölgede bu tarife uyan bir yapı (laboratuvar/tesis tipi bir mekan) aranmalı ya da biri bu yeri tanıyabilir.",
+          "solution": "Rüya, Hollow Star'ın kapandığı güney tesisinin iç koridorunu tarif ediyor — Okan'ın bilinçaltına nasıl sızdığı henüz belirsiz, ileride açığa çıkacak.",
+          "notes": "Bu bir tesadüf değil; ileride Hollow Star hattıyla bağlanacak."
         }
       },
       "upcoming_events": {
-        "yakında": "Ambar tam yağmalanırsa erzak kaynağı kaybolur; şafağa kadar müdahale penceresi açık."
+        "yakında": "Koşucu Okan'ı yeniden fark edebilir; hasar noktası kapatılmazsa arkadan yenileri sızabilir."
       }
     },
     "npcs": {},
@@ -299,88 +273,828 @@
       "Koşucu"
     ],
     "map": {
-      "current": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "current": "Belediye itfaiye garajı (Demirkale merkez)",
       "places": {
-        "Eski metro istasyonu (çöküş bölgesi, Demirkale)": {
+        "Durak Büfesi (Cumhuriyet)": {
           "kind": "",
+          "category": "bufe",
+          "city": "Gökçepınar",
+          "x": 12.45,
+          "y": -5.67,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Söğütlük Nöbetçi Eczanesi": {
+          "kind": "",
+          "category": "eczane",
+          "city": "Gökçepınar",
+          "x": 11.74,
+          "y": -6.85,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Gökçepınar Tarım Kredi Deposu": {
+          "kind": "",
+          "category": "depo",
+          "city": "Gökçepınar",
+          "x": 11.31,
+          "y": -5.27,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Gölbaşı Yıkıntısı": {
+          "kind": "",
+          "category": "harabe",
+          "city": "Gökçepınar",
+          "x": 10.89,
+          "y": -6.62,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Gökçepınar Emniyet Amirliği": {
+          "kind": "",
+          "category": "karakol",
+          "city": "Gökçepınar",
+          "x": 11.32,
+          "y": -4.9,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Toros Apartmanı": {
+          "kind": "",
+          "category": "konut",
+          "city": "İncirlik",
+          "x": 7.17,
+          "y": 2.42,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Şahin Apartmanı": {
+          "kind": "",
+          "category": "konut",
+          "city": "İncirlik",
+          "x": 8.99,
+          "y": 2.05,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Efe Lokantası": {
+          "kind": "",
+          "category": "lokanta",
+          "city": "İncirlik",
+          "x": 7.98,
+          "y": 5.27,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "İncirlik Otogarı": {
+          "kind": "",
+          "category": "otogar",
+          "city": "İncirlik",
+          "x": 7.22,
+          "y": 3.65,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Poyraz Göleti": {
+          "kind": "",
+          "category": "dogal",
+          "city": "İncirlik",
+          "x": 8.18,
+          "y": 3.57,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Yenişehir Polis Karakolu": {
+          "kind": "",
+          "category": "karakol",
+          "city": "İncirlik",
+          "x": 8.86,
+          "y": 3.01,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Aslan Yapı Market": {
+          "kind": "",
+          "category": "santiye",
+          "city": "Kartaltepe",
+          "x": 1.53,
+          "y": -7.41,
+          "known": "duyuldu",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Ceylan Süpermarket": {
+          "kind": "",
+          "category": "market",
+          "city": "Kartaltepe",
+          "x": -0.12,
+          "y": -6.94,
+          "known": "duyuldu",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Kartaltepe Anadolu Lisesi": {
+          "kind": "",
+          "category": "okul",
+          "city": "Kartaltepe",
+          "x": 1.4,
+          "y": -7.87,
+          "known": "duyuldu",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Karaca Akaryakıt": {
+          "kind": "",
+          "category": "benzinlik",
+          "city": "Kartaltepe",
+          "x": 2.42,
+          "y": -5.53,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Söğütlük Torna Atölyesi": {
+          "kind": "",
+          "category": "sanayi",
+          "city": "Kartaltepe",
+          "x": 2.33,
+          "y": -5.18,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Kartal Sitesi": {
+          "kind": "",
+          "category": "konut",
+          "city": "Gökçepınar kırsalı",
+          "x": 12.38,
+          "y": -0.18,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Kavaklık Deresi": {
+          "kind": "",
+          "category": "dogal",
+          "city": "İncirlik kırsalı",
+          "x": 9.86,
+          "y": 0.24,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Güney Kapısı Tarlaları": {
+          "kind": "",
+          "category": "ciftlik",
+          "city": "Kartaltepe kırsalı",
+          "x": 4.69,
+          "y": -7.96,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Ceylan Akaryakıt": {
+          "kind": "",
+          "category": "benzinlik",
+          "city": "Kartaltepe kırsalı",
+          "x": 4.9,
+          "y": -8.09,
+          "known": "bilinmiyor",
+          "status": "",
+          "danger": "bilinmiyor",
+          "notes": "",
+          "links": [],
+          "discovered_day": 97,
+          "visited": false
+        },
+        "Belediye itfaiye garajı (Demirkale merkez)": {
+          "kind": "",
+          "category": "siginak",
+          "city": "Kartaltepe kırsalı",
+          "x": -1.04,
+          "y": -7.83,
           "known": "keşfedildi",
           "status": "",
           "danger": "bilinmiyor",
           "notes": "",
-          "links": [
-            "Sulama barajı bekçi evi (vadinin doğusu)"
-          ],
-          "discovered_day": 97,
-          "visited": true
-        },
-        "Sulama barajı bekçi evi (vadinin doğusu)": {
-          "kind": "kırsal yapı",
-          "known": "keşfedildi",
-          "status": "grubun sığınağı",
-          "danger": "temkinli",
-          "notes": "Taş ev, temiz su, geniş görüş açısı, kısa bir savunma duvarı.",
-          "links": [
-            "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-            "Vadi Ambarı"
-          ],
-          "discovered_day": 97,
-          "visited": true
-        },
-        "Vadi Ambarı": {
-          "kind": "depo",
-          "known": "keşfedildi",
-          "status": "büyük patlama oldu, çatı çökmüş, alev şiddetli",
-          "danger": "tehlikeli",
-          "notes": "Grubun bildiği tek yakın erzak kaynağı; yarım gün yürüyüş mesafesinde.",
-          "links": [
-            "Sulama barajı bekçi evi (vadinin doğusu)"
-          ],
-          "discovered_day": 97,
+          "links": [],
+          "discovered_day": null,
           "visited": true
         }
       },
       "party": {
-        "Doğu": "Sulama barajı bekçi evi (vadinin doğusu)"
-      }
+        "Okan": "Belediye itfaiye garajı (Demirkale merkez)"
+      },
+      "size": "orta",
+      "cities": {
+        "Gökçepınar": {
+          "tur": "dağ köyü",
+          "not": "Yüksekte, soğuk ve uzak; kışın yolu kapanır.",
+          "x": 11.47,
+          "y": -5.33
+        },
+        "İncirlik": {
+          "tur": "sahil kasabası",
+          "not": "Boş yazlık siteler ve çekilmiş tekneler.",
+          "x": 7.97,
+          "y": 3.59
+        },
+        "Kartaltepe": {
+          "tur": "yamaç mahallesi",
+          "not": "Şehrin sırtına kurulmuş; yollar dik ve virajlı.",
+          "x": 1.46,
+          "y": -5.94
+        }
+      },
+      "roads": [
+        {
+          "a": "Durak Büfesi (Cumhuriyet)",
+          "b": "Gökçepınar Tarım Kredi Deposu",
+          "kind": "cadde",
+          "km": 1.51,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Durak Büfesi (Cumhuriyet)",
+          "b": "Gökçepınar Emniyet Amirliği",
+          "kind": "cadde",
+          "km": 1.71,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Durak Büfesi (Cumhuriyet)",
+          "b": "Söğütlük Nöbetçi Eczanesi",
+          "kind": "cadde",
+          "km": 1.72,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Söğütlük Nöbetçi Eczanesi",
+          "b": "Gölbaşı Yıkıntısı",
+          "kind": "ara sokak",
+          "km": 1.23,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Söğütlük Nöbetçi Eczanesi",
+          "b": "Gökçepınar Tarım Kredi Deposu",
+          "kind": "cadde",
+          "km": 2.05,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gökçepınar Tarım Kredi Deposu",
+          "b": "Gökçepınar Emniyet Amirliği",
+          "kind": "ara sokak",
+          "km": 0.52,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gökçepınar Tarım Kredi Deposu",
+          "b": "Gölbaşı Yıkıntısı",
+          "kind": "cadde",
+          "km": 1.77,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gölbaşı Yıkıntısı",
+          "b": "Gökçepınar Emniyet Amirliği",
+          "kind": "cadde",
+          "km": 2.22,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Toros Apartmanı",
+          "b": "İncirlik Otogarı",
+          "kind": "cadde",
+          "km": 1.54,
+          "status": "tıkalı",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Toros Apartmanı",
+          "b": "Poyraz Göleti",
+          "kind": "cadde",
+          "km": 1.91,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Toros Apartmanı",
+          "b": "Yenişehir Polis Karakolu",
+          "kind": "cadde",
+          "km": 2.24,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Şahin Apartmanı",
+          "b": "Yenişehir Polis Karakolu",
+          "kind": "ara sokak",
+          "km": 1.36,
+          "status": "çökük",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Şahin Apartmanı",
+          "b": "Poyraz Göleti",
+          "kind": "cadde",
+          "km": 2.15,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Şahin Apartmanı",
+          "b": "Toros Apartmanı",
+          "kind": "cadde",
+          "km": 2.32,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Efe Lokantası",
+          "b": "Poyraz Göleti",
+          "kind": "cadde",
+          "km": 2.14,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Efe Lokantası",
+          "b": "İncirlik Otogarı",
+          "kind": "cadde",
+          "km": 2.24,
+          "status": "çökük",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Efe Lokantası",
+          "b": "Yenişehir Polis Karakolu",
+          "kind": "cadde",
+          "km": 3.03,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "İncirlik Otogarı",
+          "b": "Poyraz Göleti",
+          "kind": "ara sokak",
+          "km": 1.35,
+          "status": "tıkalı",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "İncirlik Otogarı",
+          "b": "Yenişehir Polis Karakolu",
+          "kind": "cadde",
+          "km": 2.2,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Poyraz Göleti",
+          "b": "Yenişehir Polis Karakolu",
+          "kind": "ara sokak",
+          "km": 1.23,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Aslan Yapı Market",
+          "b": "Kartaltepe Anadolu Lisesi",
+          "kind": "ara sokak",
+          "km": 0.67,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Aslan Yapı Market",
+          "b": "Ceylan Süpermarket",
+          "kind": "cadde",
+          "km": 2.14,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Aslan Yapı Market",
+          "b": "Ceylan Süpermarket",
+          "kind": "patika",
+          "km": 3.43,
+          "status": "açık",
+          "risk": 1,
+          "notes": "En sessiz yol; yük taşımak zor, gece kaybolunur.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Aslan Yapı Market",
+          "b": "Karaca Akaryakıt",
+          "kind": "cadde",
+          "km": 2.6,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Ceylan Süpermarket",
+          "b": "Kartaltepe Anadolu Lisesi",
+          "kind": "cadde",
+          "km": 2.23,
+          "status": "tıkalı",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Ceylan Süpermarket",
+          "b": "Karaca Akaryakıt",
+          "kind": "cadde",
+          "km": 3.63,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Kartaltepe Anadolu Lisesi",
+          "b": "Karaca Akaryakıt",
+          "kind": "cadde",
+          "km": 3.19,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Karaca Akaryakıt",
+          "b": "Söğütlük Torna Atölyesi",
+          "kind": "ara sokak",
+          "km": 0.51,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Söğütlük Torna Atölyesi",
+          "b": "Aslan Yapı Market",
+          "kind": "cadde",
+          "km": 2.96,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Söğütlük Torna Atölyesi",
+          "b": "Kartaltepe Anadolu Lisesi",
+          "kind": "cadde",
+          "km": 3.56,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Şehir içi ana arter; araç kalabalığı var.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Güney Kapısı Tarlaları",
+          "b": "Ceylan Akaryakıt",
+          "kind": "ara sokak",
+          "km": 0.35,
+          "status": "açık",
+          "risk": 1,
+          "notes": "Yavaş ve dolambaçlı ama saklanacak yer çok.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Güney Kapısı Tarlaları",
+          "b": "Ceylan Akaryakıt",
+          "kind": "demiryolu",
+          "km": 0.33,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Düz ve boş; ray boyunca yürünür.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gökçepınar Emniyet Amirliği",
+          "b": "Şahin Apartmanı",
+          "kind": "anayol",
+          "km": 8.43,
+          "status": "açık",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gökçepınar Emniyet Amirliği",
+          "b": "Şahin Apartmanı",
+          "kind": "patika",
+          "km": 15.6,
+          "status": "açık",
+          "risk": 1,
+          "notes": "En sessiz yol; yük taşımak zor, gece kaybolunur.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gölbaşı Yıkıntısı",
+          "b": "Karaca Akaryakıt",
+          "kind": "anayol",
+          "km": 9.82,
+          "status": "açık",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Gölbaşı Yıkıntısı",
+          "b": "Karaca Akaryakıt",
+          "kind": "kır yolu",
+          "km": 16.52,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Toprak yol; araçla zor, yürüyerek sessiz.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Toros Apartmanı",
+          "b": "Söğütlük Torna Atölyesi",
+          "kind": "anayol",
+          "km": 10.36,
+          "status": "barikatlı",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Toros Apartmanı",
+          "b": "Söğütlük Torna Atölyesi",
+          "kind": "patika",
+          "km": 23.64,
+          "status": "açık",
+          "risk": 1,
+          "notes": "En sessiz yol; yük taşımak zor, gece kaybolunur.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Kartal Sitesi",
+          "b": "Kavaklık Deresi",
+          "kind": "anayol",
+          "km": 2.94,
+          "status": "açık",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Kartal Sitesi",
+          "b": "Şahin Apartmanı",
+          "kind": "kır yolu",
+          "km": 5.28,
+          "status": "açık",
+          "risk": 2,
+          "notes": "Toprak yol; araçla zor, yürüyerek sessiz.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Kavaklık Deresi",
+          "b": "Şahin Apartmanı",
+          "kind": "anayol",
+          "km": 2.31,
+          "status": "açık",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Güney Kapısı Tarlaları",
+          "b": "Aslan Yapı Market",
+          "kind": "kır yolu",
+          "km": 4.17,
+          "status": "tıkalı",
+          "risk": 2,
+          "notes": "Toprak yol; araçla zor, yürüyerek sessiz.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Ceylan Akaryakıt",
+          "b": "Aslan Yapı Market",
+          "kind": "anayol",
+          "km": 3.95,
+          "status": "açık",
+          "risk": 3,
+          "notes": "Geniş ve hızlı ama açık: uzaktan görülürsün.",
+          "known": "bilinmiyor"
+        },
+        {
+          "a": "Belediye itfaiye garajı (Demirkale merkez)",
+          "b": "Ceylan Süpermarket",
+          "kind": "anayol",
+          "km": 1.47,
+          "status": "açık",
+          "risk": 3,
+          "notes": "",
+          "known": "duyuldu"
+        },
+        {
+          "a": "Belediye itfaiye garajı (Demirkale merkez)",
+          "b": "Kartaltepe Anadolu Lisesi",
+          "kind": "kır yolu",
+          "km": 3.17,
+          "status": "açık",
+          "risk": 2,
+          "notes": "",
+          "known": "duyuldu"
+        },
+        {
+          "a": "Belediye itfaiye garajı (Demirkale merkez)",
+          "b": "Aslan Yapı Market",
+          "kind": "kır yolu",
+          "km": 3.39,
+          "status": "açık",
+          "risk": 2,
+          "notes": "",
+          "known": "duyuldu"
+        }
+      ]
     },
     "tension": "yüksek",
     "options": {
-      "Doğu": [
+      "Okan": [
         {
-          "id": "Doğu-1",
-          "text": "Barikatı son bir kez güçlendirmeye çalış, kapının açık kalan aralığını kapat.",
+          "id": "Okan-5",
+          "text": "Çok yavaş, sessizce garajın en arka köşesine doğru sürünerek koşucudan tamamen uzaklaş",
+          "category": "güvenli",
+          "cost": "zaman, jeneratör ve hasar noktası tamamen terk edilir"
+        },
+        {
+          "id": "Okan-3",
+          "text": "Çivili sopayı sıkıca tutup koşucu yaklaşırsa karşılamaya hazırlan, kımıldamadan pusuda bekle",
           "category": "hazırlık",
-          "cost": "zaman, yaralı kolla zorlanırsın, sürü bu sırada yaklaşmaya devam eder"
+          "cost": "yorgunluk, gerginlik"
         },
         {
-          "id": "Doğu-2",
-          "text": "Tabancanı hazır tut, pencereden gözetlemeye devam ederek yaklaşan hızlı olanları önceden fark edip nişan alacak konum bul.",
+          "id": "Okan-2",
+          "text": "Aracın üstüne sessizce tırmanıp yüksekte, koşucunun erişemeyeceği bir noktada bekle",
           "category": "güvenli",
-          "cost": "mermi az, doğru anı kaçırma riski"
+          "cost": "hasar noktası ve jeneratör bekletilir"
         },
         {
-          "id": "Doğu-3",
-          "text": "Üst kattaki sesi şimdilik göz ardı et, tüm dikkatini aşağıya ve kapıya ver.",
-          "category": "güvenli",
-          "cost": "üst kat tehdidi çözümsüz kalır"
-        },
-        {
-          "id": "Doğu-4",
-          "text": "Vakit varken arka bir çıkıştan sessizce kaçmayı dene, sürüden uzaklaş.",
+          "id": "Okan-4",
+          "text": "Karanlıkta el yordamıyla hasar noktasının önüne bir şey (teker, kutu) çekmeyi dene, arkadakileri durdur",
           "category": "riskli",
-          "cost": "bilinmeyen bir rotaya çıkmak, ambar planından vazgeçmek, yaralı haldesin"
+          "cost": "gürültü riski, koşucunun dikkatini çekebilir"
         },
         {
-          "id": "Doğu-5",
-          "text": "Üst kata çıkıp sesin kaynağını hemen öğrenmeye çalış, sürü gelmeden bunu çöz.",
-          "category": "kurnaz",
-          "cost": "zaman, aşağıdaki savunmayı zayıflatır"
+          "id": "Okan-1",
+          "text": "Sessizce aracın arkasından sıyrılıp jeneratöre dönmeyi ve onarımı tamamlamayı dene",
+          "category": "riskli",
+          "cost": "koşucunun fark etme riski, zaman"
         }
       ]
     },
     "grid": {
       "version": 1,
-      "name": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "name": "Belediye itfaiye garajı (Demirkale merkez)",
       "width": 15,
       "height": 11,
       "cells": [
@@ -1069,8 +1783,8 @@
       ],
       "entities": [
         {
-          "id": "Doğu",
-          "name": "Doğu",
+          "id": "Okan",
+          "name": "Okan",
           "kind": "player",
           "x": 1,
           "y": 5,
@@ -1080,286 +1794,396 @@
       ]
     },
     "world_roll": {
-      "roll": 81,
-      "band": "Baskı",
-      "hint": "aktif zorluk belirgin ilerler (süre kısalır, sayı artar, mesafe kapanır) ya da yeni zorluk doğar",
-      "ts": "2026-08-03 22:12:28"
+      "roll": 34,
+      "band": "Durgun",
+      "hint": "aktif tehditler ilerlemez, nefes alma payı doğar",
+      "ts": "2026-08-04 22:15:47"
     },
     "world_roll_history": [
       {
+        "roll": 14,
+        "band": "Durgun",
+        "ts": "2026-08-04 21:48:05"
+      },
+      {
+        "roll": 29,
+        "band": "Durgun",
+        "ts": "2026-08-04 21:50:43"
+      },
+      {
+        "roll": 50,
+        "band": "Sızıntı",
+        "ts": "2026-08-04 21:53:14"
+      },
+      {
+        "roll": 20,
+        "band": "Durgun",
+        "ts": "2026-08-04 21:57:22"
+      },
+      {
         "roll": 90,
         "band": "Kriz",
-        "ts": "2026-08-03 21:49:39"
+        "ts": "2026-08-04 22:00:09"
       },
       {
-        "roll": 36,
-        "band": "Sızıntı",
-        "ts": "2026-08-03 21:54:31"
-      },
-      {
-        "roll": 42,
-        "band": "Sızıntı",
-        "ts": "2026-08-03 21:57:50"
-      },
-      {
-        "roll": 35,
+        "roll": 31,
         "band": "Durgun",
-        "ts": "2026-08-03 22:03:48"
+        "ts": "2026-08-04 22:02:13"
       },
       {
-        "roll": 88,
+        "roll": 79,
         "band": "Baskı",
-        "ts": "2026-08-03 22:06:09"
+        "ts": "2026-08-04 22:03:37"
       },
       {
-        "roll": 72,
+        "roll": 70,
         "band": "Baskı",
-        "ts": "2026-08-03 22:10:04"
+        "ts": "2026-08-04 22:13:01"
       },
       {
-        "roll": 81,
-        "band": "Baskı",
-        "ts": "2026-08-03 22:12:28"
+        "roll": 34,
+        "band": "Durgun",
+        "ts": "2026-08-04 22:15:47"
       }
     ],
     "threat": {
-      "noise": 100,
-      "heat": 20,
+      "noise": 83,
+      "heat": 48,
       "quiet_turns": 0,
       "travelling": false,
-      "last_minutes": 10,
-      "last_location": "Sulama barajı bekçi evi (vadinin doğusu)",
+      "last_minutes": 5,
+      "last_location": "Belediye itfaiye garajı (Demirkale merkez)",
       "density": {
-        "Eski metro istasyonu (çöküş bölgesi, Demirkale)": 25.1,
-        "Sulama barajı bekçi evi (vadinin doğusu)": 100.0,
-        "Vadi Ambarı": 49.9
+        "Durak Büfesi (Cumhuriyet)": 58.7,
+        "Gökçepınar Emniyet Amirliği": 51.7,
+        "Gökçepınar Tarım Kredi Deposu": 47.7,
+        "Söğütlük Nöbetçi Eczanesi": 57.8,
+        "Gölbaşı Yıkıntısı": 26.6,
+        "Karaca Akaryakıt": 41.0,
+        "Şahin Apartmanı": 70.7,
+        "Toros Apartmanı": 62.9,
+        "Yenişehir Polis Karakolu": 58.2,
+        "İncirlik Otogarı": 66.8,
+        "Efe Lokantası": 52.4,
+        "Poyraz Göleti": 32.7,
+        "Aslan Yapı Market": 55.2,
+        "Belediye itfaiye garajı (Demirkale merkez)": 99.9,
+        "Ceylan Akaryakıt": 48.8,
+        "Ceylan Süpermarket": 46.4,
+        "Güney Kapısı Tarlaları": 33.1,
+        "Kartaltepe Anadolu Lisesi": 51.0,
+        "Söğütlük Torna Atölyesi": 51.6,
+        "Kartal Sitesi": 53.4,
+        "Kavaklık Deresi": 59.3
       },
       "last": {
         "gun": 97,
-        "saat": "03:35",
-        "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+        "saat": "04:15",
+        "yer": "Belediye itfaiye garajı (Demirkale merkez)",
         "severity": "kalabalık",
-        "count": 20,
+        "count": 38,
         "types": [
-          "Sarmaşık",
-          "Sürüngen",
-          "Koşucu"
+          "İkiz Gövde",
+          "Şişkin",
+          "Sarmaşık"
         ],
-        "distance": 87,
+        "distance": 120,
         "chance": 88,
-        "roll": 12,
+        "roll": 24,
         "travelling": false,
         "var": true
       },
       "migrations": [
         {
-          "target": "Vadi Ambarı",
-          "gain": 51.1,
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 28.8,
           "from": [
             {
-              "place": "Sulama barajı bekçi evi (vadinin doğusu)",
-              "amount": 23.9
+              "place": "Aslan Yapı Market",
+              "amount": 6.0
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 18.6
-            }
-          ],
-          "background": 8.5,
-          "type": "patlama"
-        },
-        {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 2.5,
-          "from": [
-            {
-              "place": "Vadi Ambarı",
-              "amount": 1.5
+              "place": "Kartaltepe Anadolu Lisesi",
+              "amount": 5.5
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 0.6
-            }
-          ],
-          "background": 0.4
-        },
-        {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 31.2,
-          "from": [
-            {
-              "place": "Vadi Ambarı",
-              "amount": 18.2
+              "place": "Ceylan Süpermarket",
+              "amount": 4.9
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 7.8
-            }
-          ],
-          "background": 5.2
-        },
-        {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 2.5,
-          "from": [
-            {
-              "place": "Vadi Ambarı",
-              "amount": 1.5
+              "place": "Söğütlük Torna Atölyesi",
+              "amount": 2.3
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 0.6
-            }
-          ],
-          "background": 0.4
-        },
-        {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 31.2,
-          "from": [
-            {
-              "place": "Vadi Ambarı",
-              "amount": 18.2
+              "place": "Ceylan Akaryakıt",
+              "amount": 2.2
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 7.8
+              "place": "Karaca Akaryakıt",
+              "amount": 1.8
+            },
+            {
+              "place": "Güney Kapısı Tarlaları",
+              "amount": 1.4
             }
           ],
-          "background": 5.2
+          "background": 4.8
         },
         {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 1.7,
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 5.5,
           "from": [
             {
-              "place": "Vadi Ambarı",
+              "place": "Aslan Yapı Market",
+              "amount": 1.1
+            },
+            {
+              "place": "Kartaltepe Anadolu Lisesi",
               "amount": 1.0
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 0.4
-            }
-          ],
-          "background": 0.3
-        },
-        {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "gain": 13.8,
-          "from": [
-            {
-              "place": "Vadi Ambarı",
-              "amount": 8.0
+              "place": "Ceylan Süpermarket",
+              "amount": 0.9
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
-              "amount": 3.5
+              "place": "Söğütlük Torna Atölyesi",
+              "amount": 0.5
+            },
+            {
+              "place": "Ceylan Akaryakıt",
+              "amount": 0.4
+            },
+            {
+              "place": "Karaca Akaryakıt",
+              "amount": 0.4
+            },
+            {
+              "place": "Güney Kapısı Tarlaları",
+              "amount": 0.3
             }
           ],
-          "background": 2.3
+          "background": 0.9
         },
         {
-          "target": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 5.3,
+          "from": [
+            {
+              "place": "Aslan Yapı Market",
+              "amount": 1.1
+            },
+            {
+              "place": "Kartaltepe Anadolu Lisesi",
+              "amount": 1.0
+            },
+            {
+              "place": "Ceylan Süpermarket",
+              "amount": 0.9
+            },
+            {
+              "place": "Söğütlük Torna Atölyesi",
+              "amount": 0.4
+            },
+            {
+              "place": "Ceylan Akaryakıt",
+              "amount": 0.4
+            },
+            {
+              "place": "Karaca Akaryakıt",
+              "amount": 0.3
+            },
+            {
+              "place": "Güney Kapısı Tarlaları",
+              "amount": 0.3
+            }
+          ],
+          "background": 0.9
+        },
+        {
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 0.2,
+          "from": [
+            {
+              "place": "Aslan Yapı Market",
+              "amount": 0.1
+            },
+            {
+              "place": "Kartaltepe Anadolu Lisesi",
+              "amount": 0.1
+            }
+          ],
+          "background": 0.0
+        },
+        {
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
           "gain": 0.3,
           "from": [
             {
-              "place": "Vadi Ambarı",
-              "amount": 0.2
+              "place": "Aslan Yapı Market",
+              "amount": 0.1
             },
             {
-              "place": "Eski metro istasyonu (çöküş bölgesi, Demirkale)",
+              "place": "Kartaltepe Anadolu Lisesi",
+              "amount": 0.1
+            },
+            {
+              "place": "Ceylan Süpermarket",
               "amount": 0.1
             }
           ],
           "background": 0.1
+        },
+        {
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 0.0,
+          "from": [],
+          "background": 0.0
+        },
+        {
+          "target": "Belediye itfaiye garajı (Demirkale merkez)",
+          "gain": 0.0,
+          "from": [],
+          "background": 0.0
         }
       ],
       "history": [
         {
           "gun": 97,
-          "saat": "02:45",
-          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "saat": "03:30",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
           "severity": "küme",
-          "count": 6,
+          "count": 13,
           "types": [
-            "Taze Ölü"
+            "Koşucu",
+            "Şişkin",
+            "Sürüngen"
           ],
           "distance": 64,
-          "chance": 34,
-          "roll": 20,
+          "chance": 57,
+          "roll": 24,
           "travelling": false,
           "var": true
         },
         {
           "gun": 97,
-          "saat": "03:00",
-          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "saat": "03:48",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
+          "severity": "küme",
+          "count": 9,
+          "types": [
+            "Taze Ölü",
+            "Sürüngen"
+          ],
+          "distance": 26,
+          "chance": 83,
+          "roll": 46,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "03:55",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
           "severity": "küme",
           "count": 6,
           "types": [
-            "Çığlıkçı",
             "Taze Ölü"
           ],
-          "distance": 65,
-          "chance": 63,
-          "roll": 26,
+          "distance": 33,
+          "chance": 84,
+          "roll": 45,
           "travelling": false,
           "var": true
         },
         {
           "gun": 97,
-          "saat": "03:15",
-          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
-          "severity": "tekil",
-          "count": 4,
-          "types": [
-            "Taze Ölü",
-            "Çığlıkçı"
-          ],
-          "distance": 53,
-          "chance": 88,
-          "roll": 60,
-          "travelling": false,
-          "var": true
-        },
-        {
-          "gun": 97,
-          "saat": "03:35",
-          "yer": "Sulama barajı bekçi evi (vadinin doğusu)",
+          "saat": "04:05",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
           "severity": "kalabalık",
-          "count": 20,
+          "count": 19,
           "types": [
-            "Sarmaşık",
             "Sürüngen",
+            "Taze Ölü"
+          ],
+          "distance": 115,
+          "chance": 79,
+          "roll": 12,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "04:10",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
+          "severity": "küme",
+          "count": 12,
+          "types": [
             "Koşucu"
           ],
-          "distance": 87,
+          "distance": 55,
+          "chance": 80,
+          "roll": 36,
+          "travelling": false,
+          "var": true
+        },
+        {
+          "gun": 97,
+          "saat": "04:15",
+          "yer": "Belediye itfaiye garajı (Demirkale merkez)",
+          "severity": "kalabalık",
+          "count": 38,
+          "types": [
+            "İkiz Gövde",
+            "Şişkin",
+            "Sarmaşık"
+          ],
+          "distance": 120,
           "chance": 88,
-          "roll": 12,
+          "roll": 24,
           "travelling": false,
           "var": true
         }
       ],
-      "encounters": 4,
-      "contacts": 4
+      "encounters": 6,
+      "contacts": 6
+    },
+    "searched": {
+      "Belediye itfaiye garajı (Demirkale merkez)": {
+        "found": 1
+      }
     }
   },
-  "next_id": 18,
-  "session_id": "d3a6eb2f-52e4-4ba8-948b-100ea08df62b",
+  "next_id": 20,
+  "session_id": "3d1573d0-187a-49b1-b07e-e304a54519c7",
   "characters_confirmed": true,
   "started": true,
   "settings": {
     "turn_seconds": 600,
-    "profanity": "hafif",
-    "round_mode": true
+    "profanity": "sert",
+    "round_mode": true,
+    "map_size": "orta"
   },
   "round": {
-    "no": 8,
+    "no": 10,
     "status": "acik",
     "seconds": 600,
-    "opened_ts": 1785784419.369987,
-    "deadline_ts": 1785785019.369987,
+    "opened_ts": 1785870984.6459599,
+    "deadline_ts": 1785871584.6459599,
     "picks": {}
   },
-  "version": 20
+  "pending": {
+    "items": [
+      {
+        "kind": "tehdit",
+        "due_round": 10,
+        "data": {
+          "noise": 24,
+          "travel": false,
+          "events": []
+        },
+        "ts": 1785870984.644944
+      }
+    ]
+  },
+  "version": 29
 }

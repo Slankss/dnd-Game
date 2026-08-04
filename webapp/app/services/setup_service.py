@@ -158,6 +158,8 @@ class GameService:
             state = self.state_repo.load()
             if state["started"]:
                 raise ValidationError("Oyun zaten başladı.")
+            if state.get("starting"):
+                raise ValidationError("Oyun zaten başlatılıyor, biraz bekleyin.")
             if not state["characters_confirmed"]:
                 raise ValidationError("Önce karakterleri belirleyin.")
 
@@ -232,12 +234,32 @@ class GameService:
             )
             prompt = "(Oyun başlıyor. Sahneyi aç.)"
 
+            # Model çağrısı UZUN sürer (açılışta EFFORT_KEY seviyesinde, ağ
+            # üzerinden claude -p — dakikalarca sürebilir). Kilidi burada
+            # bırakırsak /api/settings ve /secrets ekranı bu süre boyunca
+            # donmaz; `starting` bayrağı oyunun ikinci kez başlatılmaya
+            # çalışılmasını engeller (bkz. yukarısı ve update_settings).
+            state["starting"] = True
+            self.state_repo.save(state)
+
+        try:
             # Açılış sahnesi dünyayı kuruyor: bütün oyunun üzerine bindiği tur
             # burası, effort'tan kısılacak yer değil (bkz. models/effort).
             result = self.narrator.ask(prompt, extra_system, None,
                                        scenario["scenario_text"],
                                        effort=config.EFFORT_KEY)
+        except Exception:
+            with LOCK:
+                state = self.state_repo.load()
+                state["starting"] = False
+                self.state_repo.save(state)
+            raise
 
+        with LOCK:
+            # Kilit bırakıldığı sürede ayarlar değişmiş olabilir — taze
+            # yükle ve yalnız BU akışın alanlarını yaz, `settings`'e dokunma.
+            state = self.state_repo.load()
+            state["starting"] = False
             state["session_id"] = result.get("session_id")
             state["started"] = True
 
@@ -329,9 +351,11 @@ class GameService:
                 if boyut not in MAP_SIZES:
                     raise ValidationError(
                         "Harita büyüklüğü: küçük, orta ya da büyük.")
-                if state.get("started"):
+                if state.get("started") or state.get("starting"):
                     # Harita oyun başında bir kez üretilir ve sabittir; sonradan
                     # büyütmek mevcut mesafeleri ve keşifleri anlamsız kılardı.
+                    # `starting`: açılış sahnesi henüz yazılıyor olsa bile
+                    # harita zaten üretildi (bkz. GameService.start).
                     raise ValidationError(
                         "Harita zaten üretildi — büyüklük ancak yeni oyunda "
                         "değişir (önce sıfırla).")

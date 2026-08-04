@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "updated": "2026-08-03 22:13:39",
-  "games": 2,
-  "turns": 8,
-  "picks": 10,
+  "updated": "2026-08-04 22:16:24",
+  "games": 3,
+  "turns": 17,
+  "picks": 19,
   "categories": {
     "güvenli": {
-      "secim": 5,
-      "zar_toplam": 300,
+      "secim": 7,
+      "zar_toplam": 446,
       "felaket": 1,
       "kritik": 0,
-      "basari": 3,
+      "basari": 5,
       "basarisiz": 0
     },
     "serbest": {
@@ -30,30 +30,46 @@
       "basarisiz": 0
     },
     "riskli": {
-      "secim": 2,
-      "zar_toplam": 86,
+      "secim": 5,
+      "zar_toplam": 258,
       "felaket": 0,
       "kritik": 0,
-      "basari": 1,
+      "basari": 3,
       "basarisiz": 1
+    },
+    "hazırlık": {
+      "secim": 3,
+      "zar_toplam": 97,
+      "felaket": 0,
+      "kritik": 0,
+      "basari": 0,
+      "basarisiz": 1
+    },
+    "kurnaz": {
+      "secim": 1,
+      "zar_toplam": 4,
+      "felaket": 1,
+      "kritik": 0,
+      "basari": 0,
+      "basarisiz": 0
     }
   },
   "bands": {
-    "Güçlü Başarı": 3,
+    "Güçlü Başarı": 5,
     "Kritik": 1,
-    "Felaket": 1,
-    "Başarısız": 1,
-    "Başarı": 1,
-    "Kısmi Başarı": 1
+    "Felaket": 2,
+    "Başarısız": 2,
+    "Başarı": 3,
+    "Kısmi Başarı": 4
   },
   "pace": {
-    "havuzdan": 10,
+    "havuzdan": 19,
     "serbest": 0,
-    "kisa_secim": 10,
+    "kisa_secim": 19,
     "zaman_asimi": 2,
-    "sure_toplam": 708.0,
-    "sure_adet": 8,
-    "ortalama_saniye": 88.5
+    "sure_toplam": 1290.5,
+    "sure_adet": 17,
+    "ortalama_saniye": 75.9
   },
   "players": {
     "Celil": {
@@ -76,16 +92,26 @@
       "kategoriler": {
         "güvenli": 1
       }
+    },
+    "Okan": {
+      "secim": 9,
+      "kategoriler": {
+        "hazırlık": 3,
+        "riskli": 3,
+        "kurnaz": 1,
+        "güvenli": 2
+      }
     }
   },
   "events": {
-    "karsilasma": 4,
-    "zombi": 36,
+    "karsilasma": 10,
+    "zombi": 133,
     "cozulen_zorluk": 2
   },
   "used_starts": [
     "Üniversite ziraat fakültesi serası",
-    "Sulama barajı bekçi evi (vadinin doğusu)"
+    "Sulama barajı bekçi evi (vadinin doğusu)",
+    "Belediye itfaiye garajı (Demirkale merkez)"
   ],
   "used_factions": [
     "The Ledger",
@@ -98,7 +124,13 @@
     "The Tannery",
     "The Garrison",
     "The Kennel",
-    "Harvest"
+    "Harvest",
+    "Hollow Star",
+    "Garnizon Komutanlığı",
+    "Northgate",
+    "Salt",
+    "Ashfall",
+    "Copperline"
   ],
   "lessons": [
     {
@@ -118,6 +150,24 @@
       "day": null,
       "in_prompt": false,
       "ts": "2026-08-03 21:44:46"
+    },
+    {
+      "key": "baslangic:Belediye itfaiye garajı (Demirkale merkez)",
+      "text": "'Belediye itfaiye garajı (Demirkale merkez)' başlangıcı kullanıldı; bir sonraki oyun başka bir başlangıç noktasıyla açılsın.",
+      "source": "otomatik",
+      "weight": 1,
+      "day": null,
+      "in_prompt": false,
+      "ts": "2026-08-04 21:39:44"
+    },
+    {
+      "key": "uzunluk:kisa",
+      "text": "Bu masa kısa ve doğrudan seçenekleri seçiyor — seçenekleri tek satırda, fiil ile başlat; uzun planları en fazla ikiyle sınırla.",
+      "source": "otomatik",
+      "weight": 5,
+      "day": 97,
+      "in_prompt": true,
+      "ts": "2026-08-04 22:16:24"
     }
   ]
 }

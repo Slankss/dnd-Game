@@ -4,12 +4,14 @@
  * sahne kaç farklı akla yatkın karara izin veriyorsa o kadarı gelir).
  *
  * Akış: "Kararını seç" → seçenek POPUP'ı açılır → bir kart seçilir → popup
- * KENDİLİĞİNDEN kapanır → seçilen karar panelde AKTİF olarak durur. Zar
- * seçim anında sunucuda atılır ve burada animasyonla gösterilir.
+ * KENDİLİĞİNDEN kapanır → seçilen karar panelde AKTİF olarak durur. ZAR BURADA
+ * ATILMAZ: turun zarı, "Turu Geç"e basılınca herkes için birlikte atılır ve
+ * sonucu akışta (StoryEntry) o oyuncunun turu satırında görünür.
  *
  * TUR İLERLEMEZ: seçim yapmak turu göndermez. Oyuncu "Turu Geç"e basana kadar
  * kararını istediği kadar değiştirebilir; turda SON seçtiği karar işlenir.
- * Zar tur başına bir kez atıldığı için karar değiştirmek zar atmak değildir.
+ * Henüz atılmış bir zar olmadığı için karar değiştirmenin zar açısından
+ * hiçbir maliyeti yoktur.
  *
  * SERBEST HAMLE YOKTUR: hikaye yalnız sunulan tercihlerle ilerler. Hiçbiri
  * uymuyorsa tek çıkış "bu turda bekle"dir — sunucu her listede en az bir
@@ -28,7 +30,6 @@ import Badge from '../ui/Badge.vue'
 import Icon from '../ui/Icon.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import EmptyState from '../ui/EmptyState.vue'
-import DiceRoll from './DiceRoll.vue'
 import { colorFor } from '@/utils/characterColors'
 
 const props = defineProps({
@@ -42,8 +43,6 @@ const props = defineProps({
   mesgul: { type: Boolean, default: false },
   /** Tur açık mı */
   turAcik: { type: Boolean, default: true },
-  /** Son atılan zar (store.lastRoll) — animasyonu bu tetikler */
-  sonZar: { type: Object, default: null },
 })
 
 const emit = defineEmits(['sec', 'bekle'])
@@ -63,15 +62,6 @@ const secildi = computed(() => !!props.secim)
 /** Bekleme de bir seçimdir ama havuzdaki bir seçeneğe karşılık gelmez. */
 const bekliyor = computed(() => secildi.value && !props.secim.option_id)
 const kilitli = computed(() => props.mesgul || !props.turAcik)
-
-/** Zar animasyonu: sadece bu karakterin kendi zarı için oynasın. */
-const zar = computed(() => {
-  if (props.sonZar?.player === props.oyuncu) return props.sonZar
-  if (props.secim?.roll != null) {
-    return { roll: props.secim.roll, band: props.secim.band, ts: props.secim.ts }
-  }
-  return null
-})
 
 /** Seçim → popup KAPANIR, karar panelde aktif kalır. */
 function sec(secenek) {
@@ -105,7 +95,6 @@ function bekle() {
         :style="{ backgroundColor: colorFor(oyuncu) }"
         aria-hidden="true"
       />
-      <DiceRoll :deger="zar?.roll ?? null" :bant="zar?.band ?? ''" :anahtar="zar?.ts ?? 0" />
       <Badge tone="ok" icon="check_circle" size="sm">seçili</Badge>
       <p class="w-full text-meta text-text">
         {{ bekliyor ? 'Bu turda bekliyorsun — hamle yapmıyorsun.' : secim.text }}
@@ -113,6 +102,10 @@ function bekle() {
       <p class="flex w-full items-center gap-1.5 text-label text-faint">
         <Icon name="edit" :size="13" />
         Turu geçene kadar kararını değiştirebilirsin; son seçtiğin karar işlenir.
+      </p>
+      <p class="flex w-full items-center gap-1.5 text-label text-faint">
+        <Icon name="casino" :size="13" />
+        Zar henüz atılmadı — "Turu Geç"e basılınca herkesle birlikte atılır.
       </p>
     </div>
 
@@ -143,7 +136,7 @@ function bekle() {
         icon="hourglass_empty"
         :disabled="kilitli"
         :loading="mesgul"
-        loading-text="Zar atılıyor…"
+        loading-text="Kaydediliyor…"
         @click="bekle"
       >
         Bu turda bekle

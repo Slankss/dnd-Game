@@ -13,8 +13,14 @@ getirir:
     seçeneği olur; mekan bir kez tarandıysa tarama seçeneklerinin hepsi
     elenir (bir mekan bir kez taranır),
   * sunulan her seçenek havuz dosyasına (`data/options_pool.jsonl`) düşer,
-  * anlatıcıya "son sunulanlar" özeti hazırlanır ki kendini tekrar etmesin.
+  * anlatıcıya "son sunulanlar" özeti hazırlanır ki kendini tekrar etmesin,
+  * liste, oyuncuya gösterilmeden hemen önce KARIŞTIRILIR: model çoğunlukla
+    aynı kategoriyi hep aynı sırada yazar (ör. güvenli hep ilk) — sabit sıra
+    kendisi bir ipucuna dönüşür. Karıştırma bu turda BİR KEZ olur ve tur
+    boyunca sabit kalır; oyuncu kararını değiştirdikçe liste yeniden zıplamaz.
 """
+
+import random
 
 from app.models.options import (
     CATEGORIES,
@@ -72,7 +78,10 @@ class OptionsService:
             if len(options) < OPTION_MIN:
                 options = self._pad(world, player, options)
             options = self._ensure_safe_exit(world, player, options)
-            board.set_player(player, options[:OPTION_MAX])
+            options = options[:OPTION_MAX]
+            # Kategori sırası oyuncuya bir ipucu vermesin: konum bilgisi taşımaz.
+            random.shuffle(options)
+            board.set_player(player, options)
         if learning is not None:
             day = world.day if isinstance(world.day, int) else None
             learning.record_offered(board, day=day, turn=turn)

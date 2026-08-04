@@ -4,12 +4,14 @@ Eskiden her mesaj anında modele gidiyordu: ilk yazan turu açıyor, diğerleri
 onun sahnesine yetişmeye çalışıyordu. Artık bir tur şöyle işler:
 
   1. Anlatıcı sahneyi yazar ve her karaktere 3-8 seçenek bırakır (sabit değil).
-  2. Tur AÇILIR (`acik`). Her oyuncu kendi seçeneğini seçer ya da kendi
-     hamlesini yazar; seçim anında sunucu o oyuncunun zarını atar (gerçek
-     d100) ve sonucu geri döndürür — arayüz zarı orada animasyonla gösterir.
+  2. Tur AÇILIR (`acik`). Her oyuncu kendi seçeneğini seçer; ZAR BURADA
+     ATILMAZ — seçim istediği kadar değiştirilebilir, çünkü henüz atılmış
+     bir zar yoktur.
   3. Seçimler **hafızada** (bu kayıtta) birikir, modele GİTMEZ.
   4. Herkes seçince — ya da süre dolunca — tur TEK seferde gönderilir
-     (`round_service.commit`) ve anlatıcı hepsini aynı sahnede çözer.
+     (`round_service.commit`). Turun zarı (gerçek d100) TAM O ANDA, o an
+     seçimi olan HERKES için birlikte atılır (bkz. `RoundService._roll_all_picks`),
+     sonra anlatıcı hepsini aynı sahnede çözer.
 
 Süre dolduğunda seçim yapmamış oyuncular için "ani sahne" istenir: dünya
 onları beklemez, kararsızlığın kendisi bir olaya dönüşür.

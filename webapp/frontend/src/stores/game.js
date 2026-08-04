@@ -52,12 +52,10 @@ export const useGameStore = defineStore('game', () => {
   const round = ref(null)
   /** Oyun ayarları: {turn_seconds, profanity, round_mode} */
   const settings = ref({ turn_seconds: 0, profanity: 'hafif', round_mode: true })
-  /** Seçim isteği uçuşta mı (zar atılıyor) */
+  /** Seçim isteği uçuşta mı */
   const picking = ref(false)
-  /** Tur gönderimi uçuşta mı */
+  /** Tur gönderimi uçuşta mı (zar da bu sırada atılır) */
   const committing = ref(false)
-  /** Son atılan zar — animasyon bileşeni bunu izler */
-  const lastRoll = ref(null)
   /** Sunucu saatiyle bizimki arasındaki fark (ms) — geri sayım kaymasın */
   const clockSkew = ref(0)
 
@@ -336,9 +334,8 @@ export const useGameStore = defineStore('game', () => {
    * İLERLETMEZ; oyuncu turu geçene kadar kararını değiştirebilir ve sunucu
    * son seçimi işler.
    *
-   * Zar SUNUCUDA ve tur başına BİR KEZ atılır; burada `lastRoll`'a düşer ve
-   * animasyonu OptionPool oynatır. Karar DEĞİŞTİRİLDİĞİNDE (`data.changed`)
-   * zar aynı kaldığı için animasyon yeniden tetiklenmez.
+   * ZAR BURADA ATILMAZ: turun zarı "Turu Geç"e basılınca (`commitRound`)
+   * herkes için birlikte atılır ve sonucu akışta (StoryEntry) görünür.
    * @param {string} player
    * @param {{optionId: string}} secim
    */
@@ -349,15 +346,6 @@ export const useGameStore = defineStore('game', () => {
       const data = await api.pickOption(player, secim)
       if (typeof data.version === 'number') version.value = data.version
       turuBenimse(data.round)
-      if (!data.changed) {
-        lastRoll.value = {
-          player,
-          roll: data.roll,
-          band: data.band,
-          category: data.pick?.category ?? 'serbest',
-          ts: Date.now(),
-        }
-      }
       error.value = null
       return data
     } catch (e) {
@@ -397,7 +385,6 @@ export const useGameStore = defineStore('game', () => {
       const data = await api.commitRound(reason, round.value?.no ?? null)
       if (!data?.skipped) {
         turYanitiniIsle(data)
-        lastRoll.value = null
         lastSyncAt.value = Date.now()
       } else if (data.round) {
         turuBenimse(data.round)
@@ -500,7 +487,6 @@ export const useGameStore = defineStore('game', () => {
       chargenDone.value = false
       unseenCount.value = 0
       round.value = null
-      lastRoll.value = null
       grid.value = null
       lastMove.value = null
       error.value = null
@@ -546,7 +532,6 @@ export const useGameStore = defineStore('game', () => {
     settings,
     picking,
     committing,
-    lastRoll,
     clockSkew,
     grid,
     moving,
