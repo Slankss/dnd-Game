@@ -82,10 +82,16 @@ sadece metin üretimi için) çalıştırır.
   `.claude/skills/kizil-cokus-anlatici/ogrenilenler.md` dosyasına da yazılır —
   yani öğrenilenler bir **Claude yeteneğine** dönüşür ve sunucunun dışında da
   yaşar. Ders üretimi kodda yapılır, ek model çağrısı yoktur.
-- **Harita** kenar çubuğunda canlı durur: grubun konumu, keşfedilen yerler,
-  tehlike seviyeleri ve grup dağıldığında kimin nerede olduğu. Harita görsel
-  olarak da çizilir ve **bilinmeyen yer detaylı görünmez**: sadece adı duyulmuş
-  bir yerin türü/tehlikesi/notu oyuncuya hiç gönderilmez.
+- **Harita oyun başında bütünüyle üretilir**: 2-5 şehir, her birine bağlı
+  kategorili mekanlar (karakol, hastane, market, depo…), koordinatları,
+  aralarındaki **yollar** ve **mesafeler**. Büyüklüğü ayarlardan seçilir
+  (küçük/orta/büyük) ve oyun başladıktan sonra değişmez. İki yer arasında
+  birden fazla güzergâh olabilir — kısa ve açık anayol mu, uzun ve sessiz
+  patika mı; tıkalı yol yavaşlatır, çökük yol hiç geçilmez. Rota ve mesafe
+  sunucuda Dijkstra ile çözülür ve anlatıcıya zorunlu blok olarak verilir.
+  **Oyuncu haritanın tamamını görmez**: üretilen yerler "bilinmiyor" başlar ve
+  gövdeye hiç girmez; gidilen her yer, yol komşularını "duyuldu" yaparak
+  haritayı bir adım büyütür. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1f.
 - **Zombi tehdidi gerçek bir mekanik**: her turda sunucu karşılaşma zarı atar.
   Bölge yoğunluğu (metro ~82, orman ~30), grubun gürültüsü, gece, hava ve
   özellikle **yolculuk** ihtimali belirler — yolda geçen turların ~%75'inde

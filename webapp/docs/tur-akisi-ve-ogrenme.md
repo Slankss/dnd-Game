@@ -262,6 +262,81 @@ katalogda tanımlı olmalı, ağırlıklar 0-100, ve eşyanın en az bir yerde y
 `taban` ile bulunabilir olması gerekir. Kimlik addan türetilir ve çakışırsa
 sayı eklenir.
 
+## 1f. Harita — şehirler, kategoriler, yollar, mesafeler
+
+Harita eskiden anlatıcının ağzından büyüyordu: bir yer adı geçince kayıt
+açılıyor, komşuluk "oradan buraya yürüdük" diye ekleniyordu. Coğrafyası olmayan
+bir listeydi — mesafe kavramı yoktu, "yol" diye bir şey yoktu.
+
+**Artık dünya oyunun başında bir kez üretilir ve sabittir** (`models/mapgen.py`,
+içerik `data/places.json`):
+
+1. **Şehirler** — düzleme dağıtılmış 2-5 kasaba/mahalle, her birinin merkezi ve
+   yarıçapı var (`map.cities`).
+2. **Mekanlar** — her şehre kentsel dokusuna uygun kategorilerden mekan serpilir;
+   her mekanın `category` (katalogla AYNI 21 yer türü), `city` ve `x`/`y` (km)
+   alanları olur. Şehir aralarına kır mekanları (çiftlik, benzinlik, koruluk)
+   dağılır ve `city` alanları "<şehir> kırsalı" olur.
+3. **Yollar** (`map.roads`) — şehir içinde en yakın 3 komşu cadde/ara sokakla,
+   şehirler anayolla bağlanır. Her yolun `kind`, `km`, `status` ve `risk` alanı
+   vardır. **İki yer arasında birden fazla yol olabilir** (hızlı anayol +
+   uzun ama sessiz patika), tek yol olabilir ya da hiç olmayabilir.
+4. **Mesafeler** — her yolun gerçek uzunluğu üretimde hesaplanır (kuş uçuşu ×
+   yol türünün sapma katsayısı). Rota `WorldMap.route` ile Dijkstra'dan çözülür;
+   maliyet `km × durum çarpanı`, yani tıkalı yol daha pahalı, çökük yol
+   kullanılamaz. `distances_from` bir yerden diğerlerine mesafeleri yakından
+   uzağa verir.
+
+Üretim sonunda birleşim-bul ile **haritanın tek parça olduğu garanti edilir**:
+ulaşılamayan mekan kalmaz (çökük yollar bağlantı sayılmaz).
+
+### Harita büyüklüğü
+
+`settings.map_size` — oyun **başlamadan önce** değiştirilebilir; harita bir kez
+üretildikten sonra `/api/settings` bunu 400 ile reddeder (üretilmiş mesafeleri
+ve keşifleri anlamsız kılardı).
+
+| Ayar | Şehir | Mekan | Yayılım |
+|---|---|---|---|
+| küçük | 2 | 12-16 | 16 km |
+| orta | 3 | 20-26 | 28 km |
+| büyük | 5 | 32-42 | 48 km |
+
+### Sis perdesi — harita hazır ama görünmüyor
+
+Bilgi düzeylerine **`bilinmiyor`** eklendi (rank 0). Üretilen her mekan bu
+düzeyde başlar ve `public_place` onlar için `None` döner: oyuncu gövdesine HİÇ
+girmezler. Yollar da süzülür (`public_roads`) — iki ucu da bilinmeyen bir yol
+çizilirse yerin varlığı sızardı.
+
+Harita gezdikçe açılır: `WorldMap.go()` varılan yeri `keşfedildi` yapar ve
+`reveal_neighbours` ile **yol komşularını `duyuldu`** yapar. Yani gittiğin yer
+haritayı bir adım büyütür.
+
+Anlatıcının yazdığı `known: "bilinmiyor"` bunu tetiklemez — takma ad tablosu
+onu `duyuldu`ya çevirir; gerçek gizlilik yalnız üretecin `Place.hide()`
+çağrısıyla kurulur. Anlatıcı bir yeri yamalarsa o yer otomatik `duyuldu` olur:
+sahnede adı geçen yer haritadan gizli kalamaz.
+
+### Anlatıcıya giden bloklar
+
+`prompt_builder.map_note` yerleri **şehre göre gruplayarak** listeler ve kaç
+yerin henüz duyulmadığını söyler. `distance_note` bulunulan yerden bilinen
+yerlere km / durak / yol türü / riski verir, birden fazla güzergâh varsa
+"ALTERNATİF GÜZERGÂH" satırıyla bunu bir seçim olarak sunmasını ister, çökük
+yolları "KAPALI YOL" diye bildirir. Senaryo eki "yeni yer UYDURMA" kuralını
+taşır.
+
+### Çizim
+
+`mapLayout.js` iki kipli: koordinat varsa **coğrafi** (gerçek yerine çizer),
+yoksa eski **halkalı** BFS (koordinat alanı eklenmeden önce başlamış oyunlar).
+Coğrafi kipte şehirler arası mesafe gerçek ölçekte kalır ama şehir İÇİ dağılım
+4.2× büyütülerek çizilir — yoksa 48 km'lik bir bölgede 2 km'lik kasabanın on
+mekanı üst üste binerdi. Bu bir çizim kararıdır: gösterilen km değerleri
+sunucudan geldiği gibi durur. Yollar türlerine göre farklı kalınlık/desende
+çizilir, aynı çiftin ikinci yolu yaylandırılır, çökük yol kırmızı kesik çizgi.
+
 ## 2. Seçenek havuzu
 
 Anlatıcı her turun sonunda state-update bloğuna `options` yazar:

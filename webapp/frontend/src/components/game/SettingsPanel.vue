@@ -16,8 +16,10 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   /** Sıfırlama isteği uçuşta mı */
   mesgul: { type: Boolean, default: false },
-  /** Sunucudaki oyun ayarları: {turn_seconds, profanity, round_mode} */
+  /** Sunucudaki oyun ayarları: {turn_seconds, profanity, round_mode, map_size} */
   ayarlar: { type: Object, default: () => ({}) },
+  /** Oyun başladı mı — harita büyüklüğü ancak başlamadan önce değişir */
+  basladi: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'sifirla', 'ayarKaydet'])
@@ -39,8 +41,16 @@ const KUFUR = [
   { deger: 'sert', etiket: 'Sert', aciklama: 'Kriz anlarında sansürsüz argo.' },
 ]
 
+/** Harita büyüklüğü — oyun BAŞLARKEN kaç şehir ve mekan üretileceği. */
+const HARITA_BOYU = [
+  { deger: 'küçük', etiket: 'Küçük', aciklama: '2 şehir · ~12-16 mekan — kısa oyun.' },
+  { deger: 'orta', etiket: 'Orta', aciklama: '3 şehir · ~20-26 mekan — dengeli.' },
+  { deger: 'büyük', etiket: 'Büyük', aciklama: '5 şehir · ~32-42 mekan — uzun keşif.' },
+]
+
 const sure = computed(() => Number(props.ayarlar?.turn_seconds ?? 0))
 const kufur = computed(() => props.ayarlar?.profanity || 'hafif')
+const haritaBoyu = computed(() => props.ayarlar?.map_size || 'orta')
 
 const {
   durum: muzikDurumu,
@@ -105,6 +115,38 @@ function sifirla() {
             {{ s.etiket }}
           </BaseButton>
         </div>
+      </section>
+
+      <!-- Harita büyüklüğü -->
+      <section class="flex flex-col gap-2">
+        <h3 class="flex items-center gap-1.5 text-panel uppercase tracking-[0.06em] text-muted">
+          <Icon name="map" :size="14" />
+          Harita büyüklüğü
+        </h3>
+        <p class="text-label text-faint">
+          Harita oyun <strong>başlarken bir kez</strong> üretilir: şehirler, mekanlar,
+          aralarındaki yollar ve mesafeler. Başladıktan sonra değiştirilemez.
+        </p>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseButton
+            v-for="h in HARITA_BOYU"
+            :key="h.deger"
+            size="sm"
+            :variant="haritaBoyu === h.deger ? 'primary' : 'subtle'"
+            :disabled="mesgul || basladi"
+            :title="h.aciklama"
+            @click="$emit('ayarKaydet', { map_size: h.deger })"
+          >
+            {{ h.etiket }}
+          </BaseButton>
+        </div>
+        <p v-if="basladi" class="flex items-center gap-1.5 text-label text-warn">
+          <Icon name="lock" :size="13" />
+          Harita üretildi — büyüklük ancak yeni oyunda değişir (önce sıfırla).
+        </p>
+        <p v-else class="text-label text-faint">
+          {{ HARITA_BOYU.find((h) => h.deger === haritaBoyu)?.aciklama }}
+        </p>
       </section>
 
       <!-- Küfür dozu -->

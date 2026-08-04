@@ -676,6 +676,7 @@ function yeniSahneyeGit() {
       v-model="ayarlarAcik"
       :mesgul="oyun.busy"
       :ayarlar="oyun.settings"
+      :basladi="oyun.phase === 'playing'"
       @sifirla="oyunuSifirla"
       @ayar-kaydet="ayarKaydet"
     />

@@ -29,7 +29,8 @@ webapp/
       challenges.py         # Challenge
       factions.py           # Faction — iki katmanlı görünürlük
       world.py              # WorldState — kök nesne, patch birleştirme
-      worldmap.py           # WorldMap, Place — konum ve keşfedilen yerler
+      worldmap.py           # WorldMap, Place, Road — şehir/koordinat/yol/mesafe
+      mapgen.py             # harita üreteci: şehirler, mekanlar, yollar (oyun başı)
       threat.py             # zombi tehdidi: yoğunluk, gürültü, karşılaşma zarı
       grid/                 # kare harita: grid[y][x] Cell dizisi (bkz. kare-harita.md)
         coords.py           #   Direction — yön vektörleri
@@ -54,6 +55,7 @@ webapp/
       learning_repo.py      # learning.json + learning_events.jsonl
       options_repo.py       # options_pool.jsonl (sunulan/seçilen seçenekler)
       items_repo.py         # items.json (sabit katalog; tek yazan GM ekranı)
+      places_repo.py        # places.json (harita üreteci içeriği, SALT OKUNUR)
     services/               # iş akışı — modelleri ve repo'ları orkestre eder
       narrator_client.py    # claude CLI süreci (subprocess)
       prompt_builder.py     # modele giden tüm metin blokları
@@ -117,7 +119,7 @@ OLMAYAN eşyalar), `searched` (yer başına arama sayacı), `flags`, `narrator`,
 `world_roll`, `world_roll_history`.
 
 `state.json` kökünde ayrıca üç alan vardır: `settings`
-(`{turn_seconds, profanity, round_mode}`), `round` (açık turun kaydı:
+(`{turn_seconds, profanity, round_mode, map_size}`), `round` (açık turun kaydı:
 `{no, status, seconds, opened_ts, picks}`) ve `pending` (bir sonraki turun
 başında devreye girecek kayıtlar: `{items: [{kind, due_round, data, ts}]}`,
 bkz. `models/pending.py` ve `docs/tur-akisi-ve-ogrenme.md` §1b). Eski
@@ -161,7 +163,7 @@ Patch birleştirme kuralları (davranış AYNEN korunacak):
 | POST | `/api/message` | `{player, text}` | `{user_entries, gm_entry, world_state, inventory_report, version}` — YALNIZ karakter oluşturma sürerken; chargen bitince 400 (serbest hamle yok) |
 | POST | `/api/takeover` | `{dead_player, new_character}` | `{system_entry, gm_entry, world_state}` |
 | POST | `/api/finish-chargen` | — | `{ok, world_state}` |
-| POST | `/api/settings` | `{turn_seconds?, profanity?}` | `{ok, settings, version, round}` — `round_mode: false` reddedilir |
+| POST | `/api/settings` | `{turn_seconds?, profanity?, map_size?}` | `{ok, settings, version, round}` — `round_mode: false` reddedilir; `map_size` yalnız oyun başlamadan önce değişir |
 | POST | `/api/reset` | `{keep_learning?: true}` | `{ok, learning_kept}` |
 | POST | `/api/round/pick` | `{player, option_id}` | `{ok, pick, roll, band, changed, round, all_picked, version}` — zar SEÇİM ANINDA ve tur başına BİR KEZ atılır; karar turu geçene kadar değiştirilebilir (`changed: true` = zar aynı kaldı); `text` gönderilirse 400 (hikaye yalnız sunulan seçeneklerle ilerler) |
 | POST | `/api/round/wait` | `{player}` | `{ok, round, version}` — bu da bir seçimdir, değiştirilebilir |

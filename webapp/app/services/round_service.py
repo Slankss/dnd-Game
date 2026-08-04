@@ -478,6 +478,7 @@ class RoundService:
                     self.items.catalog_note(world, oyuncular),
                     self.items.story_note(world),
                 ) if x),
+                prompt_builder.distance_note(world.map, world.location),
             )
 
             try:

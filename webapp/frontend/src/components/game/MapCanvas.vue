@@ -38,6 +38,51 @@ const emit = defineEmits(['sec'])
 
 const yerlesim = computed(() => haritaYerlesimi(props.harita))
 
+/* --- yol çizimi --------------------------------------------------------- */
+
+/** Aynı çiftin ikinci yolu yay yapılır ki üst üste binmesin. */
+function yolCizgisi(kenar) {
+  if (!kenar.egri) return `M ${kenar.x1} ${kenar.y1} L ${kenar.x2} ${kenar.y2}`
+  const mx = (kenar.x1 + kenar.x2) / 2
+  const my = (kenar.y1 + kenar.y2) / 2
+  const dx = kenar.x2 - kenar.x1
+  const dy = kenar.y2 - kenar.y1
+  const boy = Math.hypot(dx, dy) || 1
+  // Dik normal boyunca kaydırılmış kontrol noktası.
+  const kx = mx + (-dy / boy) * kenar.egri
+  const ky = my + (dx / boy) * kenar.egri
+  return `M ${kenar.x1} ${kenar.y1} Q ${kx} ${ky} ${kenar.x2} ${kenar.y2}`
+}
+
+const YOL_RENGI = {
+  ana: 'var(--color-border-strong)',
+  ara: 'var(--color-border-strong)',
+  patika: 'var(--color-border)',
+}
+
+function yolRengi(kenar) {
+  if (kenar.kapali) return 'var(--color-danger)'
+  if (kenar.durum && kenar.durum !== 'açık') return 'var(--color-warn)'
+  if (kenar.zayif) return 'var(--color-border)'
+  return YOL_RENGI[kenar.ton] || 'var(--color-border-strong)'
+}
+
+function yolDeseni(kenar) {
+  if (kenar.kapali) return '3 6'
+  if (kenar.tur === 'demiryolu') return '7 4'
+  if (kenar.tur === 'patika') return '2 5'
+  if (kenar.zayif) return '5 7'
+  return ''
+}
+
+function yolBaslik(kenar) {
+  const parcalar = [kenar.tur || 'yol']
+  if (kenar.km !== null) parcalar.push(`${kenar.km} km`)
+  if (kenar.durum && kenar.durum !== 'açık') parcalar.push(kenar.durum.toUpperCase())
+  if (kenar.risk !== null) parcalar.push(`risk ${kenar.risk}/5`)
+  return parcalar.join(' · ')
+}
+
 /** Tehlike → çizgi rengi (tasarım sistemindeki durum renkleri). */
 const TEHLIKE_RENGI = {
   güvenli: 'var(--color-ok)',
@@ -146,20 +191,36 @@ function yogunlukHalkasi(dugum) {
         </radialGradient>
       </defs>
 
-      <!-- yollar -->
-      <g stroke-linecap="round">
-        <line
+      <!-- şehir etiketleri: mekanlar hangi şehre bağlı, göz kararı görünsün -->
+      <g v-if="!mini" pointer-events="none">
+        <text
+          v-for="sehir in yerlesim.sehirler"
+          :key="sehir.ad"
+          :x="sehir.x"
+          :y="sehir.y"
+          text-anchor="middle"
+          font-size="15"
+          letter-spacing="1.6"
+          fill="var(--color-text-faint)"
+          opacity="0.75"
+        >
+          {{ sehir.ad.toLocaleUpperCase('tr-TR') }}
+        </text>
+      </g>
+
+      <!-- yollar: tür kalınlığı belirler, çökük yol kırmızı ve kesik -->
+      <g stroke-linecap="round" fill="none">
+        <path
           v-for="kenar in yerlesim.kenarlar"
           :key="kenar.anahtar"
-          :x1="kenar.x1"
-          :y1="kenar.y1"
-          :x2="kenar.x2"
-          :y2="kenar.y2"
-          :stroke="kenar.zayif ? 'var(--color-border)' : 'var(--color-border-strong)'"
-          :stroke-width="kenar.zayif ? 1.5 : 2.5"
-          :stroke-dasharray="kenar.zayif ? '5 7' : ''"
-          :opacity="kenar.zayif ? 0.5 : 0.9"
-        />
+          :d="yolCizgisi(kenar)"
+          :stroke="yolRengi(kenar)"
+          :stroke-width="kenar.zayif ? kenar.kalinlik * 0.7 : kenar.kalinlik"
+          :stroke-dasharray="yolDeseni(kenar)"
+          :opacity="kenar.zayif ? 0.45 : kenar.kapali ? 0.75 : 0.9"
+        >
+          <title>{{ yolBaslik(kenar) }}</title>
+        </path>
       </g>
 
       <!-- düğümler -->

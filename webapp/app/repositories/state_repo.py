@@ -41,6 +41,9 @@ class StateRepository:
             # tercihlerle ilerler (serbest hamle kaldırıldı). Alan, eski
             # kayıtlarla uyum ve arayüzün okuması için duruyor.
             "round_mode": True,
+            # Harita büyüklüğü: oyun BAŞLARKEN kaç şehir ve mekan üretileceği.
+            # Oyun başladıktan sonra değiştirilemez — harita üretilmiştir.
+            "map_size": config.MAP_SIZE,
         }
 
     def default_state(self) -> dict:

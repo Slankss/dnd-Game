@@ -5,6 +5,10 @@ aynılarını seçmesin):
 
   * **başlangıç noktası** — `scenario.START_LOCATIONS` havuzundan, daha önce
     kullanılmamışlar arasından. Sabit "eski metro istasyonu" yok.
+  * **harita** — oyun başında BÜTÜN dünya kurulur: şehirler, kategorili
+    mekanlar, aralarındaki yollar ve mesafeler (bkz. `models/mapgen.py`).
+    Büyüklüğü `settings.map_size` belirler. Üretilen yerler `bilinmiyor`
+    düzeyinde başlar: dünya baştan tutarlıdır ama oyuncu keşfederek öğrenir.
   * **fraksiyonlar** — `FACTION_NAMES` (kısa, İngilizce, vurucu adlar) ve
     `FACTION_ARCHETYPES` (gizli yüz + söylenti + olası tavırlar) havuzları
     çaprazlanarak 4-6 tanesi. Aynı ad iki oyunda üst üste çıkmaz; arketip
@@ -14,9 +18,13 @@ aynılarını seçmesin):
 Rastgelelik `secrets` ile: dünya zarıyla aynı kaynak.
 """
 
+import math
 import secrets
 
 from app.models.learning import Learning
+from app.models.mapgen import MapGenerator
+from app.models.worldmap import Road
+from app.repositories.places_repo import PlacesRepository
 
 # Bir oyunda üretilecek fraksiyon sayısı aralığı.
 FACTION_MIN = 4
@@ -37,9 +45,10 @@ def _pick_fresh(pool: list, used, key=lambda x: x):
 
 
 class WorldGenService:
-    def __init__(self, learning=None):
+    def __init__(self, learning=None, places_repo=None):
         # Geç bağlama: LearningService bu modülü import etmiyor, döngü yok.
         self._learning = learning
+        self.places_repo = places_repo or PlacesRepository()
 
     @property
     def learning(self):
@@ -102,6 +111,106 @@ class WorldGenService:
         return factions
 
     # ------------------------------------------------------------- uygulama
+    # -------------------------------------------------------------- harita
+    def build_map(self, world, size: str, start_name: str = "") -> dict:
+        """Oyun başında BÜTÜN haritayı üretir ve dünyaya yazar.
+
+        Üretilen her mekan `bilinmiyor` düzeyinde başlar: dünya baştan tutarlı
+        ve ölçülüdür ama oyuncu haritanın tamamını görmez (bkz. `public_place`).
+        Grubun sığınağı haritaya EKLENİR ve keşfedilmiş sayılır; sığınağın yol
+        komşuları da `duyuldu` olur, böylece ilk turda gidilecek bir yer vardır.
+
+        Dönen: üretim özeti (anlatıcı günlüğü ve prompt için).
+        """
+        icerik = self.places_repo.load()
+        uretim = MapGenerator(icerik, secrets.SystemRandom()).generate(size)
+
+        world_map = world.ensure_map()
+        # Harita BAŞTAN kuruluyor: senaryonun varsayılan konumundan kalan
+        # kayıtlar temizlenir. Yoksa koordinatsız, şehirsiz bir hayalet mekan
+        # (eski "metro istasyonu") haritada asılı kalıyordu.
+        world_map.places = {}
+        world_map.roads = []
+        world_map._set("size", uretim["size"])
+        world_map._set("cities", uretim["cities"])
+        world_map._touch("places")
+        gun = world.day if isinstance(world.day, int) else None
+        for ad, bilgi in uretim["places"].items():
+            place = world_map.ensure_place(ad, gun)
+            place.merge_patch(bilgi)
+            place.hide()
+        world_map._touch("roads")
+        world_map.roads = [Road.from_dict(r) for r in uretim["roads"]]
+
+        # Sığınak haritanın parçası olsun: en yakın mekana bir kır yoluyla
+        # bağlanır, yoksa grup adada başlardı.
+        if start_name:
+            self._siginagi_bagla(world_map, start_name, uretim)
+            world_map._set("current", start_name)
+            # Sığınağın yol komşuları DUYULMUŞ olur: ilk turda gidilecek bir
+            # yer bulunsun, harita boş bir nokta olarak başlamasın.
+            world_map.reveal_neighbours(start_name)
+            for ad in list(world_map.party):
+                world_map.party[ad] = start_name
+
+        return {
+            "size": uretim["size"],
+            "cities": uretim["cities"],
+            "places": len(uretim["places"]),
+            "roads": len(uretim["roads"]),
+        }
+
+    @staticmethod
+    def _siginagi_bagla(world_map, start_name: str, uretim: dict) -> None:
+        """Grubun sığınağını üretilen haritaya yerleştirir ve bağlar."""
+        sehirler = uretim.get("cities") or {}
+        mekanlar = uretim.get("places") or {}
+        if not mekanlar:
+            return
+        # Sığınak bir şehrin kenarına konur: içeride değil, ulaşılabilir uzakta.
+        sehir = secrets.choice(list(sehirler)) if sehirler else ""
+        merkez = sehirler.get(sehir) or {"x": 0.0, "y": 0.0}
+        aci = secrets.SystemRandom().uniform(0, 6.28318)
+        uzaklik = secrets.SystemRandom().uniform(2.2, 3.6)
+        x = round(merkez["x"] + math.cos(aci) * uzaklik, 2)
+        y = round(merkez["y"] + math.sin(aci) * uzaklik, 2)
+
+        place = world_map.ensure_place(start_name)
+        place.merge_patch({"city": f"{sehir} kırsalı" if sehir else "",
+                           "category": "siginak", "x": x, "y": y})
+        place.raise_knowledge("keşfedildi")
+
+        # En yakın üç mekana yol: biri anayol, diğerleri kır yolu/patika.
+        uzakliklar = sorted(
+            ((math.hypot(x - m["x"], y - m["y"]), ad) for ad, m in mekanlar.items()),
+            key=lambda p: p[0])[:3]
+        for i, (d, ad) in enumerate(uzakliklar):
+            kind = "kır yolu" if i else "anayol"
+            sapma = 1.3 if i else 1.15
+            world_map.add_road(start_name, ad, kind, round(d * sapma, 2),
+                               status="açık", risk=2 if i else 3)
+
+    @staticmethod
+    def map_note(world, ozet: dict) -> str:
+        """Açılış mesajına giren harita künyesi (anlatıcı için)."""
+        sehirler = ozet.get("cities") or {}
+        satirlar = [
+            f"BU OYUNUN HARİTASI (sunucu üretti, {ozet.get('size')} boyut — "
+            f"{ozet.get('places')} mekan, {ozet.get('roads')} yol):",
+        ]
+        for ad, bilgi in sehirler.items():
+            uyeler = [a for a, p in (world.map.places or {}).items()
+                      if p.city == ad]
+            satirlar.append(
+                f"- {ad} ({bilgi.get('tur')}): {len(uyeler)} mekan. "
+                f"{bilgi.get('not') or ''}".strip())
+        satirlar.append(
+            "Harita SABİTTİR ve bütünüyle hazırdır: yeni yer UYDURMA, mevcut "
+            "yerlerin adını değiştirme. Grup nereye giderse orası açılır; "
+            "mesafeleri ve yolları sunucu hesaplar ve sana her turda bildirir."
+        )
+        return "\n".join(satirlar)
+
     def apply(self, world, generated: dict) -> dict:
         """Üretilen dünyayı `WorldState` üzerine yazar ve defterine not eder."""
         start = generated.get("start") or {}

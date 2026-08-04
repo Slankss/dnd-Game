@@ -55,6 +55,10 @@ PORT = int(os.environ.get("PORT", "5050"))
 # `state["settings"]` altında saklanır (bkz. StateRepository.default_state).
 # Bir turda oyunculara verilen süre (saniye). 0 = süre yok.
 TURN_SECONDS = int(os.environ.get("TURN_SECONDS", "180"))
+
+# Harita büyüklüğü: küçük | orta | büyük (bkz. models/mapgen.MAP_SIZES).
+# Oyun başında üretilecek şehir ve mekan sayısını belirler.
+MAP_SIZE = os.environ.get("MAP_SIZE", "orta")
 # Küfür/argo dozu: "kapalı" | "hafif" | "sert"
 PROFANITY = os.environ.get("PROFANITY", "hafif")
 # Karakter başına sunulacak seçenek sayısı (senaryo kuralı: en az 5, en çok 10)

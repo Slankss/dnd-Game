@@ -13,6 +13,7 @@ from scenario import CHARACTER_TEMPLATE, GROUP_DISPLAY_NAME, GROUP_LABEL
 
 from app.errors import ValidationError
 from app.models.learning import Learning
+from app.models.mapgen import MAP_SIZES
 from app.models.person import SHEET_FIELDS, Person, build_background, build_traits
 from app.models.text import strip_option_block
 from app.repositories import log_repo
@@ -165,7 +166,16 @@ class GameService:
             # de öğrenme defterine not edilir ki bir sonraki oyun tekrar etmesin.
             uretilen = self.worldgen.apply(world, self.worldgen.generate(
                 seed_factions=(scenario["initial_world_state"] or {}).get("factions")))
+            # HARİTA OYUN BAŞINDA BÜTÜNÜYLE ÜRETİLİR: şehirler, kategorili
+            # mekanlar, yollar ve mesafeler. Oyuncu hepsini görmez — üretilen
+            # yerler `bilinmiyor` başlar, keşfedildikçe açılır.
+            harita_ozeti = self.worldgen.build_map(
+                world,
+                StateRepository.settings_of(state).get("map_size"),
+                start_name=(uretilen["start"] or {}).get("name") or "",
+            )
             world_note = self.worldgen.start_note(uretilen["start"], uretilen["factions"])
+            world_note += "\n\n" + self.worldgen.map_note(world, harita_ozeti)
             ws = world.to_dict()
             players = list(world.characters.keys())
             hook = secrets.choice(scenario["opening_hooks"])
@@ -308,6 +318,19 @@ class GameService:
                 if doz not in ("kapalı", "hafif", "sert"):
                     raise ValidationError("Küfür ayarı: kapalı, hafif ya da sert.")
                 settings["profanity"] = doz
+
+            if "map_size" in patch:
+                boyut = str(patch.get("map_size") or "").strip().lower()
+                if boyut not in MAP_SIZES:
+                    raise ValidationError(
+                        "Harita büyüklüğü: küçük, orta ya da büyük.")
+                if state.get("started"):
+                    # Harita oyun başında bir kez üretilir ve sabittir; sonradan
+                    # büyütmek mevcut mesafeleri ve keşifleri anlamsız kılardı.
+                    raise ValidationError(
+                        "Harita zaten üretildi — büyüklük ancak yeni oyunda "
+                        "değişir (önce sıfırla).")
+                settings["map_size"] = boyut
 
             if "round_mode" in patch and not patch.get("round_mode"):
                 # Tur bazlı akış artık kapatılamaz: senaryo yalnız sunulan

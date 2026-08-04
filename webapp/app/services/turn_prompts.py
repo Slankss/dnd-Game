@@ -18,7 +18,7 @@ def _directive_block(directive) -> str:
 
 def notes_block(ws: dict, log: list, scene_note: str = None,
                 profanity: str = None, learning_note: str = None,
-                threat_note: str = None) -> str:
+                threat_note: str = None, distance_note: str = None) -> str:
     """Her turda modele giden "defter": kadro → (sahne kadrosu) → envanter →
     yaralar → göstergeler → harita → ZOMBİ TEHDİDİ → refleks/küfür →
     öğrenilenler → görünür zaman çizelgesi. Bloklar arası ayraç eski kodda olduğu gibi tek boş
@@ -32,6 +32,9 @@ def notes_block(ws: dict, log: list, scene_note: str = None,
         prompt_builder.vitals_note(ws),
         prompt_builder.map_note(ws),
     ]
+    # Mesafeler haritanın hemen ardında: "neredeyiz" ile "oraya kaç km" yan yana.
+    if distance_note:
+        parts.append(distance_note)
     # Tehdit bloğu haritadan hemen sonra: "neredeyiz" ile "burada ne var"
     # yan yana okunsun.
     if threat_note:
@@ -151,7 +154,8 @@ def turn_extra_system(ws, log, is_group, roll, band, world_entry,
 def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
                        waiting, settings, players, options_service,
                        round_no, learning_note=None, threat_note=None,
-                       spend_note=None, stock_note=None) -> str:
+                       spend_note=None, stock_note=None,
+                       distance_note=None) -> str:
     """Tur bazlı toplu gönderim: her karakterin seçimi kendi zarıyla gelir.
 
     Serbest turdan iki farkı var: (1) seçim yapmayanlar için ANİ SAHNE
@@ -206,7 +210,8 @@ def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
         + combined
         + (("\n\n" + spend_note) if spend_note else "")
         + "\n\n"
-        + notes_block(ws, log, scene_note, profanity, learning_note, threat_note)
+        + notes_block(ws, log, scene_note, profanity, learning_note, threat_note,
+                      distance_note)
         + _directive_block(directive)
         + "\n\nGÜNCEL DÜNYA DURUMU (JSON, sadece senin referansın, oyunculara okuma):\n"
         + json.dumps(ws, ensure_ascii=False)

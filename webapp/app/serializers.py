@@ -10,7 +10,7 @@ import time
 from app.models.person import SECRET_FIELD
 from app.models.round import Round
 from app.models.world import GM_ONLY_FIELDS
-from app.models.worldmap import knowledge_of, public_place
+from app.models.worldmap import knowledge_of, public_place, public_roads
 
 
 def public_world_state(world_state: dict) -> dict:
@@ -31,12 +31,17 @@ def public_world_state(world_state: dict) -> dict:
         # görür. Duyulmuş ama gidilmemiş bir yerin türü/tehlikesi/notu bu
         # gövdeye hiç girmez (bkz. models/worldmap.public_place).
         places = world_map.get("places")
+        gorunur = {}
+        if isinstance(places, dict):
+            for name, info in places.items():
+                govde = public_place(info)
+                # `None` = grubun henüz duymadığı yer: haritada HİÇ yok.
+                if govde is not None:
+                    gorunur[name] = govde
         public["map"] = {
             **world_map,
-            "places": {
-                name: public_place(info)
-                for name, info in places.items()
-            } if isinstance(places, dict) else {},
+            "places": gorunur,
+            "roads": public_roads(world_map.get("roads"), set(gorunur)),
         }
 
     threat = public.get("threat")

@@ -248,13 +248,69 @@ def roster_note(world_state: dict) -> str:
 
 
 
+def distance_note(world_map, current: str, limit: int = 8) -> str:
+    """Bulunulan yerden bilinen yerlere MESAFELER — sunucu hesaplar.
+
+    Yolculuk kararı ancak "ne kadar uzakta ve hangi yoldan" bilinirse anlamlı
+    olur. Rota Dijkstra ile yolların gerçek uzunluğundan çözülür; iki yer
+    arasında birden fazla güzergâh varsa en ucuzu seçilir (tıkalı yol daha
+    pahalıdır, çökük yol hiç kullanılmaz)."""
+    if world_map is None or not current:
+        return ""
+    bilinen = [ad for ad, p in (world_map.places or {}).items()
+               if not p.hidden and ad != current]
+    if not bilinen:
+        return ""
+    satirlar = ["MESAFELER (sunucu hesapladı — km ve güzergâh KESİNDİR, "
+                "sahnede bunlara uy):"]
+    for kayit in world_map.distances_from(current, bilinen)[:limit]:
+        if kayit["km"] is None:
+            satirlar.append(
+                f"- {kayit['ad']}: yol YOK (kuş uçuşu {kayit['kus_ucusu']} km) — "
+                "oraya gitmek için önce bir bağlantı bulunmalı")
+            continue
+        yollar = " → ".join(kayit["yol"][:4]) or "—"
+        satirlar.append(
+            f"- {kayit['ad']}: {kayit['km']} km, {kayit['hops']} durak, "
+            f"yol: {yollar} (risk {kayit['risk']}/5)")
+    # Aynı yere birden fazla güzergâh varsa bu bir SEÇİMDİR: söyle.
+    coklu = []
+    for ad in bilinen:
+        yollar = world_map.roads_between(current, ad)
+        if len(yollar) > 1:
+            coklu.append(f"{ad}: " + ", ".join(
+                f"{y.kind} {y.km}km/{y.status}" for y in yollar))
+    if coklu:
+        satirlar.append("ALTERNATİF GÜZERGÂH (oyuncuya seçenek olarak sun): "
+                        + " | ".join(coklu[:3]))
+    kapali = [f"{y.a}↔{y.b} ({y.kind})" for y in (world_map.roads or [])
+              if y.status == "çökük" and current in (y.a, y.b)]
+    if kapali:
+        satirlar.append("KAPALI YOL: " + ", ".join(kapali[:3])
+                        + " — buradan geçilmez, dolaşmak gerekir.")
+    return "\n".join(satirlar)
+
+
 def map_note(world_state: dict) -> str:
     """Her turda modele verilen harita durumu — 'neredeyiz' sorusu her turda
     net cevaplansın ve panel canlı kalsın diye."""
     world_map = world_state.get("map")
     world_map = world_map if isinstance(world_map, dict) else {}
     current = world_map.get("current") or world_state.get("location") or "(bilinmiyor)"
-    lines = [f"HARİTA — grubun şu anki konumu: {current}"]
+    places = world_map.get("places")
+    places = places if isinstance(places, dict) else {}
+    simdiki = places.get(current) if isinstance(places.get(current), dict) else {}
+    kunye = " · ".join(x for x in (simdiki.get("city"), simdiki.get("category")) if x)
+    lines = [f"HARİTA — grubun şu anki konumu: {current}"
+             + (f" ({kunye})" if kunye else "")]
+
+    boyut = world_map.get("size")
+    sehirler = world_map.get("cities")
+    if isinstance(sehirler, dict) and sehirler:
+        lines.append(
+            f"Bölge ({boyut or 'orta'} harita) — şehirler: "
+            + " · ".join(f"{ad} ({(b or {}).get('tur') or 'kasaba'})"
+                         for ad, b in sehirler.items()))
 
     party = world_map.get("party")
     if isinstance(party, dict) and party:
@@ -264,26 +320,38 @@ def map_note(world_state: dict) -> str:
             for name, where in dagilmis.items():
                 lines.append(f"- {name} → {where}")
 
-    places = world_map.get("places")
-    if isinstance(places, dict) and places:
-        lines.append("Bilinen yerler (bilgi düzeyiyle):")
-        for name, info in list(places.items())[:16]:
-            info = info if isinstance(info, dict) else {}
-            bits = [knowledge_of(info)]
-            bits += [b for b in (info.get("kind"), info.get("status")) if b]
-            danger = info.get("danger")
-            if danger and danger != "bilinmiyor":
-                bits.append(f"tehlike: {danger}")
-            links = info.get("links")
-            if isinstance(links, list) and links:
-                bits.append("komşu: " + ", ".join(links[:3]))
-            lines.append(f"- {name} ({'; '.join(bits)})")
+    if places:
+        # Grubun BİLDİĞİ yerler; şehre göre gruplanır ki coğrafya okunsun.
+        bilinen = {ad: bilgi for ad, bilgi in places.items()
+                   if isinstance(bilgi, dict) and knowledge_of(bilgi) != "bilinmiyor"}
+        gizli = len(places) - len(bilinen)
+        lines.append(f"Grubun bildiği yerler ({len(bilinen)}; "
+                     f"haritada {gizli} yer daha var ama HENÜZ DUYULMADI):")
+        sehre_gore = {}
+        for name, info in bilinen.items():
+            sehre_gore.setdefault(info.get("city") or "—", []).append((name, info))
+        for sehir, uyeler in sehre_gore.items():
+            lines.append(f"  [{sehir}]")
+            for name, info in uyeler[:12]:
+                bits = [knowledge_of(info)]
+                bits += [b for b in (info.get("category"), info.get("kind"),
+                                     info.get("status")) if b]
+                danger = info.get("danger")
+                if danger and danger != "bilinmiyor":
+                    bits.append(f"tehlike: {danger}")
+                lines.append(f"  - {name} ({'; '.join(bits)})")
 
     lines.append(
         "KURAL: bu turda konum değiştiyse `map.current` ve üst düzey `location` "
-        "alanlarını AYNI yeni yerle güncelle; sahnede yeni bir yer adı geçtiyse "
-        "`map.places` altına ekle (henüz gidilmemiş olsa bile); grup dağıldıysa "
-        "`map.party` ile kimin nerede olduğunu yaz. Oyuncular haritayı canlı izliyor."
+        "alanlarını AYNI yeni yerle güncelle; grup dağıldıysa `map.party` ile "
+        "kimin nerede olduğunu yaz. Oyuncular haritayı canlı izliyor."
+    )
+    lines.append(
+        "HARİTA SABİTTİR: bütün bölge oyunun başında üretildi (şehirler, "
+        "mekanlar, yollar, mesafeler). YENİ YER UYDURMA ve mevcut yerlerin "
+        "adını değiştirme. Grubun henüz duymadığı yerler yukarıda listelenmez "
+        "ama VARDIR: bir yer sahnede duyulduysa `map.places` altına adıyla "
+        "yaz, sunucu onu zaten hazır olan kaydıyla eşler."
     )
     lines.append(
         "BİLGİ DÜZEYİ (`known`) — haritada ne kadarının görüneceğini bu belirler: "
