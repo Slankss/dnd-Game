@@ -15,6 +15,7 @@ import {
   yaralariDiziye,
   enKotuEnfeksiyon,
   kunyeOzeti,
+  envanteriDiziye,
 } from './gameFormat'
 
 const props = defineProps({
@@ -33,7 +34,7 @@ const katilim = computed(() => katilimBilgisi(props.bilgi))
 const vitals = computed(() => dikkatCekenVitals(props.bilgi?.vitals))
 const yaraSayisi = computed(() => yaralariDiziye(props.bilgi?.wounds).length)
 const enfeksiyon = computed(() => enKotuEnfeksiyon(props.bilgi?.wounds))
-const envanter = computed(() => (Array.isArray(props.bilgi?.inventory) ? props.bilgi.inventory : []))
+const envanter = computed(() => envanteriDiziye(props.bilgi))
 const durumTonu = computed(() => (olu.value ? 'danger' : saglikTonu(props.bilgi?.status)))
 
 const VITAL_TONU = { ok: 'text-muted', warn: 'text-warn', danger: 'text-danger' }
@@ -122,9 +123,14 @@ const VITAL_TONU = { ok: 'text-muted', warn: 'text-warn', danger: 'text-danger' 
       <span
         v-for="(esya, i) in envanter.slice(0, 6)"
         :key="i"
-        class="inline-flex max-w-full items-center truncate rounded-chip border border-border bg-surface px-1.5 py-0.5 text-[0.625rem] text-muted"
-        >{{ esya }}</span
+        class="inline-flex max-w-full items-center gap-1 truncate rounded-chip border border-border bg-surface px-1.5 py-0.5 text-[0.625rem]"
+        :class="esya.az ? 'border-warn/40 text-warn' : 'text-muted'"
       >
+        {{ esya.ad }}
+        <span v-if="esya.adet !== null" class="nums-tabular font-semibold"
+          >×{{ esya.adet }}</span
+        >
+      </span>
       <span v-if="envanter.length > 6" class="text-[0.625rem] text-faint"
         >+{{ envanter.length - 6 }}</span
       >

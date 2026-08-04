@@ -21,6 +21,7 @@ from app.models.options import (
     normalize_list,
 )
 from app.repositories.options_repo import OptionsPoolRepository
+from app.services.inventory_service import InventoryService, looks_like_firing
 
 # Eksik seçenekleri tamamlarken kullanılan kalıplar. Sahneye bağlanabilmesi
 # için {tehdit} ve {yer} yer tutucularını alırlar.
@@ -45,8 +46,9 @@ FALLBACK_TEMPLATES = [
 
 
 class OptionsService:
-    def __init__(self, pool_repo=None):
+    def __init__(self, pool_repo=None, inventory=None):
         self.pool = pool_repo or OptionsPoolRepository()
+        self.inventory = inventory or InventoryService()
 
     # ------------------------------------------------------------- bakım
     def refresh(self, world, players, learning=None, turn=None):
@@ -56,6 +58,9 @@ class OptionsService:
         board.keep_only(players)
         for player in players:
             options = board.for_player(player)
+            # Önce karşılanamayanları ele, SONRA eksikleri tamamla: süzgeç
+            # listeyi 5'in altına düşürürse boşluk jeneriklerle kapanır.
+            options = self._affordable(world, player, options)
             if len(options) < OPTION_MIN:
                 options = self._pad(world, player, options)
             options = self._ensure_safe_exit(world, player, options)
@@ -64,6 +69,36 @@ class OptionsService:
             day = world.day if isinstance(world.day, int) else None
             learning.record_offered(board, day=day, turn=turn)
         return board
+
+    def _affordable(self, world, player: str, options: list) -> list:
+        """Karakterin ödeyemeyeceği seçenekleri listeden çıkarır.
+
+        Mermisi bitene "ateş aç" seçeneği SUNULMAZ: tutarsızlık sonradan tamir
+        edilmez, doğmadan önlenir. İki durumda eleme yapılır:
+
+          * seçeneğin `spend` beyanı karakterin sayacından fazlaysa,
+          * seçenek ateş etmeyi içeriyor ama karakterde hiç cephane yoksa
+            (anlatıcı `spend` yazmayı unutmuş olabilir).
+
+        Soyut bedeller ("yarım saat", "kol gücü") ve sayaçla takip edilmeyen
+        eşyalar eleme sebebi değildir — yoksa liste boşalırdı.
+        """
+        person = (world.characters or {}).get(player)
+        if person is None or not options:
+            return options
+        cephane_var = self.inventory.has_ammo(person)
+        kalanlar = []
+        for option in options:
+            if not self.inventory.can_afford(person, option.spend):
+                continue
+            if not cephane_var and not option.spend and looks_like_firing(option.text):
+                continue
+            kalanlar.append(option)
+        if not kalanlar:
+            # Hepsi elendi: boş liste göndermektense elemeyi geri al ve
+            # `_pad`/`_ensure_safe_exit` devreye girsin.
+            return []
+        return kalanlar
 
     def _pad(self, world, player: str, options: list) -> list:
         """Eksik seçenekleri sahneye bağlı jeneriklerle tamamlar."""
@@ -150,7 +185,11 @@ class OptionsService:
             f"Karakter başına EN AZ {OPTION_MIN}, EN ÇOK {OPTION_MAX} seçenek; "
             "her seçenekte `text` (somut hamle), `category` "
             "(güvenli/riskli/gizemli/körü körüne/kurnaz/insani/acımasız/hazırlık) "
-            "ve `cost` (somut bedel) olsun. Aynı listede en az ÜÇ farklı kategori "
+            "ve `cost` (somut bedel) olsun. Bedel SAYILABİLİR bir eşya "
+            "harcıyorsa (fişek, sargı, batarya, yakıt, su, konserve…) ayrıca "
+            '`spend` yaz: `"spend": {"9mm fişek": 2}`. Sunucu envanteri buradan '
+            "keser; yazmazsan miktar tutmaz. Karakterde o kadarı yoksa o "
+            "seçeneği HİÇ YAZMA (sunucu zaten eler). Aynı listede en az ÜÇ farklı kategori "
             "bulunsun, seçenekler o karakterin künyesine/eşyasına/bulunduğu yere "
             "özel olsun ve karakterleri farklı yönlere dağıtabilsin — ama sahnenin "
             "coğrafyası ve mevcut zorlukla bağı kopmasın. OYUNCULARIN SERBEST "

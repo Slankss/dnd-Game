@@ -13,7 +13,7 @@ import Badge from '../ui/Badge.vue'
 import VitalBars from './VitalBars.vue'
 import WoundList from './WoundList.vue'
 import { colorFor, GRUP_RENGI } from '@/utils/characterColors'
-import { saglikTonu, katilimBilgisi, kunyeOzeti } from './gameFormat'
+import { saglikTonu, katilimBilgisi, kunyeOzeti, envanteriDiziye } from './gameFormat'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -28,7 +28,7 @@ const renk = computed(() => (props.npc ? GRUP_RENGI : colorFor(props.ad)))
 const olu = computed(() => props.bilgi?.alive === false)
 const kunye = computed(() => kunyeOzeti(props.bilgi))
 const katilim = computed(() => katilimBilgisi(props.bilgi))
-const envanter = computed(() => (Array.isArray(props.bilgi?.inventory) ? props.bilgi.inventory : []))
+const envanter = computed(() => envanteriDiziye(props.bilgi))
 const iliskiler = computed(() => Object.entries(props.bilgi?.relationships || {}))
 const durumTonu = computed(() => (olu.value ? 'danger' : saglikTonu(props.bilgi?.status)))
 </script>
@@ -109,9 +109,14 @@ const durumTonu = computed(() => (olu.value ? 'danger' : saglikTonu(props.bilgi?
           <span
             v-for="(esya, i) in envanter"
             :key="i"
-            class="rounded-chip border border-border bg-surface-2 px-2 py-0.5 text-label text-text"
-            >{{ esya }}</span
+            class="inline-flex items-center gap-1 rounded-chip border bg-surface-2 px-2 py-0.5 text-label"
+            :class="esya.az ? 'border-warn/40 text-warn' : 'border-border text-text'"
           >
+            {{ esya.ad }}
+            <span v-if="esya.adet !== null" class="nums-tabular font-semibold"
+              >×{{ esya.adet }}</span
+            >
+          </span>
         </div>
         <p v-else class="text-meta text-faint">Envanter boş.</p>
       </section>

@@ -34,7 +34,14 @@ sadece metin üretimi için) çalıştırır.
    seçimler TEK mesajda anlatıcıya gider. Süresi içinde seçim yapmayan karakter
    için anlatıcı **ani sahne** yazar — dünya beklemez. Hiçbir seçenek uymuyorsa
    tek çıkış "bu turda bekle"dir. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md`.
-4. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
+4. **Envanteri anlatıcı değil sunucu tutar.** Mermi, sargı, batarya gibi
+   sayılabilir kalemlerin miktarı `inventory_counts` altında sayı olarak durur.
+   Bir seçenek sayılabilir bir şey harcıyorsa bunu `spend` alanında beyan eder
+   (`{"9mm fişek": 2}`), sunucu turun çözümünde keser ve anlatıcıya ne
+   kesildiğini zorunlu bir blokla bildirir. Mermisi bitene "ateş aç" seçeneği
+   **hiç sunulmaz**; beyan unutulursa hamle metnindeki ateş izinden zar bandına
+   göre 1-3 fişek otomatik düşer. Ayrıntı: `docs/tur-akisi-ve-ogrenme.md` §1d.
+5. **Hiçbir şey tetiklendiği turda devreye girmez.** Anlatıcının yazdığı sahne,
    o turda çıkan gürültü, anlatıcının bildirdiği patlama/alarm ve vadesi gelen
    senaryo beat'i `state["pending"]` kuyruğuna yazılır ve **bir sonraki turun
    başında** uygulanır. Yani tur N'de tüfek patlatan grup bedelini tur N+1'de

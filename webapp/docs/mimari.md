@@ -37,7 +37,8 @@ webapp/
         entities.py         #   Entity/Player/Npc/Item/Building
         grid_map.py         #   GridMap — 2D dizi + varlık kaydı
         movement.py         #   move() — 8 adımlı hareket algoritması (O(1))
-      options.py            # Option, OptionBoard — seçenek havuzu (5-10)
+      options.py            # Option, OptionBoard — seçenek havuzu (5-10, spend)
+      inventory.py          # sayılabilir envanter (mermi/sargı/yakıt sayaçları)
       round.py              # Round, Pick — tur bazlı akışın kaydı
       pending.py            # bekleyen yayın kuyruğu (her şey BİR SONRAKİ turda)
       learning.py           # Learning — öğrenme defteri (sayaçlar + dersler)
@@ -63,6 +64,7 @@ webapp/
       worldgen_service.py   # her oyuna farklı başlangıç ve fraksiyonlar
       grid_service.py       # kare harita: sahne kurulumu + hareket
       threat_service.py     # karşılaşma zarı (girdiler GEÇEN turdan devreder)
+      inventory_service.py  # harcama muhasebesi: seçeneğin bedelini sunucu keser
       setup_service.py      # karakter kurulumu, oyunu başlatma, ayarlar
       gm_service.py         # anlatıcı notu, elle yama, kilit
       scenario_service.py   # senaryo/oyun dışa-içe aktarma
@@ -117,13 +119,17 @@ bkz. `models/pending.py` ve `docs/tur-akisi-ve-ogrenme.md` §1b). Eski
 kayıtlarda yoklarsa `StateRepository.backfill` varsayılanla doldurur.
 
 `Person` (characters ve npcs): `background`, `traits`, `status`, `alive`,
-`location`, `notes`, `inventory`, `lost_items`, `relationships`, `wounds`,
+`location`, `notes`, `inventory`, `inventory_counts` (sayılabilir kalemlerin
+miktarı — sunucu tutar), `lost_items`, `relationships`, `wounds`,
 `vitals`, `presence`, künye alanları (`profession`, `age`, `strength`,
 `weakness`, `reflex`, `secret`).
 
 Patch birleştirme kuralları (davranış AYNEN korunacak):
 - `inventory` üzerine yazmaz, birleştirir; `lost_items` elden çıkanı hatırlar
-- `resources` `"+3"` / `"-12"` göreli değişimi destekler
+- sayılabilir kalemde miktar İSİMDEN AYRILIR: `"12 fişek"` → liste `"fişek"`,
+  sayaç `{"fişek": 12}`. Sayaç sıfırlanınca kalem envanterden düşer
+  (bkz. `docs/tur-akisi-ve-ogrenme.md` §1d)
+- `inventory_counts` ve `resources` `"+3"` / `"-12"` göreli değişimi destekler
 - boş/None zaman alanı mevcut değeri korur
 - model `characters` altına tanımadık isim yazarsa `npcs`'e yönlendirilir
 - `presence.until` dolduğunda karakter sahneye döner

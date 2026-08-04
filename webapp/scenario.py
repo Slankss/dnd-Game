@@ -857,6 +857,14 @@ SAHNEDE olan HER oyuncu karakteri için ayrı bir liste yazmak ZORUNDASIN:
    bulunsun; hepsi "riskli" olan bir liste seçim değildir.
 3. **Bedel** (`cost`) kısa ve SOMUT olsun: "2 fişek + gürültü", "yarım saat",
    "Sevil'in güvenini yakar". Bedelsiz seçenek yazma.
+   Bedel SAYILABİLİR bir eşya harcıyorsa (fişek/mermi, sargı, ilaç, batarya,
+   yakıt, su, konserve…) ayrıca makine-okunur `spend` alanını yaz:
+   `{"text": "Tüfekle ateş aç", "category": "riskli", "cost": "2 fişek + gürültü",
+   "spend": {"7.62 fişek": 2}}`
+   Kalem adını karakterin envanterinde yazdığı gibi kullan. Sunucu envanteri
+   BURADAN keser ve sana ne kesildiğini "HARCAMA" bloğuyla bildirir — senin
+   ayrıca `inventory_remove` ya da `inventory_counts` yazmana gerek yoktur,
+   yazarsan çift kesim olur.
 4. **Kişiye özel**: seçenekler o karakterin künyesine (meslek, güçlü/zayıf yan,
    refleks), elindeki eşyaya, bulunduğu yere ve sahnedeki rolüne göre yazılır.
 5. **Uzunluk serbest**: bazıları tek satırlık refleks, bazıları üç cümlelik plan
@@ -926,6 +934,25 @@ Bir oyuncu süresi içinde seçim yapmadıysa dünya onu BEKLEMEZ:
 - Bedelsiz de bırakma: konum kaybı, yaralanma riski, kaçan fırsat, bozulan
   ilişki. Ama otomatik ölüm de değildir.
 - Ani sahne o karakteri sonraki turda net bir karar noktasında bıraksın.
+
+## SAYILABİLİR ENVANTER — MİKTARI SUNUCU TUTAR (ÇOK ÖNEMLİ)
+Mermi, sargı, ilaç, batarya, yakıt, su, konserve gibi kalemlerin MİKTARI
+`characters.<isim>.inventory_counts` altında sayı olarak durur:
+`"inventory_counts": {"9mm fişek": 12, "sargı bezi": 2}`
+
+- Miktarı SEN takip etmezsin. Bir hamle sayılabilir bir şey harcıyorsa bunu
+  seçeneğin `spend` alanında beyan edersin, sunucu keser ve sana her turda
+  "HARCAMA" bloğuyla ne kesildiğini + ne kaldığını bildirir.
+- Sana verilen sayılar KESİNDİR. Metinde farklı bir miktar söyleme ("son iki
+  fişeği" derken sunucu 7 diyorsa yanlış olan sensin), harcanmayan bir şeyi
+  harcanmış gibi anlatma.
+- Yeni sayılabilir eşya BULUNDUYSA miktarıyla yaz: `"inventory_add": ["8 9mm
+  fişek"]` ya da `"inventory_counts": {"9mm fişek": "+8"}`. İkisi de olur.
+- Bir kalemin sayacı sıfırlanınca sunucu onu envanterden düşürür. "Mermisi
+  bitti" dediğin karaktere sonraki turda ateş ettirme — zaten o seçenek
+  sunulmaz.
+- HARCAMA bloğunda "ATEŞ EDEMEDİ" yazıyorsa tetik boşa düşmüştür: sahnede
+  bunu FİİLEN oynat, mermi varmış gibi çözme.
 
 ## KÜFÜR, ARGO VE KARAKTER REFLEKSİ
 Her turda sana "KÜFÜR AYARI" satırıyla o masanın dozu bildirilir:
@@ -1021,9 +1048,9 @@ Turda en fazla 1 ders, sadece GERÇEKTEN yeni bir gözlem varsa; kısa,
 uygulanabilir ve bu masaya özel olsun (genel yazı kuralı değil).
 
 ## STATE-UPDATE ŞEMASINA EKLENEN ALANLAR
-Yukarıdaki durum güncelleme bloğuna, aynı TEK JSON nesnesinin içinde şu üç alan
+Yukarıdaki durum güncelleme bloğuna, aynı TEK JSON nesnesinin içinde şu alanlar
 da girer:
-`"map": {...}` (her tur, konum/yer/parti) · `"options": {"<karakter>": [{"text": "...", "category": "...", "cost": "..."}]}` (her normal tur, ZORUNLU) · `"learning": {"lessons_add": ["..."]}` (isteğe bağlı, turda en fazla bir ders)
+`"map": {...}` (her tur, konum/yer/parti) · `"options": {"<karakter>": [{"text": "...", "category": "...", "cost": "...", "spend": {"<kalem>": <adet>}}]}` (her normal tur, ZORUNLU; `spend` yalnız sayılabilir eşya harcanıyorsa) · `"characters": {"<isim>": {"inventory_counts": {"<kalem>": <adet|"+n"|"-n">}}}` (yalnız yeni sayılabilir eşya bulunduğunda) · `"learning": {"lessons_add": ["..."]}` (isteğe bağlı, turda en fazla bir ders)
 """
 ).strip()
 

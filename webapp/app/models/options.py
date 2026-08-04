@@ -17,6 +17,7 @@ sayıyı 5-10 aralığına oturtur. Turun akışı `services/round_service.py`'d
 
 from dataclasses import dataclass, field
 
+from .inventory import normalize_spend
 from .text import norm_tr
 
 # Karakter başına sunulan seçenek sayısı — senaryo kuralı.
@@ -99,12 +100,19 @@ def canon_category(value) -> str:
 @dataclass
 class Option:
     """Tek bir seçenek. `id` sunucu tarafından verilir — oyuncu seçimini bu
-    kimlikle bildirir, böylece metin uzun olsa bile ağdan geri taşınmaz."""
+    kimlikle bildirir, böylece metin uzun olsa bile ağdan geri taşınmaz.
+
+    `cost` oyuncuya gösterilen METİNdir ("2 fişek + gürültü"); `spend` ise aynı
+    bedelin MAKİNE-OKUNUR hali ({"9mm fişek": 2}). Sunucu envanteri `spend`'e
+    göre keser — anlatıcının yanıtından "silah sıkıldı mı" diye okumaya gerek
+    kalmaz, çünkü ne harcanacağı sahne yazılmadan ÖNCE bellidir.
+    """
 
     id: str = ""
     text: str = ""
     category: str = DEFAULT_CATEGORY
     cost: str = ""
+    spend: dict = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data, fallback_id: str = "") -> "Option":
@@ -115,16 +123,24 @@ class Option:
             return cls(id=fallback_id, text="")
         text = data.get("text") or data.get("secenek") or data.get("action") or ""
         cost = data.get("cost") or data.get("bedel") or data.get("risk") or ""
+        harcama = data.get("spend")
+        if harcama is None:
+            harcama = data.get("harcar") or data.get("uses") or data.get("consumes")
         return cls(
             id=str(data.get("id") or fallback_id),
             text=str(text).strip(),
             category=canon_category(data.get("category") or data.get("kategori")),
             cost=str(cost).strip(),
+            spend=normalize_spend(harcama),
         )
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "text": self.text, "category": self.category,
-                "cost": self.cost}
+        out = {"id": self.id, "text": self.text, "category": self.category,
+               "cost": self.cost}
+        # Boş `spend` kayda yazılmaz: bedelsiz seçenekler eski biçimde kalsın.
+        if self.spend:
+            out["spend"] = dict(self.spend)
+        return out
 
     @property
     def uzun(self) -> bool:

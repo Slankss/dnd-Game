@@ -119,6 +119,42 @@ yerde okunuyor ve metindeki liste ile havuzdaki liste birbirini tutmuyordu.
 Metnin tamamı seçenekten ibaretse hiçbir şey kesilmez: boş sahne yayınlamaktansa
 kuralı ihlal eden sahneyi yayınlamak yeğdir.
 
+## 1d. Harcama — envanteri anlatıcı değil sunucu tutar
+
+Silah sıkılıyor ama mermi azalmıyordu. Sebebi tek bir satırda: `Person.inventory`
+düz bir isim listesiydi, **miktar kavramı yoktu**. Kusursuz bir anlatıcı bile
+"12 → 9" yazamazdı, yazacak alan yoktu. Üstelik tüketim, yanıt metninden
+okunmaya çalışılıyordu ("bu turda ateş etti mi?") — serbest metinden güvenilir
+biçimde çıkarılamayacak bir bilgi.
+
+Çözüm metni ayrıştırmak değil: oyuncu ne yapacağını zaten **seçiyor** ve seçim,
+sahne yazılmadan **önce** belli.
+
+**Veri.** `Person.inventory_counts` = `{"9mm fişek": 12}` (`models/inventory.py`).
+Miktar isimden ayrı tutulur — sayı iki yerde dursaydı biri eskirdi. Envanterdeki
+`"12 9mm fişek"` gibi eski kayıtlar yüklenirken otomatik ayrıştırılır
+(`Person._backfill_counts`). Sayacı sıfırlanan kalem envanterden düşer ve
+`lost_items`'a geçer.
+
+**Dört katman** (`services/inventory_service.py`):
+
+| Katman | Ne yapar | Nerede |
+|---|---|---|
+| Beyan | `Option.spend` = `{"9mm fişek": 2}`; sunucu turun çözümünde keser | `round_service.commit` → `InventoryService.apply` |
+| Bildirim | Anlatıcıya "HARCAMA (sunucu kesti…)" zorunlu bloğu + "SAYILABİLİR STOK" listesi | `InventoryService.note` / `stock_note` |
+| Süzgeç | Karşılanamayan seçenek **hiç sunulmaz**; mermisi bitene "ateş aç" çıkmaz | `options_service._affordable` |
+| Güvenlik ağı | `spend` yazılmamışsa metinde ateş izi aranır, zar bandına göre 1-3 fişek düşer | `InventoryService._apply_one`, `looks_like_firing` |
+
+Kenar durumlar:
+
+- **Kuru tetik**: ateş eden hamle ama mermi yok → hiçbir şey kesilmez, anlatıcıya
+  "ATEŞ EDEMEDİ, tetik boşa düştü (klik)" bildirilir. Süzgeç yüzünden nadirdir
+  ama bir yolla olursa sahne tutarlı kalır.
+- **Sayaçsız kalem**: "yarım saat", "kol gücü" gibi soyut bedeller ve henüz
+  sayılmamış eşyalar seçeneği engellemez ve kesilmez — yoksa liste boşalırdı.
+- **Çift kesim**: anlatıcıya "bu kalemleri state-update'te TEKRAR düşürme"
+  denir; `spend` ile `inventory_remove` üst üste binmez.
+
 ## 2. Seçenek havuzu
 
 Anlatıcı her turun sonunda state-update bloğuna `options` yazar:

@@ -150,7 +150,8 @@ def turn_extra_system(ws, log, is_group, roll, band, world_entry,
 
 def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
                        waiting, settings, players, options_service,
-                       round_no, learning_note=None, threat_note=None) -> str:
+                       round_no, learning_note=None, threat_note=None,
+                       spend_note=None, stock_note=None) -> str:
     """Tur bazlı toplu gönderim: her karakterin seçimi kendi zarıyla gelir.
 
     Serbest turdan iki farkı var: (1) seçim yapmayanlar için ANİ SAHNE
@@ -199,9 +200,11 @@ def round_extra_system(ws, log, combined, world_entry, scene_note, directive,
         + prompt_builder.UPKEEP_REMINDER
         + "\n\n"
         + (options_service.instruction(players) if options_service else "")
+        + (("\n\n" + stock_note) if stock_note else "")
         + (("\n\n" + havuz_gecmisi) if havuz_gecmisi else "")
         + "\n\n"
         + combined
+        + (("\n\n" + spend_note) if spend_note else "")
         + "\n\n"
         + notes_block(ws, log, scene_note, profanity, learning_note, threat_note)
         + _directive_block(directive)

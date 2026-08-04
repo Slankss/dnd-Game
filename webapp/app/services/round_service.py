@@ -40,6 +40,7 @@ from app.repositories.state_repo import LOCK, StateRepository
 from app.serializers import public_round, public_world_state
 from app.services import prompt_builder, turn_prompts
 from app.services.director_service import DirectorService
+from app.services.inventory_service import InventoryService
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
@@ -59,7 +60,7 @@ class RoundService:
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
                  game_log=None, gm_log=None, director=None, learning=None,
-                 options=None, turn=None, threat=None):
+                 options=None, turn=None, threat=None, inventory=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
         self.narrator = narrator or NarratorClient()
@@ -69,6 +70,7 @@ class RoundService:
         self.learning = learning or LearningService()
         self.options = options or OptionsService()
         self.threat = threat or ThreatService()
+        self.inventory = inventory or InventoryService()
         self.turn = turn or TurnService(
             state_repo=self.state_repo, scenario_repo=self.scenario_repo,
             narrator=self.narrator, game_log=self.game_log, gm_log=self.gm_log,
@@ -248,6 +250,9 @@ class RoundService:
                 roll=roll,
                 band=band_for(roll),
                 custom=False,          # serbest metin yok: her seçim havuzdan
+                # Bedel seçimle birlikte taşınır: tur çözülürken envanterden
+                # kesilecek olan budur (havuz o sırada tazelenmiş olabilir).
+                spend=dict(secenek.spend or {}),
                 ts=time.time(),
             )
             degisti = player in round_.picks
@@ -357,6 +362,24 @@ class RoundService:
                 (direktif_kaydi.data or {}).get("beat_id") if direktif_kaydi else None)
             directive = prompt_builder.directive_note(beat.to_dict()) if beat else None
 
+            # HARCAMA: seçeneklerin beyan ettiği bedel envanterden ŞİMDİ kesilir
+            # — sahne yazılmadan önce. Anlatıcı muhasebe tutmaz, ne kesildiğini
+            # zorunlu bir blok olarak öğrenir. `ws` bu yüzden kesimden SONRA
+            # kurulur: modele giden JSON güncel miktarları göstersin.
+            harcamalar = self.inventory.apply(world, round_.ordered_picks(oyuncular))
+            harcama_notu = self.inventory.note(harcamalar)
+            for kayit in harcamalar:
+                if kayit["spent"] or kayit["dry"]:
+                    self.gm_log.append({
+                        "id": None, "role": "system", "ts": ts,
+                        "text": "🎒 " + (
+                            f"{kayit['player']} ateş edemedi (mermi yok)."
+                            if kayit["dry"] else
+                            f"{kayit['player']} harcadı: " + ", ".join(
+                                f"{adet}× {ad}" for ad, adet in kayit["spent"].items())
+                            + (" [otomatik]" if kayit["auto"] else "")),
+                    })
+
             ws = world.to_dict()
             scene_note = prompt_builder.presence_note(ws, returned, rejoined)
             log = self.game_log.read()
@@ -397,7 +420,8 @@ class RoundService:
                 ws, log, combined, world_entry, scene_note, directive,
                 bekleyenler, StateRepository.settings_of(state), oyuncular,
                 self.options, round_.no, self.learning.note(),
-                threat_prep["note"],
+                threat_prep["note"], harcama_notu,
+                self.inventory.stock_note(world, oyuncular),
             )
 
             try:
