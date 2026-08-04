@@ -19,16 +19,24 @@ Kilit ÇAĞIRANDA (round_service).
 
 import secrets
 
-from app.models.items import depletion_factor
 from app.models.text import norm_tr
 from app.repositories.items_repo import ItemsRepository
 
-#: Arama izi — bu kelimeler geçen hamle "arama" sayılır.
-SEARCH_WORDS = (
-    "ara ", "arar", "araştır", "yağmala", "yağma", "karıştır", "tara ",
-    "dolapları", "çekmece", "raflar", "raflara", "kasayı", "depoyu",
-    "içeriyi kontrol", "eşyaları topla", "erzak topla", "malzeme topla",
-    "toplamaya", "bakınmaya", "kurcala", "üstünü ara", "cebini",
+#: Arama izi — yeterince ayırt edici, ALT DİZE olarak aranan kalıplar.
+SEARCH_PHRASES = (
+    "araştır", "yağmala", "yağma", "karıştır", "dolapları", "dolaplara",
+    "çekmece", "raflar", "raflara", "kasayı", "depoyu", "içeriyi kontrol",
+    "eşyaları topla", "erzak topla", "malzeme topla", "kurcala", "cebini",
+    "üstünü ara", "baştan aşağı", "didik didik",
+)
+
+#: Arama fiilleri — TAM KELİME olarak aranır. Alt dize aramak "kararlı"
+#: içinde "arar" bulup hamleyi arama sanıyordu; kısa fiillerde çekimli
+#: biçimleri tek tek saymak, kelime sınırını tahmin etmekten güvenli.
+SEARCH_VERBS = (
+    "ara", "arayalım", "arasın", "aradı", "arıyor", "arayıp", "aramak",
+    "tara", "tarar", "tarasın", "taradı", "tarayalım", "taramak", "tarayıp",
+    "tarıyor", "bakın", "bakınmaya", "toplamaya",
 )
 
 #: Zar bandı → (en az, en çok) bulunan kalem sayısı.
@@ -42,28 +50,36 @@ BAND_LOOT = {
 }
 DEFAULT_LOOT = (1, 2)
 
-#: Yeme/içme izi — hamle bir yiyeceği tüketiyor mu.
-EAT_WORDS = ("ye ", "yer ", "yemek ye", "yiyor", "atıştır", "kahvaltı",
-             "karnını doyur", "iç ", "içer", "su iç", "yudumla", "kana kana")
+#: Yeme/içme izi — kalıplar ve tam kelime fiilleri.
+EAT_PHRASES = ("yemek ye", "atıştır", "kahvaltı", "karnını doyur", "su iç",
+               "yudumla", "kana kana", "konserveyi aç")
+EAT_VERBS = ("ye", "yer", "yiyor", "yiyelim", "yemek", "iç", "içer", "içiyor",
+             "içelim", "içmek")
 
 
-def _icerir(text: str, kelimeler) -> bool:
-    """Anahtar kelime taraması. Sondaki boşluklu kalıplar ("ara ") metnin
-    sonunda da tutsun diye metne bir boşluk eklenir — `norm_tr` sonu kırpıyor."""
+def icerir(text: str, phrases=(), verbs=()) -> bool:
+    """Anahtar kelime taraması.
+
+    `phrases` ALT DİZE olarak aranır (yeterince uzun ve ayırt edici olmalı),
+    `verbs` TAM KELİME olarak. İkisini ayırmanın sebebi somut bir hata: "arar"
+    alt dize olarak "kararlı" içinde geçiyor ve kararlılıkla kapı tutan
+    karakter "arama yapmış" sayılıyordu.
+    """
     metin = norm_tr(text or "")
     if not metin:
         return False
-    metin += " "
-    return any(norm_tr(k) + (" " if k.endswith(" ") else "") in metin
-               for k in kelimeler)
+    if any(norm_tr(k) in metin for k in phrases):
+        return True
+    kelimeler = {k.strip(".,;:!?()[]" + chr(34) + chr(39)) for k in metin.split()}
+    return any(norm_tr(k) in kelimeler for k in verbs)
 
 
 def looks_like_searching(text: str) -> bool:
-    return _icerir(text, SEARCH_WORDS)
+    return icerir(text, SEARCH_PHRASES, SEARCH_VERBS)
 
 
 def looks_like_eating(text: str) -> bool:
-    return _icerir(text, EAT_WORDS)
+    return icerir(text, EAT_PHRASES, EAT_VERBS)
 
 
 class ItemsService:
@@ -96,38 +112,56 @@ class ItemsService:
             kind = getattr(kayit, "kind", "") or ""
         return self.catalog.archetype_of(place, kind)
 
+    @staticmethod
+    def searched_places(world) -> dict:
+        return world.searched if isinstance(world.searched, dict) else {}
+
+    def already_searched(self, world, place: str) -> bool:
+        """Bu mekan TARANDI mı? Bir yer yalnızca BİR KEZ taranabilir."""
+        if not place:
+            return False
+        return bool(self.searched_places(world).get(place))
+
+    def mark_searched(self, world, place: str, bulunan: int = 0) -> None:
+        """Mekanı 'tarandı' diye işaretler — bir daha taranamaz."""
+        if not place:
+            return
+        world.ensure_searched()[place] = {"found": int(bulunan or 0)}
+
     def search(self, world, player: str, band: str = "") -> dict:
         """Bir aramayı çözer: ne bulundu, envantere yazıldı mı.
 
-        Dönen: {"player", "place", "archetype", "found": [{ad, adet, kategori}],
-                "empty_reason"}. Kilit ÇAĞIRANDA.
+        BİR MEKAN BİR KEZ TARANIR. İkinci kez denenirse hiçbir şey çıkmaz ve
+        sonuç `already: True` döner — seçenek havuzu zaten böyle bir seçenek
+        sunmuyor, bu sunucu tarafındaki son kapı.
+
+        Dönen: {"player", "place", "archetype", "found": [...], "empty_reason",
+                "already"}. Kilit ÇAĞIRANDA.
         """
         yer = self.place_of(world, player)
         tur = self.archetype(world, yer)
         katalog = self.catalog
         havuz = katalog.candidates(tur)
         sonuc = {"player": player, "place": yer, "archetype": tur,
-                 "label": katalog.place_label(tur), "found": [], "empty_reason": ""}
-        if not havuz:
-            sonuc["empty_reason"] = "burada aranacak bir şey kalmamış"
-            return sonuc
+                 "label": katalog.place_label(tur), "found": [],
+                 "empty_reason": "", "already": False}
 
-        # Aynı yeri tekrar aramak verimi düşürür: burası bir kaynak madeni değil.
-        arananlar = world.ensure_searched()
-        kez = int(arananlar.get(yer) or 0)
-        carpan = depletion_factor(kez)
-        arananlar[yer] = kez + 1
+        if self.already_searched(world, yer):
+            sonuc["already"] = True
+            sonuc["empty_reason"] = "burası daha önce tarandı, alınacak bir şey kalmadı"
+            return sonuc
+        if not havuz:
+            self.mark_searched(world, yer, 0)
+            sonuc["empty_reason"] = "burada aranacak bir şey yok"
+            return sonuc
 
         alt, ust = BAND_LOOT.get(str(band or ""), DEFAULT_LOOT)
         adet = self.rng.randint(alt, ust) if ust >= alt else 0
-        # Tükenmişlik her kalem yuvasına ayrı ayrı uygulanır: çok aranan bir yer
-        # gerçekten kurur, yalnızca "bir eksik" vermez.
-        if adet and carpan < 1.0:
-            adet = sum(1 for _ in range(adet) if self.rng.random() < carpan)
+        # Tarama tek seferlik: sonuç ne olursa olsun mekan işaretlenir.
+        # Kötü zar "burayı bir daha ararız" demek değildir; fırsat harcandı.
+        self.mark_searched(world, yer, adet)
         if not adet:
-            sonuc["empty_reason"] = (
-                "bu sefer işe yarar bir şey çıkmadı" if kez == 0
-                else f"burası daha önce {kez} kez arandı, geriye pek bir şey kalmamış")
+            sonuc["empty_reason"] = "aceleyle bakıldı, işe yarar bir şey çıkmadı"
             return sonuc
 
         person = (world.characters or {}).get(player)
@@ -189,6 +223,37 @@ class ItemsService:
                             "aclik": aclik, "susuzluk": susuzluk})
         return etkiler
 
+    def auto_consume(self, world, player: str) -> list:
+        """Beyansız yeme/içme — güvenlik ağı.
+
+        Hamle "ye/iç" diyorsa ama seçenekte `spend` yoksa, envanterdeki EN
+        DOYURUCU katalog kalemi bir adet tüketilir. Böylece "karnını doyurdu"
+        cümlesi ile açlık göstergesi arasındaki uçurum kapanır — mermi
+        sorununun aynısı. Uygun kalem yoksa hiçbir şey olmaz."""
+        person = (world.characters or {}).get(player)
+        if person is None:
+            return []
+        en_iyi, en_iyi_deger = None, 0
+        for ad in list(person.inventory or []):
+            item = self.catalog.find(ad)
+            if item is None or not (item.yiyecek_mi or item.icecek_mi):
+                continue
+            deger = max(item.doyum, item.susuzluk)
+            if deger > en_iyi_deger:
+                en_iyi, en_iyi_deger = item, deger
+        if en_iyi is None:
+            return []
+        # Sayılabilir kalemse envanterden bir adet düşülür; değilse tüketilip
+        # elden çıkar (tek kullanımlık kabul edilir).
+        if en_iyi.sayilabilir:
+            if not person.spend_item(en_iyi.ad, 1):
+                return []
+        else:
+            person.merge_inventory({"inventory_remove": [en_iyi.ad]})
+        self._relieve(person, en_iyi.doyum, en_iyi.susuzluk)
+        return [{"ad": en_iyi.ad, "adet": 1, "aclik": en_iyi.doyum,
+                 "susuzluk": en_iyi.susuzluk, "auto": True}]
+
     @staticmethod
     def _relieve(person, aclik: int, susuzluk: int) -> None:
         """Göstergeleri düşürür (0 = gayet iyi, 100 = dayanılmaz)."""
@@ -246,6 +311,11 @@ class ItemsService:
                 for b in kayit["found"]:
                     if b["not"]:
                         satirlar.append(f"  · {b['ad']}: {b['not']}")
+            elif kayit.get("already"):
+                satirlar.append(
+                    f"- {kayit['player']} · {yer} → ZATEN TARANMIŞ: "
+                    f"{kayit['empty_reason']}. Karakter boşuna vakit kaybetti; "
+                    "sahnede bunu göster (tanıdık boş raflar, kendi bıraktıkları iz).")
             else:
                 satirlar.append(
                     f"- {kayit['player']} · {yer} → BOŞ: {kayit['empty_reason']}.")
@@ -253,7 +323,9 @@ class ItemsService:
             "- Bulunanlar envantere ZATEN yazıldı; state-update'te tekrar ekleme. "
             "Listede olmayan bir şey BULDURMA (özellikle silah/mühimmat): neyin "
             "nerede bulunacağını yerin türü belirler. Boş çıkan aramayı da "
-            "sahnede anlat — aranan yer boşsa bunun kendisi bir bilgidir."
+            "sahnede anlat — aranan yer boşsa bunun kendisi bir bilgidir.\n"
+            "- BİR MEKAN BİR KEZ TARANIR. Taranmış bir yer için bir daha arama "
+            "seçeneği YAZMA; o yerde bulunacak şey bitmiştir."
         )
         return "\n".join(satirlar)
 

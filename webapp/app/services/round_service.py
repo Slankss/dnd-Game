@@ -41,7 +41,11 @@ from app.serializers import public_round, public_world_state
 from app.services import prompt_builder, turn_prompts
 from app.services.director_service import DirectorService
 from app.services.inventory_service import InventoryService
-from app.services.items_service import ItemsService, looks_like_searching
+from app.services.items_service import (
+    ItemsService,
+    looks_like_eating,
+    looks_like_searching,
+)
 from app.services.learning_service import LearningService
 from app.services.narrator_client import NarratorClient
 from app.services.options_service import OptionsService
@@ -381,6 +385,17 @@ class RoundService:
                 etki = self.items.consume(world, kayit["player"], kayit["spent"])
                 if etki:
                     tuketimler[kayit["player"]] = etki
+            # Güvenlik ağı: hamle yemek/içmek diyorsa ama anlatıcı `spend`
+            # yazmayı unuttuysa envanterdeki en doyurucu kalem tüketilir —
+            # "karnını doyurdu" deyip açlık göstergesinin sabit kalması, mermi
+            # sorununun aynısıydı.
+            beyan_edenler = {k["player"] for k in harcamalar if k["spent"]}
+            for pick in secimler:
+                if pick.player in beyan_edenler or not looks_like_eating(pick.text):
+                    continue
+                etki = self.items.auto_consume(world, pick.player)
+                if etki:
+                    tuketimler.setdefault(pick.player, []).extend(etki)
 
             # ARAMA: bir yeri arayan hamlede ne bulunacağını YER TÜRÜ ve
             # katalog belirler (karakolda silah, metroda pek değil).

@@ -968,8 +968,14 @@ düşürme oranı, silahların harcadığı mühimmat türü katalogda yazılıd
   katalogdan çeker ve sana "ARAMA SONUCU" bloğuyla ne bulunduğunu bildirir.
   O blok ZORUNLUDUR: bulunanları sahnede göster, listede olmayan bir şey
   BULDURMA, bulunanları state-update'te tekrar envantere ekleme.
-- Boş çıkan arama da bir bilgidir: aynı yer defalarca aranırsa verim düşer.
-  "Burası çoktan yağmalanmış" demek bu dünyada gerçektir.
+- **BİR MEKAN BİR KEZ TARANIR.** Grubun bulunduğu yer henüz taranmadıysa
+  listede mutlaka bir "burayı tara" seçeneği olsun (yazmazsan sunucu ekler).
+  O yer bir kez tarandıysa artık ARAMA SEÇENEĞİ YAZMA — sunucu böyle bir
+  seçeneği listeden siler ve ikinci tarama hiçbir şey çıkarmaz. Taranmış bir
+  yerde yeni malzeme ancak başka bir yere gidilerek bulunur; bu, grubu yerinde
+  oturmaktan çıkarıp haritaya iten temel baskıdır.
+- Boş çıkan arama da bir bilgidir ve o mekan yine "tarandı" sayılır: kötü zar
+  "bir daha bakarız" demek değildir, fırsat harcanmıştır.
 - Yiyecek yendiğinde açlık göstergesini SEN düşürmezsin; seçeneğin `spend`
   alanına yiyeceği yaz, sunucu hem envanterden düşer hem açlığı azaltır ve
   sana "TÜKETİM" bloğuyla bildirir.

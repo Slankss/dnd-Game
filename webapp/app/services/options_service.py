@@ -9,6 +9,9 @@ getirir:
   * her listede EN AZ BİR düşük riskli seçenek bulunur: senaryo yalnız sunulan
     tercihlerle ilerlediği için (serbest hamle yok) oyuncuyu yalnızca ölümcül
     seçenekler arasına sıkıştırmak kabul edilemez,
+  * bulunulan mekan henüz taranmadıysa listede MUTLAKA bir "burayı tara"
+    seçeneği olur; mekan bir kez tarandıysa tarama seçeneklerinin hepsi
+    elenir (bir mekan bir kez taranır),
   * sunulan her seçenek havuz dosyasına (`data/options_pool.jsonl`) düşer,
   * anlatıcıya "son sunulanlar" özeti hazırlanır ki kendini tekrar etmesin.
 """
@@ -22,6 +25,7 @@ from app.models.options import (
 )
 from app.repositories.options_repo import OptionsPoolRepository
 from app.services.inventory_service import InventoryService, looks_like_firing
+from app.services.items_service import ItemsService, looks_like_searching
 
 # Eksik seçenekleri tamamlarken kullanılan kalıplar. Sahneye bağlanabilmesi
 # için {tehdit} ve {yer} yer tutucularını alırlar.
@@ -46,9 +50,10 @@ FALLBACK_TEMPLATES = [
 
 
 class OptionsService:
-    def __init__(self, pool_repo=None, inventory=None):
+    def __init__(self, pool_repo=None, inventory=None, items=None):
         self.pool = pool_repo or OptionsPoolRepository()
         self.inventory = inventory or InventoryService()
+        self.items = items or ItemsService()
 
     # ------------------------------------------------------------- bakım
     def refresh(self, world, players, learning=None, turn=None):
@@ -61,6 +66,9 @@ class OptionsService:
             # Önce karşılanamayanları ele, SONRA eksikleri tamamla: süzgeç
             # listeyi 5'in altına düşürürse boşluk jeneriklerle kapanır.
             options = self._affordable(world, player, options)
+            # Tarama tek seferliktir: taranmamış mekanda seçenek GARANTİ edilir,
+            # taranmış mekanda TAMAMEN kaldırılır.
+            options = self._search_gate(world, player, options)
             if len(options) < OPTION_MIN:
                 options = self._pad(world, player, options)
             options = self._ensure_safe_exit(world, player, options)
@@ -99,6 +107,36 @@ class OptionsService:
             # `_pad`/`_ensure_safe_exit` devreye girsin.
             return []
         return kalanlar
+
+    def _search_gate(self, world, player: str, options: list) -> list:
+        """Mekan tarama seçeneğini açar ya da tamamen kapatır.
+
+        Kural: **bir mekan bir kez taranır.**
+
+          * Bulunulan yer henüz taranmadıysa listede MUTLAKA bir tarama
+            seçeneği olur — anlatıcı yazmadıysa sunucu ekler. Oyuncu serbest
+            hamle yazamadığı için, bu seçenek sunulmazsa mekanı arama imkanı
+            hiç doğmaz.
+          * Yer bir kez tarandıysa tarama seçeneklerinin HEPSİ elenir. Aynı
+            depoyu her tur yeniden yağmalamak oyunun ekonomisini bozuyordu ve
+            "burayı zaten aradık" cümlesi oyuncuya sürekli tekrar ettiriliyordu.
+        """
+        yer = self.items.place_of(world, player)
+        if not yer:
+            return options
+        if self.items.already_searched(world, yer):
+            return [o for o in options if not looks_like_searching(o.text)]
+        if any(looks_like_searching(o.text) for o in options):
+            return options
+        # Anlatıcı tarama seçeneği yazmamış: sunucu ekler ki mekan aranabilsin.
+        tamam = list(options[:OPTION_MAX - 1])
+        tamam.append(Option(
+            id="", category="hazırlık",
+            text=(f"{yer} içini baştan aşağı tara: dolapları, çekmeceleri, "
+                  "arka odaları ve kimsenin bakmadığı yerleri karıştır."),
+            cost="20-30 dakika + çıkardığın gürültü",
+        ))
+        return normalize_list(player, [o.to_dict() for o in tamam])
 
     def _pad(self, world, player: str, options: list) -> list:
         """Eksik seçenekleri sahneye bağlı jeneriklerle tamamlar."""

@@ -28,10 +28,6 @@ from .text import norm_tr
 #: bir fren: çok nadir eşya doğru yerde bile kolay çıkmasın.
 RARITY_FACTOR = {"yaygın": 1.0, "nadir": 0.55, "çok nadir": 0.22}
 
-#: Bir yer kaç kez aranınca verimi düşer (her aramada çarpan bu kadar iner).
-DEPLETION_STEP = 0.35
-#: Aranmış bir yerin verimi bunun altına inmez — hiçbir yer tamamen kurumaz.
-DEPLETION_FLOOR = 0.15
 
 
 @dataclass
@@ -189,9 +185,3 @@ class ItemCatalog:
         """Silahın harcadığı mühimmatın adı ("" = mühimmat istemiyor)."""
         item = self.find(weapon_name)
         return item.mermi if item is not None else ""
-
-
-def depletion_factor(times_searched: int) -> float:
-    """Aynı yeri tekrar aramanın verimi. 0. arama = 1.0, sonra düşer."""
-    kalan = 1.0 - DEPLETION_STEP * max(0, int(times_searched or 0))
-    return max(DEPLETION_FLOOR, kalan)

@@ -47,7 +47,10 @@ sadece metin üretimi için) çalıştırır.
    takas). Bir yerde ne bulunacağını **yer türü** belirler — 9mm tabancanın
    polis karakolunda ağırlığı 55, metro istasyonunda 2'dir. Oyuncular arama
    seçeneği seçince sunucu katalogdan çeker (kaç kalem çıkacağını zar bandı
-   belirler) ve aynı yer tekrar tekrar aranırsa verim düşer. Yiyeceklerin
+   belirler). **Bir mekan bir kez taranır**: taranmamış yerde listede mutlaka
+   bir "burayı tara" seçeneği olur, o yer tarandıktan sonra arama seçeneği bir
+   daha sunulmaz (haritada "tarandı" rozeti görünür). Yeni malzeme ancak yeni
+   bir yere giderek bulunur. Yiyeceklerin
    `doyum`, içeceklerin `susuzluk` değeri vardır ve göstergeyi sunucu düşürür.
    **Hikaye eşyaları** (`story_items`) ise her oyunda farklıdır, anlatıcı
    üretir ve *yalnızca anlatı etkisi* taşır — açlık doldurmaz, zar değiştirmez.

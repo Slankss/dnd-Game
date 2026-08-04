@@ -191,20 +191,41 @@ normalize edilir, anahtar kelimeler kök olarak aranır, en uzun eşleşme kazan
 "Aile sağlığı merkezi" → `hastane`, "Eski metro istasyonu" → `metro`.
 
 **Arama** (`ItemsService.search`): hamle metninde arama izi varsa
-(`looks_like_searching`: "rafları karıştır", "depoyu ara", "çekmece"…) sunucu
-katalogdan ağırlıklı, tekrarsız çekiliş yapar. Kaç kalem çıkacağını **zar bandı**
-belirler (Felaket 0 · Kritik 2-4). Bulunanlar envantere yazılır ve anlatıcıya
-"ARAMA SONUCU" zorunlu bloğuyla bildirilir: listede olmayan bir şey buldurmak,
-bulunanı tekrar eklemek yasaktır.
+(`looks_like_searching`) sunucu katalogdan ağırlıklı, tekrarsız çekiliş yapar.
+Kaç kalem çıkacağını **zar bandı** belirler (Felaket 0 · Kritik 2-4).
+Bulunanlar envantere yazılır ve anlatıcıya "ARAMA SONUCU" zorunlu bloğuyla
+bildirilir: listede olmayan bir şey buldurmak, bulunanı tekrar eklemek yasaktır.
 
-**Tükenme**: aynı yeri tekrar aramak verimi düşürür (`depletion_factor`: her
-aramada −0.35, taban 0.15). Her kalem yuvası bu olasılıkla korunur, yani çok
-aranan yer gerçekten kurur — sonsuz yağma çiftliği olmaz. Sayaç
-`world_state.searched` içinde durur.
+### Bir mekan bir kez taranır
+
+Kural kesindir ve üç yerde birden zorlanır:
+
+| Katman | Ne yapar |
+|---|---|
+| Seçenek garantisi | Bulunulan yer taranmamışsa listede MUTLAKA bir "burayı tara" seçeneği olur — anlatıcı yazmadıysa `options_service._search_gate` ekler. Serbest hamle olmadığı için bu seçenek sunulmazsa mekanı arama imkanı hiç doğmaz. |
+| Seçenek süzgeci | Yer bir kez tarandıysa arama seçeneklerinin **hepsi** listeden elenir. |
+| Sunucu kapısı | Eski/bayat bir seçenek yine de seçilirse `search()` `already: True` döner, hiçbir şey çıkmaz ve anlatıcıya "ZATEN TARANMIŞ" bildirilir. |
+
+Kötü zar da mekanı harcar: boş çıkan arama sonrası yer yine "tarandı" sayılır
+("aceleyle bakıldı, işe yarar bir şey çıkmadı"). Bu, grubu tek bir depoda
+oturmaktan çıkarıp haritaya iten temel baskıdır — yeni malzeme ancak yeni bir
+yere giderek bulunur.
+
+Kayıt `world_state.searched` = `{yer: {"found": n}}`. Oyuncu arayüzünde harita
+panelinde taranan yerlerin yanında "tarandı" rozeti görünür, böylece seçeneğin
+neden kaybolduğu belli olur.
+
+**Anahtar kelime taraması** (`items_service.icerir`) iki listeyle çalışır:
+`SEARCH_PHRASES` alt dize olarak, `SEARCH_VERBS` **tam kelime** olarak aranır.
+Ayrımın sebebi somut bir hata: "arar" alt dize olarak "kararlı" içinde geçiyor
+ve kararlılıkla kapı tutan karakter "arama yapmış" sayılıyordu. Aynı düzeltme
+ateş (`inventory_service.FIRE_WORDS`) ve yeme kalıpları için de geçerli.
 
 **Tüketim** (`ItemsService.consume`): harcanan kalem katalogda yiyecek/içecekse
 `vitals.hunger` / `vitals.thirst` sunucuda düşer ve anlatıcıya "TÜKETİM" bloğu
-gider. "Karnınız doydu" cümlesi göstergeyi değiştirmez.
+gider. "Karnınız doydu" cümlesi göstergeyi değiştirmez. Anlatıcı `spend`
+yazmayı unutur ama hamle "ye/iç" derse `auto_consume` envanterdeki en doyurucu
+katalog kalemini tüketir — mermi güvenlik ağının aynısı.
 
 ### Hikaye eşyaları (`world_state.story_items`)
 

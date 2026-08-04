@@ -113,6 +113,8 @@ export const useGameStore = defineStore('game', () => {
   const threat = computed(() => worldState.value?.threat ?? null)
   /** Hikayeye özel eşyalar: {ad: {sahip, not, nerede, gun}} — mekaniği YOK */
   const storyItems = computed(() => worldState.value?.story_items ?? {})
+  /** Taranmış mekanlar: {yer: {found}} — bir mekan bir kez taranır */
+  const searchedPlaces = computed(() => worldState.value?.searched ?? {})
 
   /** Bir karakterin bu turdaki seçenekleri */
   function optionsFor(ad) {
@@ -566,6 +568,7 @@ export const useGameStore = defineStore('game', () => {
     options,
     threat,
     storyItems,
+    searchedPlaces,
     optionsFor,
     pickOf,
     waiting,

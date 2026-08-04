@@ -27,6 +27,8 @@ const props = defineProps({
   gm: { type: Boolean, default: false },
   /** world_state.threat — yoğunluk halkaları ve göç bilgisi için */
   tehdit: { type: Object, default: null },
+  /** world_state.searched — hangi mekanlar tarandı ({yer: {found}}) */
+  taranan: { type: Object, default: () => ({}) },
 })
 
 const buyukAcik = ref(false)
@@ -118,6 +120,10 @@ const bilinmeyen = computed(() => yerler.value.filter((y) => y.duzey === 'duyuld
             </Badge>
             <Badge v-if="yer.duzey === 'görüldü'" tone="warn" size="sm" icon="visibility">
               uzaktan
+            </Badge>
+            <!-- Bir mekan bir kez taranır: tarandıysa arama seçeneği artık sunulmaz -->
+            <Badge v-if="taranan?.[yer.ad]" tone="muted" size="sm" icon="search_off">
+              tarandı
             </Badge>
             <Badge
               v-if="tehdit?.density?.[yer.ad] != null"
