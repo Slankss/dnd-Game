@@ -9,6 +9,7 @@ kurulur: imzalı, HttpOnly, SameSite=Lax. İmza anahtarı .env'den gelmezse
 herkesi dışarı atmasın.
 """
 
+import json
 import secrets
 from datetime import timedelta
 
@@ -16,6 +17,7 @@ from flask import Flask, jsonify
 
 from app import config
 from app.errors import GameError
+from app.serializers import mask_picks
 
 
 def _secret_key() -> bytes:
@@ -62,6 +64,9 @@ def create_app() -> Flask:
     )
 
     from app.api import auth, game, gm, grid, pages, round, scenario
+    from app.api.guards import kimlik
+    from app.services.auth_service import ROL_ANLATICI, ROL_MASA, ROL_OYUNCU
+
     flask_app.register_blueprint(pages.bp)
     flask_app.register_blueprint(auth.bp)
     flask_app.register_blueprint(game.bp)
@@ -69,6 +74,34 @@ def create_app() -> Flask:
     flask_app.register_blueprint(grid.bp)
     flask_app.register_blueprint(gm.bp)
     flask_app.register_blueprint(scenario.bp)
+
+    @flask_app.after_request
+    def _kararlari_gizle(response):
+        """Açık turda başka oyuncuların KARARI gövdeye hiç girmez.
+
+        Tek yerde yapılıyor: bir ucu işaretlemeyi unutmak sızıntı demek
+        olurdu. `round` anahtarı taşıyan her JSON yanıt buradan geçer;
+        anlatıcı ve tek ekran masası için maskeleme uygulanmaz.
+        """
+        if not response.is_json:
+            return response
+        try:
+            body = response.get_json(silent=True)
+        except Exception:
+            return response
+        if not isinstance(body, dict) or not isinstance(body.get("round"), dict):
+            return response
+        kim = kimlik()
+        rol = kim.get("role")
+        maskeli = mask_picks(
+            body["round"],
+            viewer=kim.get("player") if rol == ROL_OYUNCU else None,
+            reveal=rol in (ROL_ANLATICI, ROL_MASA),
+        )
+        if maskeli is not body["round"]:
+            response.set_data(json.dumps({**body, "round": maskeli},
+                                         ensure_ascii=False))
+        return response
 
     @flask_app.errorhandler(GameError)
     def _game_error(exc: GameError):

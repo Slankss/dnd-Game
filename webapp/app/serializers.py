@@ -118,13 +118,52 @@ def public_threat(threat: dict, world_map: dict) -> dict:
     }
 
 
+# Bir seçimden BAŞKASINA gösterilecek alanlar. Geri kalanı (metin, kategori,
+# zar, seçenek kimliği, harcama) tur geçilene kadar sahibine özeldir.
+PICK_ACIK_ALANLAR = ("player", "ts", "timeout")
+
+
+def mask_picks(round_body, viewer=None, reveal=False) -> dict:
+    """Açık turda BAŞKA oyuncuların kararını gizler.
+
+    Oyuncular birbirinin kararını tur geçmeden görmemeli: yoksa herkes son
+    seçeni bekler, kararlar birbirine göre ayarlanır ve aynı anda karar verme
+    gerilimi kaybolur. Kim karar VERDİĞİ görünür (tur ne zaman kapanacak
+    bilinsin), NE seçtiği görünmez.
+
+    Kararlar bir sonraki turun başında yayınlanan sahneyle birlikte zaten
+    açılır — orada kimin ne yaptığı hikayenin kendisidir.
+
+    `reveal=True`: anlatıcı ve TEK EKRAN masası her şeyi görür — masadaki tek
+    cihazın kendinden bir şey saklaması anlamsız.
+    """
+    if not isinstance(round_body, dict):
+        return round_body
+    picks = round_body.get("picks")
+    if reveal or not isinstance(picks, dict):
+        return round_body
+    gizlenmis = {}
+    for name, pick in picks.items():
+        if not isinstance(pick, dict):
+            gizlenmis[name] = pick
+            continue
+        if viewer and name == viewer:
+            gizlenmis[name] = pick
+            continue
+        kirpik = {k: v for k, v in pick.items() if k in PICK_ACIK_ALANLAR}
+        kirpik["player"] = pick.get("player", name)
+        # Arayüz "karar verdi ama ne olduğunu göremezsin" diyebilsin.
+        kirpik["gizli"] = True
+        gizlenmis[name] = kirpik
+    return {**round_body, "picks": gizlenmis}
+
+
 def public_round(round_state, actors=None) -> dict:
     """Turun oyunculara giden hali.
 
-    Seçimler bilerek AÇIKTIR: masadaki herkes kimin karar verdiğini, hangi
-    kategoriyi seçtiğini ve zarının kaç geldiğini görür — tur, herkes seçim
-    yapınca kapanacağı için bu bilgi oyunun kendisidir. Gizlenen tek şey
-    yoktur; anlatıcıya özel alanlar zaten bu kayıtta durmuyor.
+    Seçimlerin GÖVDESİ burada hâlâ tamdır; kime ne gösterileceğine `mask_picks`
+    karar verir ve bunu API katmanı uygular (bkz. create_app → after_request),
+    çünkü "kim bakıyor" bilgisi oturuma aittir, servise değil.
     """
     round_ = round_state if isinstance(round_state, Round) else Round.from_dict(round_state)
     now = time.time()

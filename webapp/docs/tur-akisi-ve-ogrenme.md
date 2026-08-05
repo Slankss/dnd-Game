@@ -355,6 +355,27 @@ mekanı üst üste binerdi. Bu bir çizim kararıdır: gösterilen km değerleri
 sunucudan geldiği gibi durur. Yollar türlerine göre farklı kalınlık/desende
 çizilir, aynı çiftin ikinci yolu yaylandırılır, çökük yol kırmızı kesik çizgi.
 
+## 1f-2. Kararlar tur geçilene kadar kapalıdır
+
+Açık turda bir oyuncu, BAŞKA oyuncuların ne seçtiğini göremez. Görünen tek şey
+kimin karar VERDİĞİ (tur ne zaman kapanacak bilinsin); ne seçtiği, hangi
+kategori, kaç zar attığı ve ne harcadığı gövdeye HİÇ girmez.
+
+Neden: kararlar açık olsaydı herkes son seçeni bekler, kararlar birbirine göre
+ayarlanır ve aynı anda karar verme gerilimi kaybolurdu.
+
+Nerede yapılıyor: `serializers.mask_picks` kırpar, `create_app` içindeki tek bir
+`after_request` uygular. Uç uç işaretlemek yerine tek nokta seçildi — bir ucu
+işaretlemeyi unutmak sızıntı demek olurdu. Anlatıcı ve TEK EKRAN masası
+maskelenmez: masadaki tek cihazın kendinden bir şey saklaması anlamsız.
+
+Kararlar tur geçilince açılır: `commit` her seçimi `role: "user"` satırı olarak
+oyuncu günlüğüne yazar (metin, kategori, zar ve bandıyla), sahne de zaten kimin
+ne yaptığını anlatır.
+
+Menü ile karar ayrı şeylerdir: seçenek havuzu (`world_state.options`) herkese
+açıktır — kimin hangi seçenekleri gördüğü sır değil, hangisini SEÇTİĞİ sırdır.
+
 ## 1g. Effort — anlatıcı her tur aynı derinlikte düşünmez
 
 `--effort` sabit değil, **tura göre** seçilir (`models/effort.decide`).
