@@ -337,6 +337,12 @@ class GameService:
                         "değişir (önce sıfırla).")
                 settings["map_size"] = boyut
 
+            if "single_screen" in patch:
+                # Tek ekran kipi: masa oturumunun herkes adına oynamasına izin
+                # verir. Kapatıldığında açık masa oturumları bir sonraki
+                # isteklerinde reddedilir (auth_service.acting_player).
+                settings["single_screen"] = bool(patch.get("single_screen"))
+
             if "round_mode" in patch and not patch.get("round_mode"):
                 # Tur bazlı akış artık kapatılamaz: senaryo yalnız sunulan
                 # tercihlerle ilerler, serbest yazışma kipi kaldırıldı.

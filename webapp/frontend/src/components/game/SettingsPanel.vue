@@ -51,6 +51,8 @@ const HARITA_BOYU = [
 const sure = computed(() => Number(props.ayarlar?.turn_seconds ?? 0))
 const kufur = computed(() => props.ayarlar?.profanity || 'hafif')
 const haritaBoyu = computed(() => props.ayarlar?.map_size || 'orta')
+/** Tek ekran kipi: masadaki tek cihaz kadronun tamamı adına oynar. */
+const tekEkran = computed(() => !!props.ayarlar?.single_screen)
 
 const {
   durum: muzikDurumu,
@@ -170,6 +172,31 @@ function sifirla() {
         </div>
         <p class="text-label text-faint">
           Küfür anlatıcının değil, karakterlerin ağzından çıkar; refleksleri künyeden gelir.
+        </p>
+      </section>
+
+      <!-- Tek ekran kipi -->
+      <section class="flex flex-col gap-2">
+        <h3 class="text-panel uppercase tracking-[0.06em] text-muted">Tek ekran</h3>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseButton
+            v-for="secenek in [
+              { deger: false, etiket: 'Herkes kendi ekranında' },
+              { deger: true, etiket: 'Tek ekran (masa)' },
+            ]"
+            :key="String(secenek.deger)"
+            size="sm"
+            :variant="tekEkran === secenek.deger ? 'primary' : 'subtle'"
+            :disabled="mesgul"
+            @click="$emit('ayarKaydet', { single_screen: secenek.deger })"
+          >
+            {{ secenek.etiket }}
+          </BaseButton>
+        </div>
+        <p class="text-label text-faint">
+          Açıkken giriş ekranında bir "tek ekran" yolu belirir: masadaki cihaz oyun
+          koduyla girer ve kadronun tamamı adına oynar — herkesin ayrı cihazı yoksa.
+          Kapatınca açık masa oturumları düşer, herkes kendi karakteriyle girer.
         </p>
       </section>
 

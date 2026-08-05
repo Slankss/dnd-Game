@@ -35,7 +35,12 @@ export class ApiError extends Error {
     return this.kind === 'iptal'
   }
 
-  /** PIN hatası mı? */
+  /** Oturum yok — arayüz giriş ekranını açmalı. */
+  get isUnauthorized() {
+    return this.status === 401
+  }
+
+  /** Giriş var ama bu işlem bu role ait değil. */
   get isForbidden() {
     return this.status === 403
   }
@@ -44,7 +49,8 @@ export class ApiError extends Error {
 /** HTTP kodu → varsayılan Türkçe mesaj (sunucu `{error}` vermediyse). */
 const VARSAYILAN_MESAJ = {
   400: 'İstek geçersiz.',
-  403: 'Yetki yok — PIN yanlış olabilir.',
+  401: 'Giriş yapın.',
+  403: 'Bu işlem için yetkiniz yok.',
   404: 'İstenen uç nokta bulunamadı.',
   409: 'Durum çakıştı, sayfayı yenile.',
   500: 'Sunucuda beklenmeyen bir hata oluştu.',
@@ -94,6 +100,9 @@ async function istek(yol, { method = 'GET', body = null, query = null, signal, t
   try {
     res = await fetch(url, {
       method,
+      // Oturum çerezi (kimlik) her istekte gitsin — sunucu "kim oynuyor"u
+      // gövdeden değil bu çerezden okuyor.
+      credentials: 'same-origin',
       signal: controller.signal,
       headers: body === null ? undefined : { 'Content-Type': 'application/json' },
       body: body === null ? undefined : JSON.stringify(body),
@@ -296,69 +305,102 @@ export function moveOnGrid(player, direction, opts = {}) {
  * Anlatıcı (GM) uç noktaları
  * ========================================================================== */
 
-/** POST /api/gm/unlock → `{ok}` / 403 */
-export function gmUnlock(pin, opts = {}) {
-  return istek('/api/gm/unlock', { method: 'POST', body: { pin }, signal: opts.signal })
-}
-
 /**
- * GET /api/gm/state?pin&since → `{version, changed, world_state, gm_log, log, started}`
- * @param {string} pin
- * @param {number|null} [since]
+ * Anlatıcı uçları artık PIN TAŞIMAZ: `/api/auth/gm` ile bir kez giriş yapılır,
+ * sonraki her istek oturum çerezinden yetkilenir. Böylece PIN adres çubuğunda,
+ * sunucu kayıtlarında ve tarayıcı geçmişinde dolaşmaz.
  */
-export function getGmState(pin, since = null, opts = {}) {
+
+/** GET /api/gm/state?since → `{version, changed, world_state, gm_log, log, started}` */
+export function getGmState(since = null, opts = {}) {
   return istek('/api/gm/state', {
-    query: { pin, since: since === null ? undefined : since },
+    query: { since: since === null ? undefined : since },
     signal: opts.signal,
   })
 }
 
 /**
  * POST /api/gm/note → `{gm_entry, world_state, published}`
- * @param {string} pin
  * @param {string} text
  * @param {'gizli'|'sahne'|'surpriz'} mode
  */
-export function gmNote(pin, text, mode, opts = {}) {
-  return istek('/api/gm/note', { method: 'POST', body: { pin, text, mode }, signal: opts.signal })
+export function gmNote(text, mode, opts = {}) {
+  return istek('/api/gm/note', { method: 'POST', body: { text, mode }, signal: opts.signal })
 }
 
-/**
- * POST /api/gm/lesson → `{ok, learning}` — deftere elle ders ekler.
- * @param {string} pin
- * @param {string} text
- */
-export function gmLesson(pin, text, opts = {}) {
-  return istek('/api/gm/lesson', { method: 'POST', body: { pin, text }, signal: opts.signal })
+/** POST /api/gm/lesson → `{ok, learning}` — deftere elle ders ekler. */
+export function gmLesson(text, opts = {}) {
+  return istek('/api/gm/lesson', { method: 'POST', body: { text }, signal: opts.signal })
 }
 
-/**
- * POST /api/gm/patch → `{ok, version, world_state}`
- * @param {string} pin
- * @param {object} patch dünya durumuna uygulanacak kısmi yama
- */
-export function gmPatch(pin, patch, opts = {}) {
-  return istek('/api/gm/patch', { method: 'POST', body: { pin, patch }, signal: opts.signal })
+/** POST /api/gm/patch → `{ok, version, world_state}` */
+export function gmPatch(patch, opts = {}) {
+  return istek('/api/gm/patch', { method: 'POST', body: { patch }, signal: opts.signal })
 }
 
-/**
- * GET /api/gm/items → `{surum, kategoriler, yer_turleri, esyalar}`
- * Sabit eşya kataloğu — her oyunda aynı olan mekanik eşyalar.
- * @param {string} pin
- */
-export function gmItems(pin, opts = {}) {
-  return istek(`/api/gm/items?pin=${encodeURIComponent(pin)}`, { signal: opts.signal })
+/** GET /api/gm/items → `{surum, kategoriler, yer_turleri, esyalar}` */
+export function gmItems(opts = {}) {
+  return istek('/api/gm/items', { signal: opts.signal })
 }
 
 /**
  * POST /api/gm/items → `{ok, item, catalog}`
  * Kataloga KALICI eşya ekler: data/items.json'a yazılır ve o andan itibaren
  * TÜM oyunlarda geçerli olur (oyunun durumuna değil, içeriğine girer).
- * @param {string} pin
- * @param {object} item {ad, kategori, nadirlik, taban, bulunur, …}
  */
-export function gmAddItem(pin, item, opts = {}) {
-  return istek('/api/gm/items', { method: 'POST', body: { pin, item }, signal: opts.signal })
+export function gmAddItem(item, opts = {}) {
+  return istek('/api/gm/items', { method: 'POST', body: { item }, signal: opts.signal })
+}
+
+/** GET /api/gm/accounts → `{accounts:[{player, claimed, last_login}], game_code}` */
+export function gmAccounts(opts = {}) {
+  return istek('/api/gm/accounts', { signal: opts.signal })
+}
+
+/** POST /api/gm/accounts/release — şifresini unutan oyuncunun sahipliğini bırakır. */
+export function gmReleaseAccount(player, opts = {}) {
+  return istek('/api/gm/accounts/release', {
+    method: 'POST',
+    body: { player },
+    signal: opts.signal,
+  })
+}
+
+/* ==========================================================================
+ * Kimlik
+ * ========================================================================== */
+
+/** GET /api/auth/me → `{role, player, roster, available, claimed, single_screen}` */
+export function authMe(opts = {}) {
+  return istek('/api/auth/me', { signal: opts.signal })
+}
+
+/**
+ * POST /api/auth/login — karakterle giriş.
+ * Karakter sahipsizse `code` (oyun kodu) ZORUNLUDUR: o giriş karakteri
+ * sahiplenir ve şifreyi kurar. Sahipliyse kod gerekmez.
+ */
+export function authLogin({ player, password, code = null }, opts = {}) {
+  return istek('/api/auth/login', {
+    method: 'POST',
+    body: { player, password, code },
+    signal: opts.signal,
+  })
+}
+
+/** POST /api/auth/table — TEK EKRAN girişi: yalnız oyun kodu, karakter yok. */
+export function authTable(code, opts = {}) {
+  return istek('/api/auth/table', { method: 'POST', body: { code }, signal: opts.signal })
+}
+
+/** POST /api/auth/gm — anlatıcı oturumu (PIN). */
+export function authGm(pin, opts = {}) {
+  return istek('/api/auth/gm', { method: 'POST', body: { pin }, signal: opts.signal })
+}
+
+/** POST /api/auth/logout — oturumu kapat. */
+export function authLogout(opts = {}) {
+  return istek('/api/auth/logout', { method: 'POST', body: {}, signal: opts.signal })
 }
 
 /* ==========================================================================
@@ -435,13 +477,19 @@ export default {
   commitRound,
   getGrid,
   moveOnGrid,
-  gmUnlock,
   getGmState,
   gmNote,
   gmLesson,
   gmPatch,
   gmItems,
   gmAddItem,
+  gmAccounts,
+  gmReleaseAccount,
+  authMe,
+  authLogin,
+  authTable,
+  authGm,
+  authLogout,
   exportScenario,
   importScenario,
   resetScenarioDefault,

@@ -3,6 +3,12 @@
 #.env
 __pycache__/
 
+# --- Kimlik ------------------------------------------------------------
+# Oyuncu hesapları (şifre ÖZETLERİ) ve oturum imza anahtarı. Sunucuya özel:
+# depoya girerlerse herkesin oturumu taklit edilebilir.
+data/accounts.json
+data/secret_key
+
 # --- Vue/Vite arayüzü ---------------------------------------------------
 # Bağımlılıklar ve yerel araç çıktıları depoya girmez.
 frontend/node_modules/

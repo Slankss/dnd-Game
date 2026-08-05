@@ -37,6 +37,11 @@ import LearningPanel from '@/components/gm/LearningPanel.vue'
 import ItemCatalogPanel from '@/components/gm/ItemCatalogPanel.vue'
 import MapPanel from '@/components/game/MapPanel.vue'
 import ScenarioTransfer from '@/components/gm/ScenarioTransfer.vue'
+import AccountsPanel from '@/components/gm/AccountsPanel.vue'
+import SetupScreen from '@/components/game/SetupScreen.vue'
+import ReadyScreen from '@/components/game/ReadyScreen.vue'
+import SettingsPanel from '@/components/game/SettingsPanel.vue'
+import * as api from '@/api/client'
 import { jsonYaz, gerilimTonu, yayinOnEkiniAt } from '@/components/gm/gmYardimcilar'
 
 const gm = useGmStore()
@@ -207,6 +212,142 @@ watch(
   { immediate: true },
 )
 
+/* ------------------------------------------------- kurulum, ayar, hesaplar
+ *
+ * Kadro kurma, oyunu başlatma, ayarlar ve sıfırlama ANLATICIYA ait: sunucu
+ * bu uçları `gm_required` ile koruyor, arayüz de onları burada gösteriyor.
+ * Oyuncu ekranında bu düğmeler artık yok.
+ */
+
+/** /api/state'in kurulum için gereken alanları (öneri isimleri, eşyalar). */
+const kurulum = ref(null)
+const kurulumMesgul = ref(false)
+const kurulumHatasi = ref('')
+const ayarlarAcik = ref(false)
+const hesaplar = ref({})
+const hesapMesgul = ref(false)
+
+/** Kurulum aşaması: kadro yok, ya da kadro var ama oyun başlamadı. */
+const kurulumAsamasi = computed(() => {
+  if (!gm.unlocked) return null
+  if (gm.started) return null
+  return kurulum.value?.characters_confirmed ? 'ready' : 'setup'
+})
+
+async function kurulumuYenile() {
+  try {
+    kurulum.value = await api.getState()
+  } catch {
+    /* anlatıcı oturumu zaten var; geçici hata yoklamayla düzelir */
+  }
+}
+
+async function kadroyuOnayla(oyuncular) {
+  kurulumMesgul.value = true
+  kurulumHatasi.value = ''
+  try {
+    await api.setupCharacters(oyuncular)
+    await kurulumuYenile()
+    await gm.refresh({ force: true })
+    await hesaplariYenile()
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  } finally {
+    kurulumMesgul.value = false
+  }
+}
+
+async function oyunuBaslat() {
+  kurulumMesgul.value = true
+  kurulumHatasi.value = ''
+  try {
+    // Açılış sahnesi modelden gelir: uzun sürebilir, zaman aşımı koymuyoruz.
+    await api.startGame()
+    await kurulumuYenile()
+    await gm.refresh({ force: true })
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  } finally {
+    kurulumMesgul.value = false
+  }
+}
+
+/** Karakter oluşturma turunu kapatır: bundan sonra her hamlede zar atılır. */
+const chargenOnayi = ref(false)
+
+async function chargenBitir() {
+  if (!chargenOnayi.value) {
+    chargenOnayi.value = true
+    return
+  }
+  kurulumMesgul.value = true
+  try {
+    await api.finishChargen()
+    chargenOnayi.value = false
+    await gm.refresh({ force: true })
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  } finally {
+    kurulumMesgul.value = false
+  }
+}
+
+async function ayarKaydet(patch) {
+  try {
+    await api.saveSettings(patch)
+    await gm.refresh({ force: true })
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  }
+}
+
+async function oyunuSifirla() {
+  kurulumMesgul.value = true
+  try {
+    await api.resetGame({ keepLearning: true })
+    ayarlarAcik.value = false
+    kurulum.value = null
+    await kurulumuYenile()
+    await gm.refresh({ force: true })
+    await hesaplariYenile()
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  } finally {
+    kurulumMesgul.value = false
+  }
+}
+
+async function hesaplariYenile() {
+  try {
+    hesaplar.value = await api.gmAccounts()
+  } catch {
+    hesaplar.value = {}
+  }
+}
+
+async function hesabiBirak(oyuncu) {
+  hesapMesgul.value = true
+  try {
+    await api.gmReleaseAccount(oyuncu)
+    await hesaplariYenile()
+  } catch (e) {
+    kurulumHatasi.value = api.toApiError(e).message
+  } finally {
+    hesapMesgul.value = false
+  }
+}
+
+// Oturum açılınca kurulum durumu ve hesaplar bir kez çekilir.
+watch(
+  () => gm.unlocked,
+  (acik) => {
+    if (!acik) return
+    kurulumuYenile()
+    hesaplariYenile()
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   gm.tryStoredPin()
 })
@@ -244,6 +385,14 @@ onUnmounted(() => {
 
     <template #topbar-actions>
       <template v-if="gm.unlocked">
+        <BaseButton
+          variant="quiet"
+          icon="settings"
+          icon-only
+          aria-label="Oyun ayarları"
+          title="Oyun ayarları"
+          @click="ayarlarAcik = true"
+        />
         <BaseButton
           variant="quiet"
           icon="refresh"
@@ -318,6 +467,45 @@ onUnmounted(() => {
       <Panel v-if="ilkYukleme" tone="gm" title="Dünya durumu yükleniyor" icon="sync">
         <SkeletonLine :lines="5" />
       </Panel>
+
+      <!-- KURULUM anlatıcıya ait: kadroyu burada kurar, oyunu burada başlatır.
+           Oyuncular bu sırada kendi ekranlarında bekler. -->
+      <template v-else-if="kurulumAsamasi">
+        <Panel tone="gm" title="Oyun kurulumu" icon="group_add">
+          <p class="mb-3 text-meta text-muted">
+            Kadroyu sen kurarsın. Karakterler oluşturulunca oyuncular kendi
+            ekranlarından karakterlerini alıp şifrelerini belirler.
+          </p>
+          <SetupScreen
+            v-if="kurulumAsamasi === 'setup'"
+            :onerilen-isimler="kurulum?.default_players || []"
+            :esya-onerileri="kurulum?.start_item_suggestions || []"
+            :ozel-senaryo="!!kurulum?.custom_scenario"
+            :mesgul="kurulumMesgul"
+            :hata="kurulumHatasi"
+            @onayla="kadroyuOnayla"
+          />
+          <ReadyScreen
+            v-else
+            :karakterler="gm.worldState?.characters || {}"
+            :kaynaklar="gm.worldState?.resources || {}"
+            :saat="null"
+            :mesgul="kurulumMesgul"
+            :hata="kurulumHatasi"
+            @basla="oyunuBaslat"
+          />
+        </Panel>
+
+        <Panel title="Oyuncu hesapları" icon="key">
+          <AccountsPanel
+            :hesaplar="hesaplar.accounts || []"
+            :oyun-kodu="hesaplar.game_code || ''"
+            :mesgul="hesapMesgul"
+            @birak="hesabiBirak"
+            @yenile="hesaplariYenile"
+          />
+        </Panel>
+      </template>
 
       <template v-else>
         <!-- Dünya panosu + dünya zarı -->
@@ -437,7 +625,53 @@ onUnmounted(() => {
 
         <!-- Senaryo / oyun aktarma -->
         <Panel title="Senaryo ve oyun aktarma" icon="folder_open" collapsible :default-open="false">
-          <ScenarioTransfer @degisti="yenile" />
+          <!-- Karakter oluşturma turu: kapatma kararı ANLATICININ. -->
+        <Panel
+          v-if="gm.worldState?.flags && !gm.worldState.flags.chargen_done"
+          tone="gm"
+          title="Karakter oluşturma sürüyor"
+          icon="badge"
+        >
+          <p class="text-meta text-muted">
+            Bu turlarda zar atılmaz; oyuncular künyelerini anlatıyor. Herkes yazınca
+            (ya da biri hiç yazmayacaksa) turu sen kapatırsın.
+          </p>
+          <p v-if="chargenOnayi" class="mt-2 text-meta text-warn" role="alert">
+            Emin misin? Bundan sonra her hamlede zar atılır.
+          </p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <BaseButton
+              size="sm"
+              :variant="chargenOnayi ? 'gm' : 'ghost'"
+              icon="task_alt"
+              :loading="kurulumMesgul"
+              loading-text="Kapatılıyor…"
+              @click="chargenBitir"
+            >
+              {{ chargenOnayi ? 'Evet, bitir' : 'Karakter oluşturmayı bitir' }}
+            </BaseButton>
+            <BaseButton
+              v-if="chargenOnayi"
+              size="sm"
+              variant="subtle"
+              @click="chargenOnayi = false"
+            >
+              Vazgeç
+            </BaseButton>
+          </div>
+        </Panel>
+
+        <Panel title="Oyuncu hesapları" icon="key">
+          <AccountsPanel
+            :hesaplar="hesaplar.accounts || []"
+            :oyun-kodu="hesaplar.game_code || ''"
+            :mesgul="hesapMesgul"
+            @birak="hesabiBirak"
+            @yenile="hesaplariYenile"
+          />
+        </Panel>
+
+        <ScenarioTransfer @degisti="yenile" />
         </Panel>
       </template>
 
@@ -446,5 +680,14 @@ onUnmounted(() => {
         Ctrl/Cmd + B — yan paneli aç/kapat · Ctrl/Cmd + Enter — müdahaleyi gönder
       </p>
     </div>
+    <!-- Oyun ayarları ve sıfırlama: yalnız anlatıcıda. -->
+    <SettingsPanel
+      v-model="ayarlarAcik"
+      :mesgul="kurulumMesgul"
+      :ayarlar="gm.settings"
+      :basladi="gm.started"
+      @sifirla="oyunuSifirla"
+      @ayar-kaydet="ayarKaydet"
+    />
   </AppShell>
 </template>

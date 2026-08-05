@@ -3,36 +3,19 @@ import { ref, computed, shallowRef } from 'vue'
 import * as api from '@/api/client'
 import { usePolling } from '@/composables/usePolling'
 
-const PIN_ANAHTARI = 'kizil-cokus:gm-pin'
-
-function pindenOku() {
-  try {
-    return localStorage.getItem(PIN_ANAHTARI) || ''
-  } catch {
-    return ''
-  }
-}
-
-function pinYaz(deger) {
-  try {
-    if (deger) localStorage.setItem(PIN_ANAHTARI, deger)
-    else localStorage.removeItem(PIN_ANAHTARI)
-  } catch {
-    /* sessizce geç */
-  }
-}
-
 /**
- * Anlatıcı (GM) durumu — PIN kilidi ve `/api/gm/state` yoklaması.
+ * Anlatıcı (GM) durumu — oturum kilidi ve `/api/gm/state` yoklaması.
  *
  * GM görünümü oyuncu görünümünden AYRIDIR: `world_state` burada sansürsüz
  * gelir (gizli notlar, faction iç görünürlüğü vb.). Bu yüzden ayrı store.
- * PIN localStorage'da tutulur — anlatıcı her yenilemede yeniden yazmasın.
+ *
+ * PIN ARTIK TARAYICIDA SAKLANMAZ. Bir kez `/api/auth/gm` ile giriş yapılır,
+ * sunucu imzalı bir oturum çerezi bırakır ve sonraki istekler ondan
+ * yetkilenir — PIN ne localStorage'da ne adres çubuğunda dolaşır.
  */
 export const useGmStore = defineStore('gm', () => {
   /* ---------------------------------------------------------------- durum */
-  const pin = ref(pindenOku())
-  /** PIN sunucuca doğrulandı mı */
+  /** Anlatıcı oturumu açık mı */
   const unlocked = ref(false)
   const version = ref(null)
   /** Tam (sansürsüz) dünya durumu */
@@ -89,15 +72,13 @@ export const useGmStore = defineStore('gm', () => {
   /* ----------------------------------------------------------- aksiyonlar */
 
   /**
-   * POST /api/gm/unlock — PIN'i doğrula, doğruysa sakla ve yoklamayı başlat.
+   * POST /api/auth/gm — PIN'i doğrula; sunucu oturum çerezi bırakır.
    * @param {string} yeniPin
    */
   async function unlock(yeniPin) {
     loading.value = true
     try {
-      await api.gmUnlock(yeniPin)
-      pin.value = yeniPin
-      pinYaz(yeniPin)
+      await api.authGm(yeniPin)
       unlocked.value = true
       error.value = null
       await refresh({ force: true })
@@ -112,12 +93,15 @@ export const useGmStore = defineStore('gm', () => {
     }
   }
 
-  /** Kilidi kapat, saklanan PIN'i sil, yoklamayı durdur. */
-  function lock() {
+  /** Oturumu kapat ve ekranı boşalt. */
+  async function lock() {
     stopPolling()
     unlocked.value = false
-    pin.value = ''
-    pinYaz('')
+    try {
+      await api.authLogout()
+    } catch {
+      /* çerez zaten düşmüş olabilir */
+    }
     version.value = null
     worldState.value = null
     plot.value = null
@@ -129,15 +113,15 @@ export const useGmStore = defineStore('gm', () => {
   }
 
   /**
-   * GET /api/gm/state?pin&since
+   * GET /api/gm/state?since
    * @param {{force?: boolean, signal?: AbortSignal}} [opts]
    */
   async function refresh({ force = false, signal } = {}) {
-    if (!pin.value) return null
+    if (!unlocked.value) return null
     const ilkYukleme = worldState.value === null
     if (ilkYukleme) loading.value = true
     try {
-      const data = await api.getGmState(pin.value, force ? null : version.value, { signal })
+      const data = await api.getGmState(force ? null : version.value, { signal })
       if (typeof data.version === 'number') version.value = data.version
       if (data.changed !== false) {
         worldState.value = data.world_state ?? worldState.value
@@ -173,7 +157,7 @@ export const useGmStore = defineStore('gm', () => {
   })
 
   function startPolling() {
-    if (!pin.value) return
+    if (!unlocked.value) return
     yoklama.baslat()
   }
   function stopPolling() {
@@ -192,7 +176,7 @@ export const useGmStore = defineStore('gm', () => {
     if (sendingNote.value) return null
     sendingNote.value = true
     try {
-      const data = await api.gmNote(pin.value, text, mode)
+      const data = await api.gmNote(text, mode)
       if (data.world_state) worldState.value = data.world_state
       // Sunucu üç ayrı girdi döndürür: `note_entry` (anlatıcının notu) ve
       // `reply_entry` (modelin ona cevabı) anlatıcı günlüğüne, `gm_entry` ise
@@ -220,7 +204,7 @@ export const useGmStore = defineStore('gm', () => {
   async function addLesson(text) {
     addingLesson.value = true
     try {
-      const data = await api.gmLesson(pin.value, text)
+      const data = await api.gmLesson(text)
       if (data.learning) learning.value = data.learning
       error.value = null
       return data
@@ -237,7 +221,7 @@ export const useGmStore = defineStore('gm', () => {
     if (catalog.value && !force) return catalog.value
     catalogLoading.value = true
     try {
-      catalog.value = await api.gmItems(pin.value)
+      catalog.value = await api.gmItems()
       return catalog.value
     } catch (e) {
       error.value = api.toApiError(e)
@@ -254,7 +238,7 @@ export const useGmStore = defineStore('gm', () => {
   async function addItem(item) {
     addingItem.value = true
     try {
-      const data = await api.gmAddItem(pin.value, item)
+      const data = await api.gmAddItem(item)
       if (data.catalog) catalog.value = data.catalog
       error.value = null
       return data
@@ -273,7 +257,7 @@ export const useGmStore = defineStore('gm', () => {
   async function applyPatch(patch) {
     patching.value = true
     try {
-      const data = await api.gmPatch(pin.value, patch)
+      const data = await api.gmPatch(patch)
       if (typeof data.version === 'number') version.value = data.version
       if (data.world_state) worldState.value = data.world_state
       error.value = null
@@ -290,21 +274,26 @@ export const useGmStore = defineStore('gm', () => {
     error.value = null
   }
 
-  /** Sayfa açılışında saklı PIN varsa sessizce dene. */
+  /**
+   * Sayfa açılışında AÇIK OTURUM var mı diye sessizce dener. Çerez hâlâ
+   * geçerliyse anlatıcı PIN yazmadan kaldığı yerden devam eder.
+   */
   async function tryStoredPin() {
-    if (!pin.value) return false
     try {
+      unlocked.value = true
       await refresh({ force: true })
       startPolling()
       return true
-    } catch {
+    } catch (e) {
+      unlocked.value = false
+      // 401/403 beklenen hâl: giriş ekranı açılsın, hata şeridi çıkmasın.
+      if ([401, 403].includes(api.toApiError(e).status)) error.value = null
       return false
     }
   }
 
   return {
     // durum
-    pin,
     unlocked,
     version,
     worldState,

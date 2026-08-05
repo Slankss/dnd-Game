@@ -50,10 +50,30 @@ EFFORT_KEY = os.environ.get("CLAUDE_EFFORT_KEY", "high")
 # kritik turları zaman aşımına düşürüyordu.
 CLAUDE_TIMEOUT = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "300"))
 
-# /secrets ekranına (anlatıcı ekranı) girişi kabaca kilitler — gerçek bir
-# güvenlik önlemi değil, aynı ağdaki oyuncuların yanlışlıkla spoiler
-# görmesini engelleyen hafif bir kapı. .env'de GM_PIN ile değiştirin.
+# --------------------------------------------------------------------- kimlik
+# Oyun dışarı açık bir sunucuda çalışabilir: hem oyuncu hem anlatıcı ekranı
+# oturum tabanlı kimlikle korunur (bkz. services/auth_service).
+
+# Anlatıcı ekranı (/secrets) girişi.
 GM_PIN = os.environ.get("GM_PIN", "1453")
+# Oyuncunun karakterini İLK KEZ sahiplenirken sorulan davet kodu. Anlatıcı
+# bunu masaya söyler; sonraki girişlerde sorulmaz.
+GAME_CODE = os.environ.get("GAME_CODE", "kizil")
+# Oturum çerezini imzalayan anahtar. .env'de yoksa data/ altında üretilir ve
+# saklanır — yeniden başlatma herkesi dışarı atmasın.
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+SECRET_KEY_FILE = DATA_DIR / "secret_key"
+# Oyuncu hesapları (şifre ÖZETLERİ). Oyun sıfırlansa da silinmez.
+ACCOUNTS_FILE = DATA_DIR / "accounts.json"
+# Sunucu HTTPS arkasındaysa çerez yalnız güvenli bağlantıda gönderilsin.
+# Ters vekil (nginx/Caddy) kullanıyorsanız .env'de 1 yapın.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "0") not in ("0", "", "false", "False")
+# Oturum kaç gün açık kalsın (oyun gecesi arası yeniden giriş istenmesin).
+SESSION_DAYS = int(os.environ.get("SESSION_DAYS", "30"))
+# TEK EKRAN KİPİ varsayılanı: herkes aynı masada tek cihazın başındaysa
+# oyun koduyla açılan bir "masa" oturumu tüm karakterler adına oynar.
+# Oyun içinden de açılıp kapanır (ayarlar → tek ekran).
+SINGLE_SCREEN = os.environ.get("SINGLE_SCREEN", "0") not in ("0", "", "false", "False")
 
 PORT = int(os.environ.get("PORT", "5050"))
 

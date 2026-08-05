@@ -29,6 +29,12 @@ const props = defineProps({
   chargenBitti: { type: Boolean, default: true },
   /** Başka bir işlem (başlatma/devralma) yüzünden kilitli mi */
   kilitli: { type: Boolean, default: false },
+  /**
+   * Karakter seçici gösterilsin mi. Kendi ekranından oynayan bir oyuncu
+   * ZATEN kendisidir: kadro listesi yalnız tek ekran (masa) kipinde anlamlı.
+   * Grup seçeneği her iki kipte de durur — ortak karar herkesin hakkı.
+   */
+  kadroSecilebilir: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:secili', 'gonder'])
@@ -112,8 +118,10 @@ function chipStili(ad) {
     <div class="mb-2 flex flex-wrap items-center gap-1.5">
       <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
 
+      <!-- Kadro listesi YALNIZ tek ekran kipinde: kendi ekranından oynayan
+           oyuncu zaten kendisidir, başkasının adına yazamaz. -->
       <button
-        v-for="ad in kadro"
+        v-for="ad in kadroSecilebilir ? kadro : kadro.filter((x) => x === secili)"
         :key="ad"
         type="button"
         class="inline-flex h-7 items-center gap-1.5 rounded-chip border px-2.5 text-label transition-colors duration-[var(--duration-fast)] ease-[var(--ease-standard)] disabled:opacity-45"

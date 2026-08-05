@@ -194,3 +194,48 @@ Hata biçimi her yerde `{"error": "<Türkçe mesaj>"}` + uygun HTTP kodu
   eski ve yeni `to_dict()` çıktısı karşılaştırılarak doğrulanır
 - Her uç nokta eski yanıt şemasını döndürüyor
 - Bir tur oynanıyor: zar → prompt → state-update → kayıt zinciri çalışıyor
+
+## 9. Kimlik ve yetki
+
+Oyun bir sunucuda çalışıp dışarı açılabildiği için kimlik **sunucunun bildiği
+bir gerçek**, istemcinin iddia ettiği bir alan değil.
+
+**Katmanlar** (mimarinin geri kalanıyla aynı sıra):
+
+| katman | dosya | işi |
+| --- | --- | --- |
+| model | `models/accounts.py` | şifre özeti (scrypt), hesap defteri, şifre kuralı |
+| repo | `repositories/accounts_repo.py` | `data/accounts.json` — atomik yazma, 0600 |
+| servis | `services/auth_service.py` | sahiplenme, giriş, kaba kuvvet freni, rol kararı |
+| api | `api/guards.py`, `api/auth.py` | Flask oturumu, `@player_required` / `@gm_required` |
+
+`auth_service` Flask bilmez: kimlik sözlüğü alır, kimlik sözlüğü döndürür.
+Oturumu kuran/okuyan tek yer `api/guards`.
+
+**Üç rol:** `player` (yalnız kendi karakteri), `table` (tek ekran kipi — kadronun
+tamamı adına oynar), `gm` (kurar/ayarlar/sahne yazar, hamle yapmaz).
+
+**Kimlik nereden gelir.** `guards.acting_player(gövdedeki_ad)` karar verir:
+oyuncu oturumunda gövdedeki ad **yok sayılır** ve oturumun karakteri kullanılır;
+masa oturumunda gövdedeki ad kullanılır ama tek ekran kipi hâlâ açık olmalıdır.
+Tek istisna ORTAK KARAR etiketidir — grubun sözü bir karaktere ait değildir,
+her giriş yapmış oyuncu gönderebilir.
+
+**Yetki dağılımı.** `/api/state`, `/api/items`, `/api/grid` giriş ister
+(`login_required`). Hamleler `player_required`. Kurulum, başlatma, ayarlar,
+sıfırlama, devralma, chargen kapatma, senaryo/oyun aktarma ve tüm `/api/gm/*`
+uçları `gm_required` — dışarı açık bir sunucuda giren herkes oyunu
+sıfırlayamamalı.
+
+**Anlatıcı PIN'i artık her istekte taşınmıyor.** Bir kez `/api/auth/gm` ile
+giriş yapılır, sonraki istekler oturum çerezinden yetkilenir; PIN adres
+çubuğunda, sunucu kayıtlarında ve tarayıcı geçmişinde dolaşmaz. `gm_service`
+metotlarından `pin` parametresi kalktı: servise gelen çağrı zaten yetkilidir.
+
+**Oturum çerezi** `create_app` içinde kurulur: imzalı, HttpOnly, SameSite=Lax,
+`COOKIE_SECURE` ile TLS'e kilitlenebilir. İmza anahtarı `.env`'den gelmezse
+`data/secret_key` içinde üretilip saklanır — yeniden başlatma herkesi dışarı
+atmasın.
+
+**Hesaplar oyunun durumu değildir**: `/api/reset` oyunu sıfırlasa da insanlar
+aynı insanlardır, `data/accounts.json` silinmez. İki dosya da `.gitignore`'da.

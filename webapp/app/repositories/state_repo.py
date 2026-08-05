@@ -44,6 +44,11 @@ class StateRepository:
             # Harita büyüklüğü: oyun BAŞLARKEN kaç şehir ve mekan üretileceği.
             # Oyun başladıktan sonra değiştirilemez — harita üretilmiştir.
             "map_size": config.MAP_SIZE,
+            # TEK EKRAN KİPİ: herkes aynı masada, tek cihazın başında.
+            # Açıkken oyun koduyla açılan bir "masa" oturumu TÜM karakterler
+            # adına seçim yapabilir. Kapalıyken her oyuncu yalnız kendi
+            # karakterini oynar (bkz. services/auth_service).
+            "single_screen": config.SINGLE_SCREEN,
         }
 
     def default_state(self) -> dict:

@@ -24,10 +24,20 @@ class ValidationError(GameError):
 
 
 class AuthError(GameError):
-    """Yanlış anlatıcı PIN'i."""
+    """Kimlik doğru ama yetki yok: yanlış PIN/şifre/kod, ya da bu işlem
+    bu role ait değil."""
     status = 403
 
     def __init__(self, message: str = "Yanlış PIN."):
+        super().__init__(message)
+
+
+class LoginRequired(AuthError):
+    """Ortada oturum YOK. 403'ten ayrı tutulur: arayüz 401'i görünce giriş
+    ekranını açar, 403'te ise 'senin yetkin yok' der."""
+    status = 401
+
+    def __init__(self, message: str = "Giriş yapın."):
         super().__init__(message)
 
 

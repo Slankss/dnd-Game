@@ -20,8 +20,6 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import SkeletonLine from '@/components/ui/SkeletonLine.vue'
 
 import WorldClockBar from '@/components/game/WorldClockBar.vue'
-import SetupScreen from '@/components/game/SetupScreen.vue'
-import ReadyScreen from '@/components/game/ReadyScreen.vue'
 import ActionComposer from '@/components/game/ActionComposer.vue'
 import RoundBar from '@/components/game/RoundBar.vue'
 import OptionPool from '@/components/game/OptionPool.vue'
@@ -37,23 +35,66 @@ import ResourcePanel from '@/components/game/ResourcePanel.vue'
 import ChallengeList from '@/components/game/ChallengeList.vue'
 import DeathBanner from '@/components/game/DeathBanner.vue'
 import TakeoverModal from '@/components/game/TakeoverModal.vue'
-import SettingsPanel from '@/components/game/SettingsPanel.vue'
 import { zorluklariDiziye, zorlukKapali, stokVarMi } from '@/components/game/gameFormat'
 
+import LoginScreen from '@/components/game/LoginScreen.vue'
 import { useGameStore } from '@/stores/game'
+import { useAuthStore } from '@/stores/auth'
 import { useSidebar } from '@/composables/useSidebar'
 import { colorFor } from '@/utils/characterColors'
 
 const oyun = useGameStore()
+const kimlik = useAuthStore()
 const { ac: sidebariAc } = useSidebar()
 
-onMounted(() => {
-  oyun.startPolling()
-  // Sahne ızgarası: ilk açılışta bir kez istenir (sunucu yoksa kurar),
-  // sonrasında yoklama dünya durumuyla birlikte tazeler.
-  if (oyun.phase === 'playing') oyun.fetchGrid().catch(() => {})
+/**
+ * Açılış sırası: ÖNCE kimlik. Giriş yoksa dünya hiç istenmez — sunucu zaten
+ * 401 döndürürdü, boşuna yoklamayalım. Giriş yapılınca yoklama başlar,
+ * çıkışta durur.
+ */
+onMounted(async () => {
+  await kimlik.yenile()
 })
 onUnmounted(() => oyun.stopPolling())
+
+watch(
+  () => kimlik.girisli,
+  (girdi) => {
+    if (girdi) {
+      oyun.startPolling()
+      if (oyun.phase === 'playing') oyun.fetchGrid().catch(() => {})
+    } else {
+      oyun.stopPolling()
+    }
+  },
+  { immediate: true },
+)
+
+// Oturum sunucu tarafında düştüyse (401) giriş ekranına dön.
+watch(
+  () => oyun.error,
+  (hata) => {
+    if (hata?.status === 401) {
+      kimlik.oturumDustu()
+      oyun.stopPolling()
+    }
+  },
+)
+
+/* ------------------------------------------------------------------ giriş */
+
+async function girisYap(bilgi) {
+  if (await kimlik.giris(bilgi)) oyun.refresh({ force: true }).catch(() => {})
+}
+
+async function masaGirisi(kod) {
+  if (await kimlik.masaGirisi(kod)) oyun.refresh({ force: true }).catch(() => {})
+}
+
+async function cikisYap() {
+  await kimlik.cikis()
+  masaSecimi.value = ''
+}
 
 /* ------------------------------------------------------------- genel hal */
 
@@ -70,38 +111,36 @@ const acikZorlukSayisi = computed(
 )
 const stokVar = computed(() => stokVarMi(oyun.resources))
 
-/* --------------------------------------------------------- oyuncu seçimi */
+/* --------------------------------------------------------- oyuncu kimliği */
 
-const seciliOyuncu = ref('')
+/**
+ * Kim oynuyor? Oyuncu oturumunda bu SORULMAZ — sunucu zaten biliyor ve
+ * gövdedeki adı yok sayıyor; ekran yalnız onu yansıtır. Karakter değiştirici
+ * SADECE tek ekran kipinde (masa oturumu) görünür: orada tek cihaz kadronun
+ * tamamı adına oynar.
+ */
+const masaSecimi = ref('')
+
+const seciliOyuncu = computed({
+  get: () => (kimlik.masaKipi ? masaSecimi.value : kimlik.player || ''),
+  set: (ad) => {
+    if (kimlik.masaKipi) masaSecimi.value = ad
+  },
+})
+/** Karakter değiştirici yalnız masa kipinde anlamlı. */
+const karakterDegistirici = computed(() => kimlik.masaKipi)
 
 watch(
-  () => [oyun.aliveRoster.join('|'), oyun.groupLabel],
+  () => [oyun.aliveRoster.join('|'), kimlik.masaKipi],
   () => {
-    const gecerli =
-      seciliOyuncu.value &&
-      (seciliOyuncu.value === oyun.groupLabel || oyun.aliveRoster.includes(seciliOyuncu.value))
-    if (!gecerli) seciliOyuncu.value = oyun.aliveRoster[0] || oyun.groupLabel || ''
+    if (!kimlik.masaKipi) return
+    if (!masaSecimi.value || !oyun.aliveRoster.includes(masaSecimi.value)) {
+      masaSecimi.value = oyun.aliveRoster[0] || ''
+    }
   },
   { immediate: true },
 )
 
-/* ------------------------------------------------------------- kurulum */
-
-async function kadroyuOnayla(oyuncular) {
-  try {
-    await oyun.setupCharacters(oyuncular)
-  } catch {
-    /* hata store'da; ekranda gösteriliyor */
-  }
-}
-
-async function oyunuBaslat() {
-  try {
-    await oyun.start()
-  } catch {
-    /* hata store'da */
-  }
-}
 
 /* ----------------------------------------------------------------- tur */
 
@@ -174,21 +213,7 @@ async function turuGonder(neden) {
 
 /* ------------------------------------------------- karakter oluşturma turu */
 
-const chargenOnayi = ref(false)
 
-async function chargenBitir() {
-  if (!chargenOnayi.value) {
-    chargenOnayi.value = true
-    return
-  }
-  try {
-    await oyun.finishChargen()
-  } catch {
-    /* hata store'da */
-  } finally {
-    chargenOnayi.value = false
-  }
-}
 
 /* -------------------------------------------------------------- devralma */
 
@@ -234,27 +259,6 @@ function anlaticiEkraniniAc() {
   window.open('/secrets', '_blank', 'noopener')
 }
 
-/* ---------------------------------------------------------------- ayarlar */
-
-const ayarlarAcik = ref(false)
-
-async function oyunuSifirla() {
-  try {
-    await oyun.reset()
-    ayarlarAcik.value = false
-    seciliOyuncu.value = ''
-  } catch {
-    /* hata store'da */
-  }
-}
-
-async function ayarKaydet(patch) {
-  try {
-    await oyun.saveSettings(patch)
-  } catch {
-    /* hata store'da */
-  }
-}
 
 /* ------------------------------------------------------- kaynak paneli */
 
@@ -307,7 +311,27 @@ function yeniSahneyeGit() {
 </script>
 
 <template>
+  <!-- KAPI: kimlik gelmeden hiçbir şey çizilmez, giriş yoksa yalnız giriş
+       ekranı. Oyun ekranı ancak oturum varken kurulur — sunucu zaten 401
+       döndürürdü, dünyayı boşuna istemeyelim. -->
+  <div v-if="!kimlik.hazir" class="flex min-h-[70dvh] items-center justify-center p-6">
+    <SkeletonLine :lines="3" class="w-full max-w-sm" />
+  </div>
+
+  <LoginScreen
+    v-else-if="!kimlik.girisli"
+    :roster="kimlik.roster"
+    :available="kimlik.available"
+    :roster-ready="kimlik.rosterReady"
+    :single-screen="kimlik.singleScreen"
+    :loading="kimlik.busy"
+    :hata="kimlik.error?.message || ''"
+    @giris="girisYap"
+    @masa="masaGirisi"
+  />
+
   <AppShell
+    v-else
     variant="player"
     title="Kızıl Çöküş"
     sidebar-label="Oyun paneli"
@@ -343,13 +367,28 @@ function yeniSahneyeGit() {
         title="Anlatıcı ekranı"
         @click="anlaticiEkraniniAc()"
       />
+      <!-- Kim olduğun — tek ekran kipinde karakter değil "masa" yazar. -->
+      <span
+        class="hidden items-center gap-1.5 rounded-chip border border-border bg-surface-2 px-2 py-1 text-label text-muted sm:inline-flex"
+      >
+        <span
+          v-if="kimlik.player"
+          class="size-1.5 rounded-full"
+          :style="{ backgroundColor: colorFor(kimlik.player) }"
+          aria-hidden="true"
+        />
+        <Icon v-else name="groups" :size="13" />
+        {{ kimlik.player || 'tek ekran' }}
+      </span>
       <BaseButton
         variant="quiet"
         size="md"
-        icon="settings"
+        icon="logout"
         icon-only
-        aria-label="Ayarlar"
-        @click="ayarlarAcik = true"
+        aria-label="Çıkış yap"
+        title="Çıkış yap"
+        :loading="kimlik.busy"
+        @click="cikisYap()"
       />
     </template>
 
@@ -502,56 +541,42 @@ function yeniSahneyeGit() {
         <SkeletonLine :lines="5" />
       </Panel>
 
-      <!-- 1) Kurulum -->
-      <SetupScreen
-        v-else-if="oyun.phase === 'setup'"
-        :onerilen-isimler="oyun.defaultPlayers"
-        :esya-onerileri="oyun.startItemSuggestions"
-        :ozel-senaryo="oyun.customScenario"
-        :mesgul="oyun.busy"
-        :hata="hataMetni"
-        @onayla="kadroyuOnayla"
-      />
-
-      <!-- 2) Başlatma -->
-      <ReadyScreen
-        v-else-if="oyun.phase === 'ready'"
-        :karakterler="oyun.characters"
-        :kaynaklar="oyun.resources"
-        :saat="oyun.worldClock"
-        :mesgul="oyun.busy"
-        :hata="hataMetni"
-        @basla="oyunuBaslat"
-      />
+      <!-- 1-2) Kurulum ve başlatma ANLATICI ekranındadır (/secrets): dışarı
+           açık bir sunucuda giren herkes kadroyu kurup oyunu sıfırlayamaz.
+           Oyuncu ekranı bu iki aşamada yalnız bekler. -->
+      <Panel
+        v-else-if="oyun.phase === 'setup' || oyun.phase === 'ready'"
+        :title="oyun.phase === 'setup' ? 'Kadro kuruluyor' : 'Oyun başlamak üzere'"
+        icon="hourglass_empty"
+      >
+        <EmptyState
+          compact
+          icon="hourglass_empty"
+          :title="
+            oyun.phase === 'setup'
+              ? 'Anlatıcı karakterleri hazırlıyor'
+              : 'Anlatıcı sahneyi açmak üzere'
+          "
+          :text="
+            oyun.phase === 'setup'
+              ? 'Kadro oluşturulunca karakterin bu ekranda belirecek. Sayfayı açık bırakabilirsin.'
+              : 'Açılış sahnesi yazıldığında oyun buradan devam edecek.'
+          "
+        />
+      </Panel>
 
       <!-- 3) Oyun -->
       <template v-else>
         <DeathBanner :karakterler="oyun.characters" :mesgul="oyun.busy" @devral="devralmaAc" />
 
-        <!-- Karakter oluşturma turu sürüyor -->
+        <!-- Karakter oluşturma turu sürüyor. Turu KAPATMA anlatıcıya ait
+             (/api/finish-chargen artık gm_required): oyuncu yalnız künyesini
+             anlatır. -->
         <Panel v-if="!oyun.chargenDone" title="Karakter oluşturma" icon="badge">
           <p class="text-meta text-muted">
-            Anlatıcı hâlâ karakter oluşturma turunda. Bu turlarda zar atılmaz. Herkes künyesini
-            anlattıysa (ya da biri hiç yazmayacaksa) turu elle kapatabilirsin.
+            Karakterini anlat: mesleğin, geçmişin, neye iyi gelirsin. Bu turlarda zar
+            atılmaz. Herkes künyesini yazınca anlatıcı turu kapatır ve hikaye başlar.
           </p>
-          <p v-if="chargenOnayi" class="mt-2 text-meta text-warn" role="alert">
-            Emin misin? Bundan sonra her mesajda zar atılır.
-          </p>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <BaseButton
-              size="sm"
-              :variant="chargenOnayi ? 'primary' : 'ghost'"
-              icon="task_alt"
-              :loading="oyun.busy"
-              loading-text="Kapatılıyor…"
-              @click="chargenBitir"
-            >
-              {{ chargenOnayi ? 'Evet, bitir' : 'Karakter oluşturmayı bitir' }}
-            </BaseButton>
-            <BaseButton v-if="chargenOnayi" size="sm" variant="subtle" @click="chargenOnayi = false">
-              Vazgeç
-            </BaseButton>
-          </div>
         </Panel>
 
         <!-- Composer: akışın ÜSTÜNDE sabit -->
@@ -566,8 +591,12 @@ function yeniSahneyeGit() {
               :gonderiliyor="oyun.committing"
               @gonder="turuGonder"
             />
-            <div class="flex flex-wrap items-center gap-1.5">
-              <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">Kimsin?</span>
+            <!-- Karakter değiştirici YALNIZ tek ekran kipinde: kendi
+                 ekranından oynayan bir oyuncu zaten kendisidir. -->
+            <div v-if="karakterDegistirici" class="flex flex-wrap items-center gap-1.5">
+              <span class="mr-0.5 text-panel uppercase tracking-[0.06em] text-faint">
+                Sıra kimde?
+              </span>
               <button
                 v-for="ad in oyun.aliveRoster"
                 :key="ad"
@@ -613,6 +642,7 @@ function yeniSahneyeGit() {
             :grup-adi="oyun.groupDisplayName || 'Ortak Karar (Grup)'"
             :gonderiliyor="oyun.sending"
             :chargen-bitti="oyun.chargenDone"
+            :kadro-secilebilir="karakterDegistirici"
             :kilitli="oyun.busy"
             @gonder="turGonder"
           />
@@ -672,13 +702,5 @@ function yeniSahneyeGit() {
       @onayla="devral"
     />
 
-    <SettingsPanel
-      v-model="ayarlarAcik"
-      :mesgul="oyun.busy"
-      :ayarlar="oyun.settings"
-      :basladi="oyun.phase === 'playing'"
-      @sifirla="oyunuSifirla"
-      @ayar-kaydet="ayarKaydet"
-    />
   </AppShell>
 </template>
