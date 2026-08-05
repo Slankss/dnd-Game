@@ -17,7 +17,7 @@ from flask import Flask, jsonify
 
 from app import config
 from app.errors import GameError
-from app.serializers import mask_options, mask_picks
+from app.serializers import mask_inventory, mask_options, mask_picks
 
 
 def _secret_key() -> bytes:
@@ -77,7 +77,8 @@ def create_app() -> Flask:
 
     @flask_app.after_request
     def _baskasinin_turu_gizle(response):
-        """Başka oyuncuların KARARI ve SEÇENEK MENÜSÜ gövdeye hiç girmez.
+        """Başka oyuncuların KARARI, SEÇENEK MENÜSÜ ve ENVANTERİ gövdeye hiç
+        girmez.
 
         Tek yerde yapılıyor: bir ucu işaretlemeyi unutmak sızıntı demek
         olurdu. `round` ya da `world_state` taşıyan her JSON yanıt buradan
@@ -102,8 +103,11 @@ def create_app() -> Flask:
             if maskeli is not body["round"]:
                 yeni = {**yeni, "round": maskeli}
         if isinstance(body.get("world_state"), dict):
-            maskeli = mask_options(body["world_state"], viewer=bakan, reveal=acik)
-            if maskeli is not body["world_state"]:
+            ws = body["world_state"]
+            maskeli = mask_inventory(
+                mask_options(ws, viewer=bakan, reveal=acik),
+                viewer=bakan, reveal=acik)
+            if maskeli is not ws:
                 yeni = {**yeni, "world_state": maskeli}
         if yeni is not body:
             response.set_data(json.dumps(yeni, ensure_ascii=False))

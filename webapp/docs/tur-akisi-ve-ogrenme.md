@@ -364,11 +364,18 @@ göremez. İki ayrı maskeleme var:
 |---|---|---|
 | Karar (`round.picks`) | `serializers.mask_picks` | kimin karar VERDİĞİ — tur ne zaman kapanacak bilinsin |
 | Menü (`world_state.options`) | `serializers.mask_options` | yalnız kendi havuzu |
+| Envanter (`characters.*.inventory`) | `serializers.mask_inventory` | `envanter_gizli: true` bayrağı |
 
-Neden ikisi de: kararlar açık olsaydı herkes son seçeni bekler, kararını ona
-göre ayarlardı. Menü açık olsaydı "ben şunu seçeceğim, sen bunu al" pazarlığı
-turun kendisinin yerine geçerdi. Kimin kaç seçeneği olduğu bile paylaşılmaz —
-sayı da bir ipucudur (mermisi bitenin listesi kısalır).
+Neden üçü de: kararlar açık olsaydı herkes son seçeni bekler, kararını ona göre
+ayarlardı. Menü açık olsaydı "ben şunu seçeceğim, sen bunu al" pazarlığı turun
+kendisinin yerine geçerdi. Envanter açık olsaydı "kimde kaç fişek kaldı" masada
+sorulacak bir şey olmaktan çıkıp panelden okunan bir tabloya dönerdi.
+
+Kimin kaç seçeneği olduğu bile paylaşılmaz — sayı da bir ipucudur (mermisi
+bitenin listesi kısalır). Envanterde gizlenen alanlar `inventory`,
+`inventory_counts` ve `lost_items`; **yara, gösterge, durum ve konum açık
+kalır** — onlar bakınca zaten görülen şeyler. NPC envanterine dokunulmaz: o
+dünyanın bilgisi, bir oyuncunun özeli değil.
 
 Nerede uygulanıyor: `create_app` içindeki **tek bir** `after_request`. Uçları tek
 tek işaretlemek yerine tek nokta seçildi — bir ucu işaretlemeyi unutmak sızıntı

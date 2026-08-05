@@ -118,6 +118,10 @@ const durumTonu = computed(() => (olu.value ? 'danger' : saglikTonu(props.bilgi?
             >
           </span>
         </div>
+        <p v-else-if="bilgi?.envanter_gizli" class="text-meta text-faint">
+          Bu karakterin envanteri sana kapalı — kimde ne olduğu masada
+          konuşularak öğrenilir.
+        </p>
         <p v-else class="text-meta text-faint">Envanter boş.</p>
       </section>
 

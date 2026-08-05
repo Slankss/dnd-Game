@@ -178,6 +178,37 @@ def mask_options(world_state, viewer=None, reveal=False) -> dict:
     return {**world_state, "options": {viewer: benim} if benim is not None else {}}
 
 
+# Bir karakterin ENVANTERİNİ oluşturan alanlar. Sahibinden başkasına gitmez.
+ENVANTER_ALANLARI = ("inventory", "inventory_counts", "lost_items")
+
+
+def mask_inventory(world_state, viewer=None, reveal=False) -> dict:
+    """Bir oyuncu BAŞKA karakterlerin envanterini görmez.
+
+    Kimde ne olduğu masada konuşularak öğrenilir, panelden okunarak değil:
+    "sende kaç fişek kaldı?" sorusu oyunun kendisidir. Yara, gösterge ve
+    konum açık kalır — onlar bakınca zaten görülen şeyler.
+
+    NPC envanterine dokunulmaz: o dünyanın bilgisi, bir oyuncunun özeli değil.
+    Anlatıcı ve TEK EKRAN masası muaftır.
+    """
+    if not isinstance(world_state, dict):
+        return world_state
+    characters = world_state.get("characters")
+    if reveal or not isinstance(characters, dict):
+        return world_state
+    kirpik = {}
+    for name, info in characters.items():
+        if not isinstance(info, dict) or (viewer and name == viewer):
+            kirpik[name] = info
+            continue
+        govde = {k: v for k, v in info.items() if k not in ENVANTER_ALANLARI}
+        # Arayüz "boş" ile "gizli"yi ayırabilsin.
+        govde["envanter_gizli"] = True
+        kirpik[name] = govde
+    return {**world_state, "characters": kirpik}
+
+
 def public_round(round_state, actors=None) -> dict:
     """Turun oyunculara giden hali.
 
