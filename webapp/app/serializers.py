@@ -158,6 +158,26 @@ def mask_picks(round_body, viewer=None, reveal=False) -> dict:
     return {**round_body, "picks": gizlenmis}
 
 
+def mask_options(world_state, viewer=None, reveal=False) -> dict:
+    """Seçenek MENÜSÜNÜ de sahibine özel kılar.
+
+    Kararı gizlemek tek başına yetmiyor: masadaki herkes birbirinin
+    seçeneklerini okuyabilirse "ben şunu seçeceğim, sen bunu al" pazarlığı
+    turun kendisinin yerine geçer ve sürpriz kalmaz. Bir oyuncu yalnız KENDİ
+    havuzunu görür.
+
+    Kimin kaç seçeneği olduğu bile paylaşılmaz — sayı da bir ipucudur
+    (mermisi bitenin listesi kısalır). Anlatıcı ve TEK EKRAN masası muaftır.
+    """
+    if not isinstance(world_state, dict):
+        return world_state
+    options = world_state.get("options")
+    if reveal or not isinstance(options, dict):
+        return world_state
+    benim = options.get(viewer) if viewer else None
+    return {**world_state, "options": {viewer: benim} if benim is not None else {}}
+
+
 def public_round(round_state, actors=None) -> dict:
     """Turun oyunculara giden hali.
 

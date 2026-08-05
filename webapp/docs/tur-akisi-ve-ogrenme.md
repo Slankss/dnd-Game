@@ -355,26 +355,31 @@ mekanı üst üste binerdi. Bu bir çizim kararıdır: gösterilen km değerleri
 sunucudan geldiği gibi durur. Yollar türlerine göre farklı kalınlık/desende
 çizilir, aynı çiftin ikinci yolu yaylandırılır, çökük yol kırmızı kesik çizgi.
 
-## 1f-2. Kararlar tur geçilene kadar kapalıdır
+## 1f-2. Herkes yalnız kendi turunu görür
 
-Açık turda bir oyuncu, BAŞKA oyuncuların ne seçtiğini göremez. Görünen tek şey
-kimin karar VERDİĞİ (tur ne zaman kapanacak bilinsin); ne seçtiği, hangi
-kategori, kaç zar attığı ve ne harcadığı gövdeye HİÇ girmez.
+Bir oyuncu, BAŞKA oyuncuların ne **seçtiğini** de ne **seçebileceğini** de
+göremez. İki ayrı maskeleme var:
 
-Neden: kararlar açık olsaydı herkes son seçeni bekler, kararlar birbirine göre
-ayarlanır ve aynı anda karar verme gerilimi kaybolurdu.
+| Ne gizlenir | Nerede | Görünen tek şey |
+|---|---|---|
+| Karar (`round.picks`) | `serializers.mask_picks` | kimin karar VERDİĞİ — tur ne zaman kapanacak bilinsin |
+| Menü (`world_state.options`) | `serializers.mask_options` | yalnız kendi havuzu |
 
-Nerede yapılıyor: `serializers.mask_picks` kırpar, `create_app` içindeki tek bir
-`after_request` uygular. Uç uç işaretlemek yerine tek nokta seçildi — bir ucu
-işaretlemeyi unutmak sızıntı demek olurdu. Anlatıcı ve TEK EKRAN masası
-maskelenmez: masadaki tek cihazın kendinden bir şey saklaması anlamsız.
+Neden ikisi de: kararlar açık olsaydı herkes son seçeni bekler, kararını ona
+göre ayarlardı. Menü açık olsaydı "ben şunu seçeceğim, sen bunu al" pazarlığı
+turun kendisinin yerine geçerdi. Kimin kaç seçeneği olduğu bile paylaşılmaz —
+sayı da bir ipucudur (mermisi bitenin listesi kısalır).
+
+Nerede uygulanıyor: `create_app` içindeki **tek bir** `after_request`. Uçları tek
+tek işaretlemek yerine tek nokta seçildi — bir ucu işaretlemeyi unutmak sızıntı
+demek olurdu. `round` ya da `world_state` taşıyan her JSON yanıt buradan geçer.
+
+Muaf olanlar: **anlatıcı** (zaten her şeyi görmek için var) ve **TEK EKRAN
+masası** (masadaki tek cihazın kendinden bir şey saklaması anlamsız).
 
 Kararlar tur geçilince açılır: `commit` her seçimi `role: "user"` satırı olarak
 oyuncu günlüğüne yazar (metin, kategori, zar ve bandıyla), sahne de zaten kimin
 ne yaptığını anlatır.
-
-Menü ile karar ayrı şeylerdir: seçenek havuzu (`world_state.options`) herkese
-açıktır — kimin hangi seçenekleri gördüğü sır değil, hangisini SEÇTİĞİ sırdır.
 
 ## 1g. Effort — anlatıcı her tur aynı derinlikte düşünmez
 

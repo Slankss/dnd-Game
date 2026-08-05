@@ -17,7 +17,7 @@ from flask import Flask, jsonify
 
 from app import config
 from app.errors import GameError
-from app.serializers import mask_picks
+from app.serializers import mask_options, mask_picks
 
 
 def _secret_key() -> bytes:
@@ -76,12 +76,12 @@ def create_app() -> Flask:
     flask_app.register_blueprint(scenario.bp)
 
     @flask_app.after_request
-    def _kararlari_gizle(response):
-        """Açık turda başka oyuncuların KARARI gövdeye hiç girmez.
+    def _baskasinin_turu_gizle(response):
+        """Başka oyuncuların KARARI ve SEÇENEK MENÜSÜ gövdeye hiç girmez.
 
         Tek yerde yapılıyor: bir ucu işaretlemeyi unutmak sızıntı demek
-        olurdu. `round` anahtarı taşıyan her JSON yanıt buradan geçer;
-        anlatıcı ve tek ekran masası için maskeleme uygulanmaz.
+        olurdu. `round` ya da `world_state` taşıyan her JSON yanıt buradan
+        geçer; anlatıcı ve tek ekran masası muaftır.
         """
         if not response.is_json:
             return response
@@ -89,18 +89,24 @@ def create_app() -> Flask:
             body = response.get_json(silent=True)
         except Exception:
             return response
-        if not isinstance(body, dict) or not isinstance(body.get("round"), dict):
+        if not isinstance(body, dict):
             return response
         kim = kimlik()
         rol = kim.get("role")
-        maskeli = mask_picks(
-            body["round"],
-            viewer=kim.get("player") if rol == ROL_OYUNCU else None,
-            reveal=rol in (ROL_ANLATICI, ROL_MASA),
-        )
-        if maskeli is not body["round"]:
-            response.set_data(json.dumps({**body, "round": maskeli},
-                                         ensure_ascii=False))
+        bakan = kim.get("player") if rol == ROL_OYUNCU else None
+        acik = rol in (ROL_ANLATICI, ROL_MASA)
+
+        yeni = body
+        if isinstance(body.get("round"), dict):
+            maskeli = mask_picks(body["round"], viewer=bakan, reveal=acik)
+            if maskeli is not body["round"]:
+                yeni = {**yeni, "round": maskeli}
+        if isinstance(body.get("world_state"), dict):
+            maskeli = mask_options(body["world_state"], viewer=bakan, reveal=acik)
+            if maskeli is not body["world_state"]:
+                yeni = {**yeni, "world_state": maskeli}
+        if yeni is not body:
+            response.set_data(json.dumps(yeni, ensure_ascii=False))
         return response
 
     @flask_app.errorhandler(GameError)
