@@ -356,6 +356,39 @@ mekanı üst üste binerdi. Bu bir çizim kararıdır: gösterilen km değerleri
 sunucudan geldiği gibi durur. Yollar türlerine göre farklı kalınlık/desende
 çizilir, aynı çiftin ikinci yolu yaylandırılır, çökük yol kırmızı kesik çizgi.
 
+## 1f-2. Herkes yalnız kendi turunu görür
+
+Bir oyuncu, BAŞKA oyuncuların ne **seçtiğini** de ne **seçebileceğini** de
+göremez. İki ayrı maskeleme var:
+
+| Ne gizlenir | Nerede | Görünen tek şey |
+|---|---|---|
+| Karar (`round.picks`) | `serializers.mask_picks` | kimin karar VERDİĞİ — tur ne zaman kapanacak bilinsin |
+| Menü (`world_state.options`) | `serializers.mask_options` | yalnız kendi havuzu |
+| Envanter (`characters.*.inventory`) | `serializers.mask_inventory` | `envanter_gizli: true` bayrağı |
+
+Neden üçü de: kararlar açık olsaydı herkes son seçeni bekler, kararını ona göre
+ayarlardı. Menü açık olsaydı "ben şunu seçeceğim, sen bunu al" pazarlığı turun
+kendisinin yerine geçerdi. Envanter açık olsaydı "kimde kaç fişek kaldı" masada
+sorulacak bir şey olmaktan çıkıp panelden okunan bir tabloya dönerdi.
+
+Kimin kaç seçeneği olduğu bile paylaşılmaz — sayı da bir ipucudur (mermisi
+bitenin listesi kısalır). Envanterde gizlenen alanlar `inventory`,
+`inventory_counts` ve `lost_items`; **yara, gösterge, durum ve konum açık
+kalır** — onlar bakınca zaten görülen şeyler. NPC envanterine dokunulmaz: o
+dünyanın bilgisi, bir oyuncunun özeli değil.
+
+Nerede uygulanıyor: `create_app` içindeki **tek bir** `after_request`. Uçları tek
+tek işaretlemek yerine tek nokta seçildi — bir ucu işaretlemeyi unutmak sızıntı
+demek olurdu. `round` ya da `world_state` taşıyan her JSON yanıt buradan geçer.
+
+Muaf olanlar: **anlatıcı** (zaten her şeyi görmek için var) ve **TEK EKRAN
+masası** (masadaki tek cihazın kendinden bir şey saklaması anlamsız).
+
+Kararlar tur geçilince açılır: `commit` her seçimi `role: "user"` satırı olarak
+oyuncu günlüğüne yazar (metin, kategori, zar ve bandıyla), sahne de zaten kimin
+ne yaptığını anlatır.
+
 ## 1g. Effort — anlatıcı her tur aynı derinlikte düşünmez
 
 `--effort` sabit değil, **tura göre** seçilir (`models/effort.decide`).

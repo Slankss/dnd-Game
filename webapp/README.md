@@ -145,6 +145,55 @@ npm run build        # çıktı: ../static/dist
 npm run dev          # geliştirme sunucusu, /api istekleri :5050'ye proxy'lenir
 ```
 
+## Kimlik: herkes kendi ekranından oynar
+
+Oyun bir sunucuda çalışıp dışarı açılabildiği için "ben Okan'ım" iddiası artık
+istemciden gelen bir alan değil, **sunucudaki oturumun taşıdığı bir gerçek**.
+Kimliği imzalı bir oturum çerezi taşır (HttpOnly, SameSite=Lax); şifreler
+sunucuda yalnız `scrypt` özetleriyle durur, geri okunamaz.
+
+**Üç rol var:**
+
+| rol | nasıl girer | ne yapar |
+| --- | --- | --- |
+| oyuncu | karakter adı + kendi şifresi | yalnız KENDİ karakterini oynar |
+| masa | oyun kodu (tek ekran kipi açıkken) | kadronun tamamı adına oynar |
+| anlatıcı | `/secrets` + PIN | kurar, ayarlar, sahneyi yazar; hamle yapmaz |
+
+**Oyun gecesi nasıl başlar:**
+
+1. Anlatıcı `/secrets`'a PIN'le girer ve **kadroyu kurar** (kurulum artık oyuncu
+   ekranında değil — dışarı açık bir sunucuda giren herkes oyunu sıfırlayamaz).
+2. Anlatıcı masaya **oyun kodunu** söyler (`.env` → `GAME_CODE`).
+3. Her oyuncu kendi cihazından `/` adresine girer, karakterini seçer, oyun
+   kodunu ve **kendine belirlediği şifreyi** yazar. Karakter o an sahiplenilir.
+4. Sonraki girişlerde kod sorulmaz: karakter adı + şifre yeter.
+
+Sahiplenilmiş bir karakteri başkası alamaz. Şifresini unutan olursa anlatıcı
+ekranındaki **Oyuncu hesapları** panelinden sahipliği bırakır; oyuncu karakteri
+yeniden alıp yeni şifresini belirler.
+
+Sunucu bir oyuncunun gövdede yazdığı `player` alanına **bakmaz**: hamle her
+zaman oturumun karakteri adına işlenir. Giriş yapmadan hiçbir uç çalışmaz —
+dünya durumu, harita, eşya kataloğu, oyun kaydı, hepsi kapalıdır.
+
+### Tek ekran kipi (herkes aynı masada)
+
+Herkesin ayrı cihazı yoksa anlatıcı **Ayarlar → Tek ekran**'ı açar. O zaman
+giriş ekranında ikinci bir yol belirir: masadaki cihaz yalnız oyun koduyla
+girer ve kadronun tamamı adına oynar — eski davranışın aynısı, ama artık davet
+koduyla korunuyor. Kip kapatıldığında açık masa oturumları kendiliğinden düşer.
+
+### Dışarı açarken
+
+- `.env` içindeki `GM_PIN` ve `GAME_CODE`'u **mutlaka** değiştirin.
+- HTTPS arkasına koyun (ters vekil) ve `COOKIE_SECURE=1` yapın — yoksa oturum
+  çerezi şifresiz bağlantıda da gider.
+- `data/accounts.json` ve `data/secret_key` sunucuya özeldir, depoya girmez.
+  Anahtar silinirse herkesin oturumu düşer (şifreler durur).
+- Hatalı giriş denemeleri IP + hedef başına frenlenir: 8 denemeden sonra
+  5 dakika kilit.
+
 ## Önemli: kullanım kotası
 
 Bu, Claude Code'u (bu aracın kendisini) arka planda çalıştırdığı için, oyun

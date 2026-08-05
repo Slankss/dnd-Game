@@ -1,16 +1,18 @@
 """Anlatıcı (GM) akışları — /secrets ekranının arkasındaki iş kuralı.
 
-PIN kontrolü burada yapılır (API katmanı değil), böylece kural tek yerde
-durur. Anlatıcıya dönen gövdeler dünya durumunun TAMAMINI taşır: bu ekran
-zaten gizli katmanı görmek içindir, `public_world_state` süzgecinden
-geçirilmez.
+YETKİ burada DEĞİL, API katmanındaki `gm_required` bekçisinde kontrol edilir:
+anlatıcı bir kez `/api/auth/gm` ile giriş yapar, sonraki her istek oturumdan
+yetkilenir. Bu servise gelen çağrı zaten yetkilidir.
+
+Anlatıcıya dönen gövdeler dünya durumunun TAMAMINI taşır: bu ekran zaten
+gizli katmanı görmek içindir, `public_world_state` süzgecinden geçirilmez.
 """
 
 import json
 import time
 
 from app import config
-from app.errors import AuthError, ValidationError
+from app.errors import ValidationError
 from app.repositories import log_repo
 from app.repositories.plot_repo import PlotRepository
 from app.repositories.scenario_repo import ScenarioRepository
@@ -27,10 +29,11 @@ NOTE_MODES = ("gizli", "sahne", "surpriz")
 
 
 class GmService:
-    """`/api/gm/unlock`, `/api/gm/state`, `/api/gm/note`, `/api/gm/patch`."""
+    """`/api/gm/state`, `/api/gm/note`, `/api/gm/lesson`, `/api/gm/items`,
+    `/api/gm/patch`."""
 
     def __init__(self, state_repo=None, scenario_repo=None, narrator=None,
-                 game_log=None, gm_log=None, pin=None, plot_repo=None,
+                 game_log=None, gm_log=None, plot_repo=None,
                  learning=None, items=None):
         self.scenario_repo = scenario_repo or ScenarioRepository()
         self.state_repo = state_repo or StateRepository(scenario_repo=self.scenario_repo)
@@ -40,20 +43,9 @@ class GmService:
         self.gm_log = gm_log or log_repo.gm_log()
         self.learning = learning or LearningService()
         self.items = items or ItemsService()
-        self.pin = pin if pin is not None else config.GM_PIN
-
-    def _check(self, pin) -> None:
-        if pin != self.pin:
-            raise AuthError("Yanlış PIN.")
-
-    # ---------------------------------------------------------- /api/gm/unlock
-    def unlock(self, pin) -> dict:
-        self._check(pin)
-        return {"ok": True}
 
     # ----------------------------------------------------------- /api/gm/state
-    def snapshot(self, pin, since=None) -> dict:
-        self._check(pin)
+    def snapshot(self, since=None) -> dict:
         with LOCK:
             state = self.state_repo.load()
             version = int(state.get("version", 0))
@@ -81,10 +73,9 @@ class GmService:
         }
 
     # ------------------------------------------------------- /api/gm/lesson
-    def add_lesson(self, pin, text) -> dict:
+    def add_lesson(self, text) -> dict:
         """Anlatıcı deftere elle ders yazar — bu dersler otomatik olanların
         ÖNÜNDE prompt'a girer ve yeteneğe de işlenir."""
-        self._check(pin)
         text = (text or "").strip()
         if not text:
             raise ValidationError("Ders metni boş olamaz.")
@@ -102,8 +93,7 @@ class GmService:
         return {"ok": True, "learning": store.summary()}
 
     # ------------------------------------------------------------ /api/gm/note
-    def note(self, pin, text, mode=None) -> dict:
-        self._check(pin)
+    def note(self, text, mode=None) -> dict:
         text = (text or "").strip()
         # gizli   = yönlendirme; yanıt SADECE anlatıcı ekranında kalır
         # sahne   = müdahale doğrudan oyuncu akışına sahne olarak yayınlanır
@@ -301,18 +291,16 @@ class GmService:
 
     # ----------------------------------------------------------- /api/gm/patch
     # ------------------------------------------------------ eşya kataloğu
-    def items_catalog(self, pin) -> dict:
+    def items_catalog(self) -> dict:
         """Anlatıcı ekranının okuduğu katalog (PIN'li)."""
-        self._check(pin)
         return self.items.public_catalog()
 
-    def add_item(self, pin, item) -> dict:
+    def add_item(self, item) -> dict:
         """Kataloga KALICI eşya ekler.
 
         Eklenen eşya `data/items.json`'a yazılır: oyunun içeriğine girer, tek
         bir oyunun durumuna değil. Yeni oyun kurulsa, `/api/reset` çekilse bile
         durur ve o andan itibaren her oyunda aranırken çıkabilir."""
-        self._check(pin)
         kayit = self.items.add_item(item)
         self.gm_log.append({
             "id": None,
@@ -323,10 +311,9 @@ class GmService:
         })
         return {"ok": True, "item": kayit, "catalog": self.items.public_catalog()}
 
-    def patch(self, pin, patch) -> dict:
+    def patch(self, patch) -> dict:
         """Anlatıcının doğrudan (model çağrısı olmadan) dünya durumunu düzenlemesi:
         fraksiyon tavrı, zorluk saati, bulmaca ilerlemesi vb. Anında uygulanır."""
-        self._check(pin)
         if not isinstance(patch, dict) or not patch:
             raise ValidationError("Boş ya da geçersiz düzenleme.")
         with LOCK:

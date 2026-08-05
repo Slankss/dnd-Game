@@ -46,6 +46,8 @@ const seciler = computed(() => Object.values(props.tur?.picks || {}))
 const bekleyenler = computed(() => props.tur?.waiting || [])
 const kadro = computed(() => props.tur?.actors || [])
 const hepsiSecti = computed(() => !!props.tur?.all_picked)
+/** Başkasının kararı gizlenmiş mi (tek ekran kipinde gizlenmez). */
+const gizliVar = computed(() => seciler.value.some((s) => s.gizli))
 
 /** Kalan saniye — süre yoksa null. */
 const kalan = computed(() => {
@@ -154,11 +156,14 @@ watch(
 
     <!-- kim seçti / kim bekleniyor -->
     <div class="mt-2 flex flex-wrap items-center gap-1.5">
+      <!-- Başkasının kararı TUR GEÇENE KADAR gizlidir: sunucu metni, zarı
+           ve kategoriyi gövdeye hiç koymaz (bkz. serializers.mask_picks).
+           Görünen tek şey karar verilmiş olması. -->
       <span
         v-for="secim in seciler"
         :key="secim.player"
         class="inline-flex items-center gap-1 rounded-chip border border-border bg-surface-2 px-2 py-0.5 text-label"
-        :title="secim.text"
+        :title="secim.gizli ? 'Kararını verdi — tur geçince görünecek' : secim.text"
       >
         <span
           class="size-1.5 rounded-full"
@@ -166,7 +171,12 @@ watch(
           aria-hidden="true"
         />
         {{ secim.player }}
-        <Icon name="check" :size="13" class="text-ok" />
+        <template v-if="secim.gizli">
+          <Icon name="lock" :size="12" class="text-faint" />
+        </template>
+        <Badge v-else :tone="zarTonu(secim.band)" size="sm">
+          <span class="nums-tabular">{{ secim.roll }}</span>
+        </Badge>
       </span>
 
       <span
@@ -187,6 +197,10 @@ watch(
       <Icon name="check_circle" :size="13" />
       Herkes kararını verdi. Tur, siz "Turu Geç"e basana kadar ilerlemez —
       dilerseniz kararınızı hâlâ değiştirebilirsiniz.
+    </p>
+    <p v-else-if="acik && gizliVar" class="mt-2 flex items-center gap-1.5 text-label text-faint">
+      <Icon name="lock" :size="13" />
+      Kimin ne seçtiği tur geçilince görünür.
     </p>
   </section>
 </template>

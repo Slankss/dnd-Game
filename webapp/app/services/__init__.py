@@ -15,8 +15,10 @@ Altı servis, altı akış:
   * `grid`     — sahnenin kare haritası (2D ızgara, O(1) hareket)
   * `threat`   — zombi tehdidi: her turda karşılaşma zarı, gürültü, yoğunluk
   * `items`    — sabit eşya kataloğu: arama (yere göre), tüketim (doyum)
+  * `auth`     — kimlik: karakter sahiplenme, giriş, anlatıcı PIN'i
 """
 
+from app.services.auth_service import AuthService
 from app.services.gm_service import GmService
 from app.services.grid_service import GridService
 from app.services.items_service import ItemsService
@@ -43,8 +45,10 @@ game = GameService(learning=learning, options=options, rounds=rounds)
 gm = GmService(items=items)
 grid = GridService()
 scenario = ScenarioService()
+auth = AuthService()
 
 __all__ = ["GameService", "TurnService", "RoundService", "GmService",
            "GridService", "ScenarioService", "LearningService", "OptionsService",
-           "ThreatService", "ItemsService", "WorldGenService", "game", "turn", "rounds",
-           "gm", "grid", "scenario", "learning", "options", "threat", "items"]
+           "ThreatService", "ItemsService", "WorldGenService", "AuthService",
+           "game", "turn", "rounds", "gm", "grid", "scenario", "learning",
+           "options", "threat", "items", "auth"]

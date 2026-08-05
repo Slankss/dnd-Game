@@ -135,6 +135,16 @@ const VITAL_TONU = { ok: 'text-muted', warn: 'text-warn', danger: 'text-danger' 
         >+{{ envanter.length - 6 }}</span
       >
     </div>
+    <!-- Başkasının envanteri sunucudan HİÇ gelmez: "boş" ile "gizli"yi
+         karıştırmayalım (bkz. serializers.mask_inventory). -->
+    <p
+      v-else-if="bilgi.envanter_gizli"
+      class="mt-1.5 flex items-center gap-1.5 text-label text-faint"
+      title="Kimde ne var, masada konuşarak öğrenilir"
+    >
+      <Icon name="lock" :size="13" />
+      envanteri gizli
+    </p>
     <p v-else class="mt-1.5 flex items-center gap-1.5 text-label text-faint">
       <Icon name="backpack" :size="13" />
       envanter boş

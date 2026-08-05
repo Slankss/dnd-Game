@@ -3,7 +3,8 @@
  * PIN kilidi — anlatıcı ekranının kapısı.
  *
  * Kilit kapalıyken ekranda BAŞKA HİÇBİR ŞEY olmaz: dünya durumu, zar, sırlar
- * hiç istenmez. Doğru PIN girilince üst bileşen yoklamayı başlatır.
+ * hiç istenmez. Doğru PIN girilince sunucu bir oturum açar (POST /api/auth/gm)
+ * ve üst bileşen yoklamayı başlatır; PIN bir daha gönderilmez.
  */
 import { ref } from 'vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -84,8 +85,9 @@ function gonder() {
       <p class="mt-4 flex items-start gap-1.5 text-label text-faint">
         <Icon name="info" :size="14" class="mt-0.5 shrink-0" />
         <span>
-          PIN bu tarayıcıda saklanır ve ekran açılışında sessizce denenir. Ortak bir
-          bilgisayardaysan işin bitince üstteki kilit düğmesini kullan.
+          PIN tarayıcıda SAKLANMAZ: giriş yapınca sunucu imzalı bir oturum çerezi
+          bırakır ve ekran açılışında o denenir. Ortak bir bilgisayardaysan işin
+          bitince üstteki kilit düğmesini kullan — oturum sunucuda da kapanır.
         </span>
       </p>
     </section>
